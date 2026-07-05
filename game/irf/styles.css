@@ -206,7 +206,7 @@ button:disabled {
 
 .command-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -220,6 +220,10 @@ button:disabled {
 
 .command-row button:nth-child(3) {
   border-color: rgba(242, 184, 75, 0.58);
+}
+
+.command-row button:nth-child(6) {
+  border-color: rgba(185, 140, 255, 0.58);
 }
 
 .event-log {

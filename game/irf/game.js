@@ -2,6 +2,8 @@
 
 const STORAGE_KEY = "infinite_runner_factory_save_v1";
 const SAVE_VERSION = 1;
+const ASSET_ROOT = "asset/";
+const MUSIC_ROOT = `${ASSET_ROOT}music/loop/`;
 
 const upgradeDefs = [
   { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${Math.round(lv * 2)}%` },
@@ -50,6 +52,67 @@ const areas = [
   { name: "神界", line: "Aether Road", start: 100000, sky: ["#e5d9ff", "#9fd9ff"], ground: "#e8e1b8", accent: "#f4cc5f", obstacle: "#b99067" },
   { name: "無限空間", line: "Infinite Span", start: 160000, sky: ["#11151d", "#2e465b"], ground: "#24313a", accent: "#4cc38a", obstacle: "#394859" }
 ];
+
+const areaMusicFiles = [
+  "草原エリアBGM.ogg",
+  "砂漠エリアBGM.ogg",
+  "雪山エリアBGM.ogg",
+  "火山エリアBGM.ogg",
+  "未来都市エリアBGM.ogg",
+  "宇宙エリアBGM.ogg",
+  "ブラックホールエリアBGM.ogg",
+  "神界エリアBGM.ogg",
+  "神界エリアBGM.ogg"
+];
+
+const sceneMusicFiles = {
+  title: "タイトル画面BGM.ogg",
+  menu: "メインメニューBGM.ogg",
+  upgrades: "強化画面BGM.ogg",
+  factory: "工場放置施設画面BGM.ogg",
+  equipment: "装備宝箱画面BGM.ogg",
+  missions: "ミッション実績画面BGM.ogg",
+  research: "研究ツリー画面BGM.ogg",
+  prestige: "転生画面BGM.ogg",
+  result: "リザルト画面BGM.ogg"
+};
+
+const PLAYER_SPRITE_FRAME_HEIGHT = 145;
+const PLAYER_SPRITE_ANCHOR_X = 640 / 1280;
+const PLAYER_SPRITE_ANCHOR_Y = 1010 / 1280;
+
+const defaultRobotFrames = {
+  running: [
+    { name: "kogatarobotto running0000", x: 0, y: 809, w: 336, h: 749, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 },
+    { name: "kogatarobotto running0001", x: 672, y: 0, w: 337, h: 759, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 },
+    { name: "kogatarobotto running0002", x: 336, y: 809, w: 411, h: 749, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 }
+  ],
+  jump: [
+    { name: "kogatarobotto jump0000", x: 0, y: 809, w: 336, h: 749, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 },
+    { name: "kogatarobotto jump0001", x: 336, y: 0, w: 336, h: 779, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 },
+    { name: "kogatarobotto jump0002", x: 0, y: 0, w: 336, h: 809, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 }
+  ],
+  sliding: [
+    { name: "kogatarobotto sliding0000", x: 2048, y: 0, w: 530, h: 627, frameX: -469, frameY: -383, frameW: 1280, frameH: 1280 }
+  ],
+  dash: [
+    { name: "kogatarobotto dash0000", x: 0, y: 809, w: 336, h: 749, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 },
+    { name: "kogatarobotto dash0001", x: 1009, y: 0, w: 336, h: 749, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 },
+    { name: "kogatarobotto dash0002", x: 1625, y: 0, w: 423, h: 709, frameX: -404, frameY: -291, frameW: 1280, frameH: 1280 },
+    { name: "kogatarobotto dash0003", x: 747, y: 809, w: 750, h: 726, frameX: -269, frameY: -287, frameW: 1280, frameH: 1280 }
+  ],
+  damage: [
+    { name: "kogatarobotto damage0000", x: 1345, y: 0, w: 280, h: 749, frameX: -468, frameY: -261, frameW: 1280, frameH: 1280 }
+  ]
+};
+
+const playerAnimationDefs = {
+  running: { fps: 9, loop: true },
+  jump: { fps: 7, loop: false },
+  sliding: { fps: 1, loop: false },
+  dash: { fps: 13, loop: false },
+  damage: { fps: 1, loop: false }
+};
 
 const chestDefs = {
   wood: { name: "木", seconds: 30, color: "#a97942", weight: 56 },
@@ -115,6 +178,7 @@ let lastFrame = performance.now();
 let autosaveTimer = 0;
 let uiTimer = 0;
 let messageTimer = 0;
+let musicScene = "run";
 
 const player = {
   x: 112,
@@ -125,7 +189,10 @@ const player = {
   jumpsUsed: 0,
   slideTimer: 0,
   invulnerable: 0,
-  regenTimer: 0
+  regenTimer: 0,
+  damageTimer: 0,
+  animationKey: "running",
+  animationStartedAt: performance.now()
 };
 
 const run = {
@@ -153,9 +220,22 @@ const run = {
 let objects = [];
 let particles = [];
 
+const robotSprite = {
+  image: new Image(),
+  loaded: false,
+  frames: defaultRobotFrames
+};
+
+const music = {
+  unlocked: false,
+  currentKey: "",
+  current: null
+};
+
 init();
 
 function init() {
+  loadSpriteAssets();
   applyOfflineProgress();
   ensureMissions();
   resetRun();
@@ -195,6 +275,9 @@ function defaultState() {
     missions: null,
     boosts: {
       coinDouble: 0
+    },
+    settings: {
+      bgmEnabled: true
     },
     stats: {
       jumps: 0,
@@ -264,8 +347,62 @@ function applyOfflineProgress() {
   if (gained > 0) logEvent(`OFFLINE +${formatNumber(gained)} COIN`);
 }
 
+function loadSpriteAssets() {
+  robotSprite.image.onload = () => {
+    robotSprite.loaded = true;
+  };
+  robotSprite.image.onerror = () => {
+    robotSprite.loaded = false;
+  };
+  robotSprite.image.src = `${ASSET_ROOT}image/kogatarobotto.png`;
+
+  fetch(`${ASSET_ROOT}image/kogatarobotto.xml`)
+    .then((response) => {
+      if (!response.ok) throw new Error("sprite xml not found");
+      return response.text();
+    })
+    .then((xmlText) => {
+      const frames = parseRobotAtlas(xmlText);
+      if (Object.keys(frames).length > 0) {
+        robotSprite.frames = mergeDefaults(frames, defaultRobotFrames);
+      }
+    })
+    .catch(() => {
+      robotSprite.frames = defaultRobotFrames;
+    });
+}
+
+function parseRobotAtlas(xmlText) {
+  const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+  const frames = {};
+  doc.querySelectorAll("SubTexture").forEach((node) => {
+    const name = node.getAttribute("name") || "";
+    const match = name.match(/kogatarobotto\s+([a-z]+)\d+/i);
+    if (!match) return;
+    const key = match[1];
+    if (!frames[key]) frames[key] = [];
+    frames[key].push({
+      name,
+      x: Number(node.getAttribute("x") || 0),
+      y: Number(node.getAttribute("y") || 0),
+      w: Number(node.getAttribute("width") || 1),
+      h: Number(node.getAttribute("height") || 1),
+      frameX: Number(node.getAttribute("frameX") || 0),
+      frameY: Number(node.getAttribute("frameY") || 0),
+      frameW: Number(node.getAttribute("frameWidth") || node.getAttribute("width") || 1),
+      frameH: Number(node.getAttribute("frameHeight") || node.getAttribute("height") || 1)
+    });
+  });
+  for (const list of Object.values(frames)) {
+    list.sort((a, b) => a.name.localeCompare(b.name));
+  }
+  return frames;
+}
+
 function bindEvents() {
   window.addEventListener("resize", resizeCanvas);
+  document.addEventListener("pointerdown", unlockAudio, { once: true });
+  document.addEventListener("keydown", unlockAudio, { once: true });
 
   document.addEventListener("keydown", (event) => {
     if (event.repeat) return;
@@ -289,6 +426,7 @@ function bindEvents() {
   document.getElementById("restartBtn").addEventListener("click", restartFromButton);
   document.getElementById("overlayRestart").addEventListener("click", restartFromButton);
   document.getElementById("saveBtn").addEventListener("click", saveState);
+  document.getElementById("bgmBtn").addEventListener("click", toggleBgm);
 
   let touchStartX = 0;
   let touchStartY = 0;
@@ -312,6 +450,8 @@ function bindEvents() {
     const button = event.target.closest("button[data-tab]");
     if (!button) return;
     activeTab = button.dataset.tab;
+    musicScene = activeTab;
+    syncBgm();
     document.querySelectorAll(".tab-bar button").forEach((tab) => {
       tab.classList.toggle("active", tab.dataset.tab === activeTab);
     });
@@ -343,6 +483,71 @@ function bindEvents() {
     state.lastSavedAt = Date.now();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   });
+}
+
+function unlockAudio() {
+  if (music.unlocked) return;
+  music.unlocked = true;
+  syncBgm();
+}
+
+function toggleBgm() {
+  state.settings.bgmEnabled = !state.settings.bgmEnabled;
+  if (!state.settings.bgmEnabled) {
+    stopBgm();
+    logEvent("BGM OFF");
+  } else {
+    unlockAudio();
+    syncBgm();
+    logEvent("BGM ON");
+  }
+  updateHud();
+}
+
+function syncBgm() {
+  if (!state.settings.bgmEnabled || !music.unlocked) return;
+  const key = currentMusicKey();
+  if (key === music.currentKey) return;
+  playBgm(key);
+}
+
+function currentMusicKey() {
+  if (run.gameOver || musicScene === "result") return "result";
+  if (sceneMusicFiles[musicScene]) return musicScene;
+  return `area:${areaIndex()}`;
+}
+
+function musicUrlForKey(key) {
+  if (key.startsWith("area:")) {
+    const index = Number(key.split(":")[1] || 0);
+    return `${MUSIC_ROOT}${areaMusicFiles[index] || areaMusicFiles[0]}`;
+  }
+  const file = sceneMusicFiles[key] || sceneMusicFiles.menu;
+  return `${MUSIC_ROOT}${file}`;
+}
+
+function playBgm(key) {
+  stopBgm();
+  const audio = new Audio(musicUrlForKey(key));
+  audio.loop = true;
+  audio.volume = 0.42;
+  music.current = audio;
+  music.currentKey = key;
+  const playPromise = audio.play();
+  if (playPromise) {
+    playPromise.catch(() => {
+      music.currentKey = "";
+    });
+  }
+}
+
+function stopBgm() {
+  if (music.current) {
+    music.current.pause();
+    music.current.currentTime = 0;
+  }
+  music.current = null;
+  music.currentKey = "";
 }
 
 function resizeCanvas() {
@@ -381,6 +586,7 @@ function update(dt) {
   if (!run.gameOver) {
     updateRun(dt);
   }
+  syncBgm();
 
   autosaveTimer += dt;
   uiTimer += dt;
@@ -433,6 +639,7 @@ function updateRun(dt) {
   if (run.skillShield > 0) run.skillShield -= dt;
   if (run.timeStop > 0) run.timeStop -= dt;
   if (player.invulnerable > 0) player.invulnerable -= dt;
+  if (player.damageTimer > 0) player.damageTimer -= dt;
 
   if (stats.regenEvery > 0) {
     player.regenTimer += dt;
@@ -839,6 +1046,8 @@ function damagePlayer() {
   run.hp -= 1;
   run.combo = 0;
   player.invulnerable = 1.25;
+  player.damageTimer = 0.45;
+  restartPlayerAnimation("damage");
   burst(player.x + player.w / 2, player.y + player.h / 2, "#ef6b65", 12);
   if (run.hp <= 0) endRun();
   else logEvent(`DAMAGE HP ${run.hp}`);
@@ -847,6 +1056,8 @@ function damagePlayer() {
 function endRun() {
   run.gameOver = true;
   run.active = false;
+  musicScene = "result";
+  syncBgm();
   state.runs += 1;
   const xp = Math.max(5, Math.floor(run.distance / 12));
   gainXp(xp);
@@ -859,6 +1070,8 @@ function endRun() {
 
 function restartFromButton() {
   resetRun();
+  musicScene = "run";
+  syncBgm();
   logEvent("RUN START");
   updateHud();
 }
@@ -895,10 +1108,14 @@ function resetRun() {
   player.slideTimer = 0;
   player.invulnerable = 1;
   player.regenTimer = 0;
+  player.damageTimer = 0;
+  restartPlayerAnimation("running");
   runOverlay.classList.add("hidden");
 }
 
 function jump() {
+  musicScene = "run";
+  unlockAudio();
   if (run.gameOver) {
     resetRun();
     return;
@@ -909,24 +1126,36 @@ function jump() {
   player.vy = (run.gravityFlip ? 1 : -1) * (540 * stats.jumpPower);
   player.jumpsUsed += 1;
   player.slideTimer = 0;
+  restartPlayerAnimation("jump");
   state.stats.jumps += 1;
   gainCombo(0.2);
 }
 
 function slide() {
+  musicScene = "run";
+  unlockAudio();
   if (run.gameOver) return;
   player.slideTimer = 0.55;
+  restartPlayerAnimation("sliding");
   if (Math.abs(player.vy) < 1) {
     player.vy = run.gravityFlip ? -110 : 110;
   }
 }
 
 function dash() {
+  musicScene = "run";
+  unlockAudio();
   if (run.gameOver || run.dashCooldown > 0) return;
   const duration = 1.2 + state.upgrades.dash * 0.18;
   run.dashTimer = duration;
   run.dashCooldown = Math.max(7, 16 - state.upgrades.dash * 0.25);
+  restartPlayerAnimation("dash");
   logEvent("DASH");
+}
+
+function restartPlayerAnimation(key) {
+  player.animationKey = key;
+  player.animationStartedAt = performance.now();
 }
 
 function getStats() {
@@ -1113,6 +1342,8 @@ function prestige() {
   addMissionProgress("weeklyPrestige", 1);
   logEvent(`PRESTIGE +${gain} PR`);
   resetRun();
+  musicScene = "run";
+  syncBgm();
   saveState();
 }
 
@@ -1633,6 +1864,8 @@ function updateHud() {
   const dashButton = document.getElementById("dashBtn");
   dashButton.disabled = run.dashCooldown > 0 || run.gameOver;
   dashButton.textContent = run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s` : "ダッシュ";
+  const bgmButton = document.getElementById("bgmBtn");
+  bgmButton.textContent = state.settings.bgmEnabled ? "BGM ON" : "BGM OFF";
 }
 
 function logEvent(message) {
@@ -1707,6 +1940,11 @@ function drawPlayer() {
   if (blink) ctx.globalAlpha = 0.55;
   const accent = run.dashTimer > 0 ? "#f2b84b" : run.skillShield > 0 ? "#48bde7" : "#e8edf5";
 
+  if (drawPlayerSprite(rect, accent)) {
+    ctx.globalAlpha = 1;
+    return;
+  }
+
   ctx.fillStyle = "#343b48";
   roundRect(rect.x, rect.y, rect.w, rect.h, 7);
   ctx.fill();
@@ -1731,6 +1969,85 @@ function drawPlayer() {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+}
+
+function drawPlayerSprite(rect, accent) {
+  if (!robotSprite.loaded) return false;
+  const animation = playerAnimationKey();
+  const frames = robotSprite.frames[animation] || robotSprite.frames.running;
+  if (!frames || frames.length === 0) return false;
+
+  if (player.animationKey !== animation) {
+    restartPlayerAnimation(animation);
+  }
+
+  const frame = currentPlayerFrame(animation, frames);
+  const frameW = frame.frameW || frame.w;
+  const frameH = frame.frameH || frame.h;
+  const scale = PLAYER_SPRITE_FRAME_HEIGHT / frameH;
+  const virtualW = frameW * scale;
+  const virtualH = frameH * scale;
+  const anchorX = frameW * PLAYER_SPRITE_ANCHOR_X * scale;
+  const anchorY = frameH * PLAYER_SPRITE_ANCHOR_Y * scale;
+  const frameOriginX = rect.x + rect.w / 2 - anchorX;
+  const frameOriginY = run.gravityFlip
+    ? rect.y + rect.h / 2 - virtualH / 2
+    : rect.y + rect.h - anchorY;
+  const sourceDrawX = frameOriginX + (-frame.frameX) * scale;
+  const sourceDrawY = frameOriginY + (-frame.frameY) * scale;
+  const sourceDrawW = frame.w * scale;
+  const sourceDrawH = frame.h * scale;
+
+  if (run.dashTimer > 0) {
+    ctx.fillStyle = "rgba(242,184,75,0.38)";
+    ctx.fillRect(rect.x - 48, rect.y + rect.h * 0.36, 44, 8);
+  }
+
+  ctx.drawImage(
+    robotSprite.image,
+    frame.x,
+    frame.y,
+    frame.w,
+    frame.h,
+    sourceDrawX,
+    sourceDrawY,
+    sourceDrawW,
+    sourceDrawH
+  );
+
+  if (run.skillShield > 0) {
+    ctx.strokeStyle = "rgba(72,189,231,0.9)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.9, rect.h * 0.85, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  if (player.invulnerable > 0 || run.dashTimer > 0) {
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = Math.min(1, ctx.globalAlpha + 0.12);
+    ctx.beginPath();
+    ctx.ellipse(rect.x + rect.w / 2, rect.y + rect.h / 2, rect.w * 0.72, rect.h * 0.68, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  return true;
+}
+
+function currentPlayerFrame(animation, frames) {
+  const def = playerAnimationDefs[animation] || playerAnimationDefs.running;
+  const elapsed = Math.max(0, (performance.now() - player.animationStartedAt) / 1000);
+  const rawIndex = Math.floor(elapsed * def.fps);
+  const index = def.loop ? rawIndex % frames.length : Math.min(frames.length - 1, rawIndex);
+  return frames[index] || frames[frames.length - 1];
+}
+
+function playerAnimationKey() {
+  if (player.damageTimer > 0 && run.hp > 0 && run.dashTimer <= 0) return "damage";
+  if (run.dashTimer > 0) return "dash";
+  if (player.slideTimer > 0) return "sliding";
+  if (player.jumpsUsed > 0 || Math.abs(player.vy) > 20) return "jump";
+  return "running";
 }
 
 function drawObjects() {
