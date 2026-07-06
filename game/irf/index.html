@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja" data-language-mode="auto" data-ad-mode="reward">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Infinite Runner Factory</title>
+  <link rel="stylesheet" href="styles.css">
+  <meta name="google-adsense-account" content="ca-pub-9125804050404262">
+</head>
+<body>
+  <div id="languageOverlay" class="language-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="languageTitle">
+    <div class="language-panel">
+      <strong id="languageTitle">Language / 言語</strong>
+      <p>Choose your language. / 言語を選択してください。</p>
+      <div class="language-actions">
+        <button type="button" data-language-choice="ja">日本語</button>
+        <button type="button" data-language-choice="en">English</button>
+      </div>
+    </div>
+  </div>
+
+  <main class="app-shell">
+    <section class="play-section" aria-label="Infinite Runner Factory">
+      <header class="topbar">
+        <div>
+          <h1>Infinite Runner Factory</h1>
+          <p id="areaName">Grassland Line</p>
+        </div>
+        <div class="resource-strip" aria-label="Resources">
+          <span><strong id="coinsStat">0</strong><small>COIN</small></span>
+          <span><strong id="gemsStat">0</strong><small>GEM</small></span>
+          <span><strong id="researchStat">0</strong><small>LAB</small></span>
+          <span><strong id="prestigeStat">0</strong><small>PR</small></span>
+        </div>
+      </header>
+
+      <div class="canvas-frame">
+        <canvas id="gameCanvas" width="960" height="420" aria-label="Runner game field"></canvas>
+        <div id="runOverlay" class="run-overlay hidden">
+          <div class="overlay-panel">
+            <strong id="overlayTitle">RUN END</strong>
+            <p id="overlayText">0m</p>
+            <button id="overlayRestart" type="button" data-i18n="restart">再走</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-grid">
+        <div><span data-i18n="distance">距離</span><strong id="distanceStat">0m</strong></div>
+        <div><span data-i18n="best">最高</span><strong id="bestStat">0m</strong></div>
+        <div><span>HP</span><strong id="hpStat">1/1</strong></div>
+        <div><span data-i18n="multiplier">倍率</span><strong id="comboStat">x1.00</strong></div>
+        <div><span>Lv</span><strong id="levelStat">1</strong></div>
+      </div>
+
+      <div class="command-row">
+        <button id="jumpBtn" type="button" data-i18n="jump">ジャンプ</button>
+        <button id="slideBtn" type="button" data-i18n="slide">スライド</button>
+        <button id="dashBtn" type="button" data-i18n="dash">ダッシュ</button>
+        <button id="restartBtn" type="button" data-i18n="restart">再走</button>
+        <button id="saveBtn" type="button" data-i18n="save">保存</button>
+        <button id="bgmBtn" type="button">BGM ON</button>
+      </div>
+
+      <div id="eventLog" class="event-log" aria-live="polite">SYSTEM READY</div>
+    </section>
+
+    <aside class="side-panel">
+      <nav class="tab-bar" aria-label="Game menus">
+        <button class="active" data-tab="upgrades" type="button" data-i18n="upgrades">強化</button>
+        <button data-tab="factory" type="button" data-i18n="factory">工場</button>
+        <button data-tab="prestige" type="button" data-i18n="prestige">転生</button>
+        <button data-tab="equipment" type="button" data-i18n="equipment">装備</button>
+        <button data-tab="missions" type="button" data-i18n="missions">任務</button>
+        <button data-tab="research" type="button" data-i18n="research">研究</button>
+      </nav>
+
+      <section id="panelContent" class="panel-content" aria-live="polite"></section>
+    </aside>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
