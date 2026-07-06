@@ -4,6 +4,7 @@ const STORAGE_KEY = "infinite_runner_factory_save_v1";
 const SAVE_VERSION = 1;
 const ASSET_ROOT = "asset/";
 const MUSIC_ROOT = `${ASSET_ROOT}music/loop/`;
+const REWARD_AD_URL = "https://omg10.com/4/11245499";
 
 const upgradeDefs = [
   { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${Math.round(lv * 2)}%` },
@@ -1503,6 +1504,7 @@ function claimAchievement(id) {
 }
 
 function activateCoinAd() {
+  openRewardAd();
   const adBoost = 1 + state.permanent.ad * 0.2;
   state.boosts.coinDouble = Math.max(state.boosts.coinDouble, 300 * adBoost);
   state.stats.adsWatched += 1;
@@ -1512,15 +1514,21 @@ function activateCoinAd() {
 function finishFirstChest() {
   const chest = state.chests.find((entry) => entry.remaining > 0);
   if (!chest) return;
+  openRewardAd();
   chest.remaining = 0;
   state.stats.adsWatched += 1;
   logEvent("CHEST READY");
 }
 
 function freeGacha() {
+  openRewardAd();
   state.equipment.push(generateEquipment("silver"));
   state.stats.adsWatched += 1;
   logEvent("FREE GACHA");
+}
+
+function openRewardAd() {
+  window.open(REWARD_AD_URL, "_blank", "noopener,noreferrer");
 }
 
 function startRandomEvent() {
@@ -1647,6 +1655,9 @@ function renderPrestige() {
   const html = [
     panelHead("Prestige", `転生 ${state.prestigeCount}回`),
     `<div class="section-stack">
+      <div class="list">
+        ${renderAdRewards()}
+      </div>
       <div class="summary-band">
         <div><span>所持PR</span><strong>${formatNumber(state.prestigePoints)}</strong></div>
         <div><span>獲得予定</span><strong>${formatNumber(gain)}</strong></div>
@@ -1674,9 +1685,6 @@ function renderPrestige() {
           });
         }).join("")}
       </div>
-      <div class="list">
-        ${renderAdRewards()}
-      </div>
     </div>`
   ].join("");
   panelContent.innerHTML = html;
@@ -1690,7 +1698,7 @@ function renderAdRewards() {
       meta: [`広告倍率 ${permanentDefs.find((d) => d.id === "ad").effect(state.permanent.ad)}`],
       action: "adCoin",
       id: "coinAd",
-      label: "受取"
+      label: "広告を見る"
     }),
     rowItem({
       title: "リワード: 宝箱即開封",
@@ -1699,7 +1707,7 @@ function renderAdRewards() {
       action: "adChest",
       id: "chestAd",
       disabled: !state.chests.some((chest) => chest.remaining > 0),
-      label: "受取"
+      label: "広告を見る"
     }),
     rowItem({
       title: "リワード: 無料ガチャ",
@@ -1707,7 +1715,7 @@ function renderAdRewards() {
       meta: [`装備 ${state.equipment.length}`],
       action: "adGacha",
       id: "gachaAd",
-      label: "受取"
+      label: "広告を見る"
     })
   ].join("");
 }
