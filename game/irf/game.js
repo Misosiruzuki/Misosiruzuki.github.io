@@ -12,6 +12,7 @@ const MAX_JUMP_HOLD_SECONDS = 1;
 const MIN_JUMP_HOLD_SECONDS = 0.1;
 const BASE_JUMP_VELOCITY = 380;
 const JUMP_UPGRADE_VELOCITY = 34;
+const BASE_UPGRADE_CAP = 5;
 
 const upgradeDefs = [
   { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${Math.round(lv * 2)}%` },
@@ -26,12 +27,32 @@ const upgradeDefs = [
   { id: "item", name: "アイテム出現率", base: 250, growth: 2.05, currency: "coins", effect: (lv) => `出現 +${Math.round(lv * 4)}%` }
 ];
 
-const factoryDefs = [
-  { id: "coinFactory", name: "コイン工場", base: 500, growth: 1.18, currency: "coins", effect: (lv) => `${formatNumber(idleCoinPerSecond(lv))}/秒` },
-  { id: "mine", name: "鉱山", base: 2500, growth: 1.22, currency: "coins", effect: (lv) => `${formatNumber(idleGemPerSecond(lv), 2)}/秒` },
-  { id: "lab", name: "研究所", base: 4, growth: 1.2, currency: "gems", effect: (lv) => `${formatNumber(idleResearchPerSecond(lv), 2)}/秒` },
-  { id: "robotFactory", name: "ロボット工場", base: 7000, growth: 1.24, currency: "coins", effect: (lv) => `${formatNumber(autoRunnerMeters(lv))}m級` }
+const factoryAreaTiers = [
+  { key: "grass", name: "草原", cost: 1, output: 1, color: "#7edc91" },
+  { key: "desert", name: "砂漠", cost: 8, output: 5.2, color: "#f2b84b" },
+  { key: "snow", name: "雪山", cost: 45, output: 24, color: "#9fd9ff" },
+  { key: "volcano", name: "火山", cost: 260, output: 120, color: "#ef6b65" },
+  { key: "future", name: "未来都市", cost: 1600, output: 680, color: "#48bde7" },
+  { key: "space", name: "宇宙", cost: 9800, output: 3900, color: "#f1efff" },
+  { key: "void", name: "ブラックホール", cost: 65000, output: 24000, color: "#b98cff" },
+  { key: "aether", name: "神界", cost: 430000, output: 150000, color: "#fff1a5" },
+  { key: "infinite", name: "無限空間", cost: 3000000, output: 980000, color: "#4cc38a" }
 ];
+
+const factoryTemplates = [
+  { id: "coinFactory", name: "コイン工場", base: 500, growth: 1.18, currency: "coins", category: "coins", outputType: "coins", description: "コインを毎秒生産する基本施設。", outputBase: 1.1, outputGrowth: 1.045 },
+  { id: "coinPress", name: "高速コインプレス", base: 25000, growth: 1.2, currency: "coins", category: "coins", outputType: "coins", description: "コイン工場より高効率でコインを生産する上位施設。", outputBase: 15, outputGrowth: 1.05 },
+  { id: "coinMint", name: "量子造幣所", base: 1000000, growth: 1.22, currency: "coins", category: "coins", outputType: "coins", description: "大量のコインを生産する終盤向け施設。", outputBase: 220, outputGrowth: 1.055 },
+  { id: "mine", name: "鉱山", base: 2500, growth: 1.22, currency: "coins", category: "gems", outputType: "gems", description: "宝石を少量ずつ採掘する基本施設。", outputBase: 0.008, outputGrowth: 1.035 },
+  { id: "deepMine", name: "深層鉱山", base: 85000, growth: 1.23, currency: "coins", category: "gems", outputType: "gems", description: "鉱山より効率よく宝石を採掘する上位施設。", outputBase: 0.06, outputGrowth: 1.04 },
+  { id: "crystalForge", name: "結晶炉", base: 600000, growth: 1.25, currency: "coins", category: "gems", outputType: "gems", description: "宝石を人工生成する高出力施設。", outputBase: 0.22, outputGrowth: 1.045 },
+  { id: "lab", name: "研究所", base: 4, growth: 1.2, currency: "gems", category: "research", outputType: "research", description: "研究ポイントを生産する基本施設。", outputBase: 0.006, outputGrowth: 1.032 },
+  { id: "quantumLab", name: "量子研究所", base: 40, growth: 1.22, currency: "gems", category: "research", outputType: "research", description: "研究所より多くの研究ポイントを生産する上位施設。", outputBase: 0.05, outputGrowth: 1.04 },
+  { id: "robotFactory", name: "ロボット工場", base: 7000, growth: 1.24, currency: "coins", category: "runner", description: "超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", directCoinBonus: 0.012 },
+  { id: "eliteRunnerFactory", name: "エリートランナー工場", base: 240000, growth: 1.25, currency: "coins", category: "runner", description: "高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", directCoinBonus: 0.025 }
+];
+
+const factoryDefs = buildFactoryDefs();
 
 const permanentDefs = [
   { id: "coin", name: "獲得コイン", base: 1, growth: 1.35, effect: (lv) => `+${lv * 5}%` },
@@ -42,11 +63,11 @@ const permanentDefs = [
 ];
 
 const researchDefs = [
-  { id: "jumpStudy", name: "ジャンプ研究", base: 10, growth: 1.28, effect: (lv) => `空中制御 +${lv * 2}%` },
-  { id: "speedStudy", name: "速度研究", base: 12, growth: 1.28, effect: (lv) => `速度 +${lv * 1}%` },
-  { id: "idleStudy", name: "放置研究", base: 14, growth: 1.3, effect: (lv) => `工場出力 +${lv * 4}%` },
-  { id: "bossStudy", name: "ボス研究", base: 18, growth: 1.32, effect: (lv) => `ボス報酬 +${lv * 6}%` },
-  { id: "comboStudy", name: "コンボ研究", base: 16, growth: 1.3, effect: (lv) => `倍率成長 +${lv * 3}%` }
+  { id: "jumpStudy", name: "ジャンプ研究", base: 10, growth: 1.28, description: "ジャンプ中の姿勢制御と再ジャンプ技術を研究します。Lvが上がると空中制御が伸び、一定Lvで追加ジャンプも解放されます。", effect: (lv) => `空中制御 +${lv * 2}%` },
+  { id: "speedStudy", name: "速度研究", base: 12, growth: 1.28, description: "脚部モーターと走行制御を最適化します。通常強化とは別枠で基礎速度を底上げします。", effect: (lv) => `速度 +${lv * 1}%` },
+  { id: "idleStudy", name: "放置研究", base: 14, growth: 1.3, description: "工場ライン、鉱山、研究施設の稼働効率をまとめて改善します。ゲームを閉じている間の収入にも影響します。", effect: (lv) => `工場出力 +${lv * 4}%` },
+  { id: "bossStudy", name: "ボス研究", base: 18, growth: 1.32, description: "ボスの弱点解析と報酬回収ルートを研究します。撃破時のコイン、研究ポイント、宝箱期待値が伸びます。", effect: (lv) => `ボス報酬 +${lv * 6}%` },
+  { id: "comboStudy", name: "コンボ研究", base: 16, growth: 1.3, description: "ミスしない走行を評価するスコアリング研究です。コンボによる獲得コイン倍率が成長しやすくなります。", effect: (lv) => `倍率成長 +${lv * 3}%` }
 ];
 
 const areas = [
@@ -180,13 +201,43 @@ const englishAreaNames = {
 const englishTextPairs = [
   ["ラン中の宝箱、ボス報酬、リワードから入手できます。", "Get chests from runs, boss rewards, and rewards."],
   ["コインと通常強化をリセットし、永続強化用のPRを得ます。", "Reset coins and normal upgrades to gain PR for permanent upgrades."],
+  ["コインと通常強化をリセットし、永続強化用のPRを得ます。転生ごとに通常強化上限が+1されます。", "Reset coins and normal upgrades to gain PR for permanent upgrades. Each prestige raises the normal upgrade cap by +1."],
   ["5分間、獲得と放置のコインが2倍になります。", "Earned and idle coins are doubled for 5 minutes."],
   ["待機中の宝箱を1個だけ準備完了にします。", "Finish one waiting chest instantly."],
   ["銀宝箱相当の装備を1つ獲得します。", "Get one equipment item equal to a Silver Chest."],
+  ["コインを毎秒生産する基本施設。", "Basic facility that produces coins every second."],
+  ["コイン工場より高効率でコインを生産する上位施設。", "Advanced facility that produces coins more efficiently than a Coin Factory."],
+  ["大量のコインを生産する終盤向け施設。", "Late-game facility that produces a large amount of coins."],
+  ["宝石を少量ずつ採掘する基本施設。", "Basic facility that mines gems gradually."],
+  ["鉱山より効率よく宝石を採掘する上位施設。", "Advanced facility that mines gems more efficiently than a Mine."],
+  ["宝石を人工生成する高出力施設。", "High-output facility that synthesizes gems."],
+  ["研究ポイントを生産する基本施設。", "Basic facility that produces research points."],
+  ["研究所より多くの研究ポイントを生産する上位施設。", "Advanced facility that produces more research points than a Lab."],
+  ["自動ランナーが走行し、コインを持ち帰る施設。", "Auto runners travel and bring back coins."],
+  ["長距離用の自動ランナーで、ロボット工場より高収入。", "Long-distance auto runners that earn more than the Robot Factory."],
+  ["超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", "Build micro robots that follow the player and increase direct coin gains."],
+  ["高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", "Build advanced micro robots that further increase direct coin gains."],
+  ["ジャンプ中の姿勢制御と再ジャンプ技術を研究します。Lvが上がると空中制御が伸び、一定Lvで追加ジャンプも解放されます。", "Research aerial control and re-jump systems. Higher levels improve air control, and later levels unlock extra jumps."],
+  ["脚部モーターと走行制御を最適化します。通常強化とは別枠で基礎速度を底上げします。", "Optimize leg motors and running control. This raises base speed separately from normal upgrades."],
+  ["工場ライン、鉱山、研究施設の稼働効率をまとめて改善します。ゲームを閉じている間の収入にも影響します。", "Improve factory lines, mines, and labs together. This also affects income while the game is closed."],
+  ["ボスの弱点解析と報酬回収ルートを研究します。撃破時のコイン、研究ポイント、宝箱期待値が伸びます。", "Analyze boss weaknesses and reward recovery routes. Boss coin, research, and chest rewards improve."],
+  ["ミスしない走行を評価するスコアリング研究です。コンボによる獲得コイン倍率が成長しやすくなります。", "Study scoring that rewards clean runs. Combo-based coin multipliers grow more easily."],
+  ["宝箱から装備を獲得できます。", "Open chests to get equipment."],
   ["100万コインで転生", "Prestige at 1,000,000 coins"],
   ["リワード: 宝箱即開封", "Reward: Instant Chest"],
   ["リワード: コイン2倍", "Reward: Coin x2"],
   ["リワード: 無料ガチャ", "Reward: Free Gacha"],
+  ["高速コインプレス", "High-Speed Coin Press"],
+  ["エリートランナー工場", "Elite Runner Factory"],
+  ["量子造幣所", "Quantum Mint"],
+  ["深層鉱山", "Deep Mine"],
+  ["結晶炉", "Crystal Forge"],
+  ["量子研究所", "Quantum Lab"],
+  ["転生で上限 +1", "Prestige raises cap +1"],
+  ["現在上限", "Current Cap"],
+  ["転生後", "After Prestige"],
+  ["装備なし", "No Equipment"],
+  ["全装備", "All Gear"],
   ["最大HP", "Max HP"],
   ["アイテム出現率", "Item Rate"],
   ["コンボ倍率", "Combo Multiplier"],
@@ -211,9 +262,14 @@ const englishTextPairs = [
   ["放置施設", "Idle Facilities"],
   ["放置倍率", "Idle Multiplier"],
   ["研究ポイント", "Research Points"],
+  ["研究/秒", "LAB/s"],
+  ["宝石/秒", "GEM/s"],
+  ["コイン/秒", "COIN/s"],
   ["研究Lv合計", "Total Research Lv"],
   ["Lv合計", "Total Lv"],
   ["所持PR", "Owned PR"],
+  ["直接コイン倍率", "Direct Coin Mult"],
+  ["直接コイン", "Direct Coin"],
   ["獲得予定", "Expected Gain"],
   ["木宝箱", "Wood Chest"],
   ["銀宝箱", "Silver Chest"],
@@ -225,6 +281,7 @@ const englishTextPairs = [
   ["開封", "Open"],
   ["装備中", "Equipped"],
   ["未装備", "Not Equipped"],
+  ["現在:", "Current:"],
   ["任務と実績", "Missions & Achievements"],
   ["達成済み", "Completed"],
   ["未達成", "Not Completed"],
@@ -284,6 +341,9 @@ const englishTextPairs = [
   ["任務", "Mission"],
   ["研究", "Research"],
   ["購入", "Buy"],
+  ["生産", "Produces"],
+  ["役割", "Role"],
+  ["捨てる", "Discard"],
   ["草原", "Grassland"],
   ["砂漠", "Desert"],
   ["雪山", "Snow Mountain"],
@@ -336,6 +396,7 @@ const overlayText = document.getElementById("overlayText");
 
 let state = loadState();
 let activeTab = "upgrades";
+let equipmentView = "chests";
 let canvasWidth = 960;
 let canvasHeight = 420;
 let groundY = 340;
@@ -421,6 +482,7 @@ function init() {
   loadSpriteAssets();
   applyOfflineProgress();
   ensureMissions();
+  enforceEquipmentLimits();
   resetRun();
   bindEvents();
   resizeCanvas();
@@ -498,6 +560,7 @@ function defaultState() {
     level: 1,
     totalDistance: 0,
     bestDistance: 0,
+    currentPrestigeDistance: 0,
     lifetimeCoins: 0,
     lifetimeEnemies: 0,
     lifetimeBosses: 0,
@@ -536,11 +599,51 @@ function objectFromDefs(defs) {
   }, {});
 }
 
+function buildFactoryDefs() {
+  return factoryAreaTiers.flatMap((tier, tierIndex) => (
+    factoryTemplates.map((template, templateIndex) => {
+      const id = tierIndex === 0 ? template.id : `${tier.key}_${template.id}`;
+      const currencyScale = template.currency === "gems"
+        ? Math.max(1, Math.pow(tier.cost, 0.55))
+        : tier.cost;
+      const def = {
+        ...template,
+        id,
+        name: tierIndex === 0 ? template.name : `${tier.name}${template.name}`,
+        base: Math.ceil(template.base * currencyScale),
+        growth: Number((template.growth + tierIndex * 0.004).toFixed(3)),
+        areaName: tier.name,
+        areaKey: tier.key,
+        color: template.category === "runner" ? runnerColor(tier, templateIndex) : tier.color,
+        unlockOrder: tierIndex * 100 + templateIndex
+      };
+      if (template.outputType) {
+        def.output = (lv) => lv * Math.pow(template.outputGrowth + tierIndex * 0.0015, lv) * template.outputBase * tier.output;
+      }
+      if (template.category === "runner") {
+        def.directCoinBonus = (lv) => lv * template.directCoinBonus * (1 + tierIndex * 0.28);
+      }
+      return def;
+    })
+  ));
+}
+
+function runnerColor(tier, templateIndex) {
+  const tierIndex = factoryAreaTiers.indexOf(tier);
+  const hue = (tierIndex * 37 + templateIndex * 149) % 360;
+  return `hsl(${hue} 82% 62%)`;
+}
+
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
-    return mergeDefaults(JSON.parse(raw), defaultState());
+    const parsed = JSON.parse(raw);
+    const merged = mergeDefaults(parsed, defaultState());
+    if (parsed.currentPrestigeDistance === undefined) {
+      merged.currentPrestigeDistance = merged.bestDistance || 0;
+    }
+    return merged;
   } catch (error) {
     console.warn(error);
     return defaultState();
@@ -754,6 +857,8 @@ function bindEvents() {
     if (action === "prestige") prestige();
     if (action === "openChest") openChest(id);
     if (action === "equip") equipItem(id);
+    if (action === "discardEquipment") discardEquipment(id);
+    if (action === "equipmentFilter") equipmentView = id || "chests";
     if (action === "claimDaily") claimMission("daily", id);
     if (action === "claimWeekly") claimMission("weekly", id);
     if (action === "claimAchievement") claimAchievement(id);
@@ -963,6 +1068,7 @@ function updateRun(dt) {
   }
 
   state.bestDistance = Math.max(state.bestDistance, run.distance);
+  state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
 }
 
 function updatePlayer(dt, stats) {
@@ -1270,7 +1376,7 @@ function collectCoin(value, x, y) {
   const comboBoost = 1 + Math.min(stats.maxCombo - 1, run.combo * (0.012 + state.researchTree.comboStudy * 0.0003));
   const eventBoost = run.event === "coin3" ? 3 : run.event === "fever" ? 2 : 1;
   const adBoost = state.boosts.coinDouble > 0 ? 2 : 1;
-  const gained = Math.ceil(value * stats.coinMultiplier * comboBoost * eventBoost * adBoost);
+  const gained = Math.ceil(value * stats.coinMultiplier * stats.directCoinMultiplier * comboBoost * eventBoost * adBoost);
   state.coins += gained;
   state.lifetimeCoins += gained;
   run.sessionCoins += gained;
@@ -1347,7 +1453,7 @@ function defeatEnemy(obj) {
 
 function defeatBoss(obj) {
   const bossBoost = 1 + state.researchTree.bossStudy * 0.06;
-  const coinReward = Math.ceil((600 + areaIndex() * 350 + obj.maxHp * 90) * bossBoost);
+  const coinReward = directCoinAmount((600 + areaIndex() * 350 + obj.maxHp * 90) * bossBoost);
   const researchReward = Math.ceil((1 + areaIndex() * 0.5) * bossBoost);
   state.coins += coinReward;
   state.research += researchReward;
@@ -1419,9 +1525,10 @@ function restartFromButton() {
 
 function resetRun() {
   const stats = getStats();
+  const startDistance = runStartDistance();
   run.active = true;
   run.gameOver = false;
-  run.distance = 0;
+  run.distance = startDistance;
   run.hp = stats.maxHp;
   run.combo = 0;
   run.dashTimer = 0;
@@ -1430,7 +1537,7 @@ function resetRun() {
   run.giantTimer = 0;
   run.timeStop = 0;
   run.nextSpawn = 0.4;
-  run.nextBossMark = 1000;
+  run.nextBossMark = Math.floor(startDistance / 1000) * 1000 + 1000;
   run.event = null;
   run.eventTimer = 0;
   run.eventCooldown = random(45, 85);
@@ -1576,6 +1683,7 @@ function getStats() {
     equipmentJump: (eq.jump || 0) * BASE_JUMP_VELOCITY,
     maxHp: 1 + state.upgrades.hp + Math.floor(eq.hp || 0),
     coinMultiplier: (1 + state.upgrades.coin * 0.15) * (1 + state.permanent.coin * 0.05) * (1 + (eq.coin || 0)),
+    directCoinMultiplier: 1 + runnerDirectCoinBonus(),
     magnetRadius: 44 + state.upgrades.magnet * 14,
     maxCombo: 2 + state.upgrades.combo * 0.15,
     regenEvery: state.upgrades.regen > 0 ? Math.max(10, 32 - state.upgrades.regen * 2) : 0,
@@ -1598,9 +1706,51 @@ function getPlayerHeight() {
 }
 
 function getPlayerRect() {
+  const anchorRect = getPlayerAnchorRect();
+  if (player.slideTimer > 0) return anchorRect;
+  const visualRect = getPlayerSpriteVisualRect(anchorRect);
+  if (!visualRect) {
+    return {
+      x: anchorRect.x - 3,
+      y: run.gravityFlip ? anchorRect.y : anchorRect.y - 38,
+      w: anchorRect.w + 6,
+      h: anchorRect.h + 38
+    };
+  }
+  return insetRect(visualRect, Math.min(7, visualRect.w * 0.14), Math.min(9, visualRect.h * 0.1));
+}
+
+function getPlayerAnchorRect() {
   const h = getPlayerHeight();
   const y = run.gravityFlip ? player.y : player.y + (48 - h);
   return { x: player.x + 4, y: y + 3, w: player.w - 8, h: h - 6 };
+}
+
+function getPlayerSpriteVisualRect(anchorRect) {
+  if (!robotSprite.loaded) return null;
+  const animation = playerAnimationKey();
+  const frames = robotSprite.frames[animation] || robotSprite.frames.running;
+  if (!frames || frames.length === 0) return null;
+  const frame = currentPlayerFrame(animation, frames);
+  const metrics = playerSpriteMetrics(anchorRect, frame);
+  if (!metrics) return null;
+  return {
+    x: metrics.x,
+    y: metrics.y,
+    w: metrics.w,
+    h: metrics.h
+  };
+}
+
+function insetRect(rect, insetX, insetY) {
+  const x = Math.min(insetX, rect.w / 2 - 1);
+  const y = Math.min(insetY, rect.h / 2 - 1);
+  return {
+    x: rect.x + x,
+    y: rect.y + y,
+    w: Math.max(2, rect.w - x * 2),
+    h: Math.max(2, rect.h - y * 2)
+  };
 }
 
 function isInvincible() {
@@ -1637,13 +1787,9 @@ function xpForLevel(level) {
 function tickIdle(seconds) {
   const stats = getStats();
   const adBoost = state.boosts.coinDouble > 0 ? 2 : 1;
-  const cps =
-    (idleCoinPerSecond(state.factories.coinFactory) +
-      autoRunnerIncome(state.factories.robotFactory)) *
-    stats.idleMultiplier *
-    adBoost;
-  const gps = idleGemPerSecond(state.factories.mine) * stats.idleMultiplier;
-  const rps = idleResearchPerSecond(state.factories.lab) * stats.idleMultiplier;
+  const cps = factoryOutputPerSecond("coins") * stats.idleMultiplier * adBoost;
+  const gps = factoryOutputPerSecond("gems") * stats.idleMultiplier;
+  const rps = factoryOutputPerSecond("research") * stats.idleMultiplier;
   state.coins += cps * seconds;
   state.gems += gps * seconds;
   state.research += rps * seconds;
@@ -1688,6 +1834,83 @@ function autoRunnerIncome(level) {
   return autoRunnerMeters(level) * level * 0.018;
 }
 
+function normalUpgradeCap() {
+  return BASE_UPGRADE_CAP + state.prestigeCount;
+}
+
+function factoryOutput(def, level) {
+  if (!def || !level) return 0;
+  if (!def.outputType) return 0;
+  return def.output ? def.output(level) : 0;
+}
+
+function factoryOutputPerSecond(outputType) {
+  return factoryDefs.reduce((sum, def) => {
+    if (def.outputType !== outputType) return sum;
+    return sum + factoryOutput(def, state.factories[def.id] || 0);
+  }, 0);
+}
+
+function runnerDirectCoinBonus() {
+  return factoryDefs.reduce((sum, def) => {
+    if (def.category !== "runner") return sum;
+    const level = state.factories[def.id] || 0;
+    return sum + (typeof def.directCoinBonus === "function" ? def.directCoinBonus(level) : 0);
+  }, 0);
+}
+
+function directCoinAmount(amount) {
+  return Math.ceil(amount * getStats().directCoinMultiplier);
+}
+
+function factoryEffect(def, level) {
+  if (def.category === "runner") {
+    const bonus = typeof def.directCoinBonus === "function" ? def.directCoinBonus(level) : 0;
+    return `直接コイン x${(1 + bonus).toFixed(3)}`;
+  }
+  const value = factoryOutput(def, level);
+  const unit = {
+    coins: "COIN/秒",
+    gems: "GEM/秒",
+    research: "LAB/秒"
+  }[def.outputType] || "/秒";
+  const detail = def.detail && level > 0 ? ` / ${def.detail(level)}` : "";
+  const decimals = def.outputType === "coins"
+    ? value > 0 && value < 10 ? 1 : 0
+    : 2;
+  return `${formatNumber(value, decimals)} ${unit}${detail}`;
+}
+
+function factoryOutputLabel(outputType) {
+  return {
+    coins: "コイン",
+    gems: "宝石",
+    research: "研究ポイント",
+    runner: "直接コイン倍率"
+  }[outputType] || outputType;
+}
+
+function visibleFactoryDefs() {
+  const visible = new Set();
+  for (const def of factoryDefs) {
+    const level = state.factories[def.id] || 0;
+    const cost = upgradeCost(def, level);
+    if (level > 0 || (state[def.currency] || 0) >= cost) {
+      visible.add(def.id);
+    }
+  }
+  for (const category of ["coins", "gems", "research", "runner"]) {
+    const next = factoryDefs
+      .filter((def) => def.category === category)
+      .sort((a, b) => a.unlockOrder - b.unlockOrder)
+      .find((def) => !visible.has(def.id));
+    if (next) visible.add(next.id);
+  }
+  return factoryDefs
+    .filter((def) => visible.has(def.id))
+    .sort((a, b) => a.unlockOrder - b.unlockOrder);
+}
+
 function upgradeCost(def, level) {
   return Math.ceil(def.base * Math.pow(def.growth, level));
 }
@@ -1696,6 +1919,11 @@ function buyUpgrade(id) {
   const def = upgradeDefs.find((entry) => entry.id === id);
   if (!def) return;
   const level = state.upgrades[id] || 0;
+  const cap = normalUpgradeCap();
+  if (level >= cap) {
+    logEvent(`UPGRADE CAP Lv${cap}`);
+    return;
+  }
   const cost = upgradeCost(def, level);
   if (!spend(def.currency, cost)) return;
   state.upgrades[id] = level + 1;
@@ -1748,6 +1976,7 @@ function prestige() {
   state.prestigePoints += gain;
   state.prestigeCount += 1;
   state.coins = 0;
+  state.currentPrestigeDistance = 0;
   state.upgrades = objectFromDefs(upgradeDefs);
   addMissionProgress("weeklyPrestige", 1);
   logEvent(`PRESTIGE +${gain} PR`);
@@ -1769,9 +1998,9 @@ function openChest(chestId) {
   const index = state.chests.indexOf(chest);
   state.chests.splice(index, 1);
   const item = generateEquipment(chest.type);
-  const coinReward = chestCoinReward(chest.type);
+  const coinReward = directCoinAmount(chestCoinReward(chest.type));
   state.coins += coinReward;
-  state.equipment.push(item);
+  addEquipment(item);
   state.stats.chestsOpened += 1;
   logEvent(`${item.rarity}${item.slot} GET`);
 }
@@ -1804,6 +2033,35 @@ function generateEquipment(chestType) {
   };
 }
 
+function addEquipment(item) {
+  state.equipment.push(item);
+  enforceEquipmentSlotLimit(item.slot);
+}
+
+function enforceEquipmentLimits() {
+  for (const slot of slots) {
+    enforceEquipmentSlotLimit(slot);
+  }
+}
+
+function enforceEquipmentSlotLimit(slot) {
+  const slotItems = state.equipment.filter((item) => item.slot === slot);
+  if (slotItems.length <= 10) return;
+  const equippedId = state.equipped[slot];
+  const removable = slotItems
+    .filter((item) => item.id !== equippedId)
+    .sort((a, b) => {
+      const rarityDiff = rarityRank(a.rarity) - rarityRank(b.rarity);
+      if (rarityDiff !== 0) return rarityDiff;
+      return Number(a.value || 0) - Number(b.value || 0);
+    });
+  const removeCount = slotItems.length - 10;
+  const removeIds = new Set(removable.slice(0, removeCount).map((item) => item.id));
+  if (removeIds.size === 0) return;
+  state.equipment = state.equipment.filter((item) => !removeIds.has(item.id));
+  logEvent(`${slot} AUTO DISCARD ${removeIds.size}`);
+}
+
 function equipmentName(slot, rarity) {
   const prefix = {
     頭: "アンテナ",
@@ -1829,6 +2087,16 @@ function equipItem(itemId) {
   if (!item) return;
   state.equipped[item.slot] = itemId;
   logEvent(`${item.slot} EQUIPPED`);
+}
+
+function discardEquipment(itemId) {
+  const item = state.equipment.find((entry) => entry.id === itemId);
+  if (!item) return;
+  state.equipment = state.equipment.filter((entry) => entry.id !== itemId);
+  if (state.equipped[item.slot] === itemId) {
+    delete state.equipped[item.slot];
+  }
+  logEvent(`${item.name} DISCARDED`);
 }
 
 function ensureMissions() {
@@ -1889,7 +2157,7 @@ function claimMission(group, id) {
 }
 
 function grantReward(reward) {
-  state.coins += reward.coins || 0;
+  state.coins += reward.coins ? directCoinAmount(reward.coins) : 0;
   state.gems += reward.gems || 0;
   state.research += reward.research || 0;
 }
@@ -1934,7 +2202,7 @@ function finishFirstChest() {
 function freeGacha() {
   if (!ADS_ENABLED) return;
   openRewardAd();
-  state.equipment.push(generateEquipment("silver"));
+  addEquipment(generateEquipment("silver"));
   state.stats.adsWatched += 1;
   logEvent("FREE GACHA");
 }
@@ -1992,12 +2260,19 @@ function currentArea() {
 }
 
 function areaIndex() {
+  return areaIndexForDistance(Math.max(state.currentPrestigeDistance || 0, run.distance || 0));
+}
+
+function areaIndexForDistance(distance) {
   let index = 0;
-  const distance = Math.max(state.bestDistance, run.distance);
   for (let i = 0; i < areas.length; i++) {
     if (distance >= areas[i].start) index = i;
   }
   return index;
+}
+
+function runStartDistance() {
+  return areas[areaIndexForDistance(state.currentPrestigeDistance || 0)]?.start || 0;
 }
 
 function bossName(index) {
@@ -2015,20 +2290,24 @@ function renderPanel() {
 }
 
 function renderUpgrades() {
+  const cap = normalUpgradeCap();
   const html = [
-    panelHead("通常強化", `Lv合計 ${sumValues(state.upgrades)}`),
+    panelHead("通常強化", `Lv合計 ${sumValues(state.upgrades)} / 上限 Lv${cap}`),
     `<div class="list">`,
     ...upgradeDefs.map((def) => {
       const level = state.upgrades[def.id] || 0;
+      const capped = level >= cap;
       const cost = upgradeCost(def, level);
       return rowItem({
         title: `${def.name} Lv${level}`,
         desc: def.effect(level),
-        meta: [`次 ${def.effect(level + 1)}`, `${formatCurrency(cost, def.currency)}`],
+        meta: capped
+          ? [`上限 Lv${cap}`, `転生で上限 +1`]
+          : [`次 ${def.effect(level + 1)}`, `${formatCurrency(cost, def.currency)}`, `上限 Lv${cap}`],
         action: "buyUpgrade",
         id: def.id,
-        disabled: (state[def.currency] || 0) < cost,
-        label: "強化"
+        disabled: capped || (state[def.currency] || 0) < cost,
+        label: capped ? "上限" : "強化"
       });
     }),
     `</div>`
@@ -2038,20 +2317,26 @@ function renderUpgrades() {
 
 function renderFactory() {
   const stats = getStats();
+  const coinPs = factoryOutputPerSecond("coins") * stats.idleMultiplier;
+  const gemPs = factoryOutputPerSecond("gems") * stats.idleMultiplier;
+  const researchPs = factoryOutputPerSecond("research") * stats.idleMultiplier;
+  const visibleFactories = visibleFactoryDefs();
   const html = [
-    panelHead("放置施設", `放置倍率 x${stats.idleMultiplier.toFixed(2)}`),
+    panelHead("放置施設", `放置倍率 x${stats.idleMultiplier.toFixed(2)} / 直接コイン x${stats.directCoinMultiplier.toFixed(3)}`),
     `<div class="summary-band">
-      <div><span>コイン/秒</span><strong>${formatNumber((idleCoinPerSecond(state.factories.coinFactory) + autoRunnerIncome(state.factories.robotFactory)) * stats.idleMultiplier)}</strong></div>
-      <div><span>宝石/秒</span><strong>${formatNumber(idleGemPerSecond(state.factories.mine) * stats.idleMultiplier, 2)}</strong></div>
+      <div><span>コイン/秒</span><strong>${formatNumber(coinPs)}</strong></div>
+      <div><span>宝石/秒</span><strong>${formatNumber(gemPs, 2)}</strong></div>
+      <div><span>研究/秒</span><strong>${formatNumber(researchPs, 2)}</strong></div>
+      <div><span>直接コイン倍率</span><strong>x${stats.directCoinMultiplier.toFixed(3)}</strong></div>
     </div>`,
     `<div class="list">`,
-    ...factoryDefs.map((def) => {
+    ...visibleFactories.map((def) => {
       const level = state.factories[def.id] || 0;
       const cost = upgradeCost(def, level);
       return rowItem({
         title: `${def.name} Lv${level}`,
-        desc: def.effect(level),
-        meta: [`次 ${def.effect(level + 1)}`, `${formatCurrency(cost, def.currency)}`],
+        desc: `${def.description} 現在: ${factoryEffect(def, level)}`,
+        meta: [`役割 ${factoryOutputLabel(def.outputType || def.category)}`, `次 ${factoryEffect(def, level + 1)}`, `${formatCurrency(cost, def.currency)}`],
         action: "buyFactory",
         id: def.id,
         disabled: (state[def.currency] || 0) < cost,
@@ -2078,7 +2363,8 @@ function renderPrestige() {
       <div class="row-item">
         <div>
           <h3>100万コインで転生</h3>
-          <p>コインと通常強化をリセットし、永続強化用のPRを得ます。</p>
+          <p>コインと通常強化をリセットし、永続強化用のPRを得ます。転生ごとに通常強化上限が+1されます。</p>
+          <div class="meta"><span class="pill">現在上限 Lv${normalUpgradeCap()}</span><span class="pill">転生後 Lv${normalUpgradeCap() + 1}</span></div>
           <div class="progress"><i style="width:${progress * 100}%"></i></div>
         </div>
         <button class="buy-button" data-action="prestige" ${gain <= 0 ? "disabled" : ""}>転生</button>
@@ -2140,42 +2426,81 @@ function renderEquipment() {
     const item = state.equipment.find((entry) => entry.id === state.equipped[slot]);
     return `<div><span>${slot}</span><strong>${item ? escapeHtml(item.name) : "-"}</strong></div>`;
   }).join("");
+  const filterButtons = [
+    { id: "chests", label: "宝箱" },
+    { id: "all", label: "全装備" },
+    ...slots.map((slot) => ({ id: slot, label: slot }))
+  ].map((filter) => (
+    `<button class="${equipmentView === filter.id ? "active" : ""}" data-action="equipmentFilter" data-id="${filter.id}" type="button">${filter.label}</button>`
+  )).join("");
+  const sortedEquipment = state.equipment
+    .slice()
+    .filter((item) => equipmentView === "all" || slots.includes(equipmentView) ? item.slot === equipmentView || equipmentView === "all" : false)
+    .sort(compareEquipment);
+  const bodyHtml = equipmentView === "chests"
+    ? renderChestList(chests)
+    : renderEquipmentList(sortedEquipment);
   const html = [
     panelHead("装備", `所持 ${state.equipment.length}`),
     `<div class="section-stack">
       <div class="summary-band">${equippedNames}</div>
-      <div class="list">
-        ${chests.length ? chests.map((chest) => {
-          const def = chestDefs[chest.type];
-          return rowItem({
-            title: `${def.name}宝箱`,
-            desc: chest.remaining <= 0 ? "開封できます。" : `残り ${formatTime(chest.remaining)}`,
-            meta: [`開封 ${formatTime(def.seconds)}`],
-            action: "openChest",
-            id: chest.id,
-            disabled: chest.remaining > 0,
-            label: "開封"
-          });
-        }).join("") : `<div class="row-item"><div><h3>宝箱なし</h3><p>ラン中の宝箱、ボス報酬、リワードから入手できます。</p></div></div>`}
-      </div>
-      <div class="list">
-        ${state.equipment.slice().reverse().slice(0, 60).map((item) => {
-          const equipped = state.equipped[item.slot] === item.id;
-          const valueText = item.stat === "hp" ? `+${item.value}` : `+${Math.round(item.value * 100)}%`;
-          return rowItem({
-            title: `<span class="${item.rarityClass}">${escapeHtml(item.name)}</span>`,
-            desc: `${item.slot} / ${statNames[item.stat]} ${valueText}`,
-            meta: [item.rarity, equipped ? "装備中" : "未装備"],
-            action: "equip",
-            id: item.id,
-            disabled: equipped,
-            label: equipped ? "装備中" : "装備"
-          });
-        }).join("")}
-      </div>
+      <div class="filter-row">${filterButtons}</div>
+      ${bodyHtml}
     </div>`
   ].join("");
   panelContent.innerHTML = html;
+}
+
+function renderChestList(chests) {
+  return `<div class="list">
+    ${chests.length ? chests.map((chest) => {
+      const def = chestDefs[chest.type];
+      return rowItem({
+        title: `${def.name}宝箱`,
+        desc: chest.remaining <= 0 ? "開封できます。" : `残り ${formatTime(chest.remaining)}`,
+        meta: [`開封 ${formatTime(def.seconds)}`],
+        action: "openChest",
+        id: chest.id,
+        disabled: chest.remaining > 0,
+        label: "開封"
+      });
+    }).join("") : `<div class="row-item"><div><h3>宝箱なし</h3><p>ラン中の宝箱、ボス報酬、リワードから入手できます。</p></div></div>`}
+  </div>`;
+}
+
+function renderEquipmentList(items) {
+  return `<div class="list">
+    ${items.length ? items.map((item) => {
+      const equipped = state.equipped[item.slot] === item.id;
+      const valueText = item.stat === "hp" ? `+${item.value}` : `+${Math.round(item.value * 100)}%`;
+      return `<div class="row-item">
+        <div>
+          <h3><span class="${item.rarityClass}">${escapeHtml(item.name)}</span></h3>
+          <p>${item.slot} / ${statNames[item.stat]} ${valueText}</p>
+          <div class="meta">
+            <span class="pill">${item.rarity}</span>
+            <span class="pill">${equipped ? "装備中" : "未装備"}</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="buy-button" data-action="equip" data-id="${item.id}" ${equipped ? "disabled" : ""}>${equipped ? "装備中" : "装備"}</button>
+          <button class="buy-button danger" data-action="discardEquipment" data-id="${item.id}">捨てる</button>
+        </div>
+      </div>`;
+    }).join("") : `<div class="row-item"><div><h3>装備なし</h3><p>宝箱から装備を獲得できます。</p></div></div>`}
+  </div>`;
+}
+
+function compareEquipment(a, b) {
+  const rarityDiff = rarityRank(b.rarity) - rarityRank(a.rarity);
+  if (rarityDiff !== 0) return rarityDiff;
+  const valueDiff = Number(b.value || 0) - Number(a.value || 0);
+  if (valueDiff !== 0) return valueDiff;
+  return String(b.id).localeCompare(String(a.id));
+}
+
+function rarityRank(rarity) {
+  return rarityDefs.find((def) => def.id === rarity)?.rank || 0;
 }
 
 function renderMissions() {
@@ -2240,7 +2565,7 @@ function renderResearch() {
         const cost = upgradeCost(def, level);
         return rowItem({
           title: `${def.name} Lv${level}`,
-          desc: def.effect(level),
+          desc: `${def.description} 現在: ${def.effect(level)}`,
           meta: [`次 ${def.effect(level + 1)}`, `${formatNumber(cost)} LAB`],
           action: "buyResearch",
           id: def.id,
@@ -2314,6 +2639,7 @@ function draw() {
   const area = currentArea();
   drawBackground(area);
   drawObjects();
+  drawMiniRobots();
   drawPlayer();
   drawParticles();
   drawForeground(area);
@@ -2363,7 +2689,7 @@ function drawForeground(area) {
 }
 
 function drawPlayer() {
-  const rect = getPlayerRect();
+  const rect = getPlayerAnchorRect();
   const blink = player.invulnerable > 0 && Math.floor(performance.now() / 80) % 2 === 0;
   if (blink) ctx.globalAlpha = 0.55;
   const accent = run.dashTimer > 0 ? "#f2b84b" : run.skillShield > 0 ? "#48bde7" : "#e8edf5";
@@ -2399,6 +2725,35 @@ function drawPlayer() {
   ctx.globalAlpha = 1;
 }
 
+function drawMiniRobots() {
+  const activeRunnerFactories = factoryDefs
+    .filter((def) => def.category === "runner" && (state.factories[def.id] || 0) > 0)
+    .sort((a, b) => a.unlockOrder - b.unlockOrder);
+  if (activeRunnerFactories.length === 0) return;
+
+  const rect = getPlayerAnchorRect();
+  const bobTime = performance.now() / 220;
+  activeRunnerFactories.slice(0, 24).forEach((def, index) => {
+    const row = Math.floor(index / 8);
+    const col = index % 8;
+    const x = rect.x - 24 - col * 18;
+    const yOffset = Math.sin(bobTime + index * 0.7) * 3;
+    const y = run.gravityFlip
+      ? rect.y + rect.h + 14 + row * 16 + yOffset
+      : rect.y + rect.h - 16 - row * 16 + yOffset;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(x - 2, y + 12, 16, 4);
+    ctx.fillStyle = def.color || "#48bde7";
+    roundRect(x, y, 13, 11, 3);
+    ctx.fill();
+    ctx.fillStyle = "#101217";
+    ctx.fillRect(x + 3, y + 4, 2, 2);
+    ctx.fillRect(x + 8, y + 4, 2, 2);
+    ctx.fillStyle = "#dfefff";
+    ctx.fillRect(x + 5, y - 4, 3, 4);
+  });
+}
+
 function drawPlayerSprite(rect, accent) {
   if (!robotSprite.loaded) return false;
   const animation = playerAnimationKey();
@@ -2410,22 +2765,8 @@ function drawPlayerSprite(rect, accent) {
   }
 
   const frame = currentPlayerFrame(animation, frames);
-  const frameW = frame.frameW || frame.w;
-  const frameH = frame.frameH || frame.h;
-  const giantScale = run.giantTimer > 0 ? 1.55 : 1;
-  const scale = (PLAYER_SPRITE_FRAME_HEIGHT * giantScale) / frameH;
-  const virtualW = frameW * scale;
-  const virtualH = frameH * scale;
-  const anchorX = frameW * PLAYER_SPRITE_ANCHOR_X * scale;
-  const anchorY = frameH * PLAYER_SPRITE_ANCHOR_Y * scale;
-  const frameOriginX = rect.x + rect.w / 2 - anchorX;
-  const frameOriginY = run.gravityFlip
-    ? rect.y + rect.h / 2 - virtualH / 2
-    : rect.y + rect.h - anchorY;
-  const sourceDrawX = frameOriginX + (-frame.frameX) * scale;
-  const sourceDrawY = frameOriginY + (-frame.frameY) * scale;
-  const sourceDrawW = frame.w * scale;
-  const sourceDrawH = frame.h * scale;
+  const metrics = playerSpriteMetrics(rect, frame);
+  if (!metrics) return false;
 
   if (run.dashTimer > 0) {
     ctx.fillStyle = "rgba(242,184,75,0.38)";
@@ -2433,10 +2774,8 @@ function drawPlayerSprite(rect, accent) {
   }
 
   if (run.gravityFlip) {
-    const centerX = frameOriginX + virtualW / 2;
-    const centerY = frameOriginY + virtualH / 2;
     ctx.save();
-    ctx.translate(centerX, centerY);
+    ctx.translate(metrics.centerX, metrics.centerY);
     ctx.scale(1, -1);
     ctx.drawImage(
       robotSprite.image,
@@ -2444,10 +2783,10 @@ function drawPlayerSprite(rect, accent) {
       frame.y,
       frame.w,
       frame.h,
-      sourceDrawX - centerX,
-      sourceDrawY - centerY,
-      sourceDrawW,
-      sourceDrawH
+      metrics.x - metrics.centerX,
+      metrics.drawY - metrics.centerY,
+      metrics.w,
+      metrics.h
     );
     ctx.restore();
   } else {
@@ -2457,10 +2796,10 @@ function drawPlayerSprite(rect, accent) {
       frame.y,
       frame.w,
       frame.h,
-      sourceDrawX,
-      sourceDrawY,
-      sourceDrawW,
-      sourceDrawH
+      metrics.x,
+      metrics.y,
+      metrics.w,
+      metrics.h
     );
   }
 
@@ -2481,6 +2820,39 @@ function drawPlayerSprite(rect, accent) {
     ctx.stroke();
   }
   return true;
+}
+
+function playerSpriteMetrics(rect, frame) {
+  const frameW = frame.frameW || frame.w;
+  const frameH = frame.frameH || frame.h;
+  const giantScale = run.giantTimer > 0 ? 1.55 : 1;
+  const scale = (PLAYER_SPRITE_FRAME_HEIGHT * giantScale) / frameH;
+  const virtualW = frameW * scale;
+  const virtualH = frameH * scale;
+  const anchorX = frameW * PLAYER_SPRITE_ANCHOR_X * scale;
+  const anchorY = frameH * PLAYER_SPRITE_ANCHOR_Y * scale;
+  const frameOriginX = rect.x + rect.w / 2 - anchorX;
+  const frameOriginY = run.gravityFlip
+    ? rect.y + rect.h / 2 - virtualH / 2
+    : rect.y + rect.h - anchorY;
+  const sourceDrawX = frameOriginX + (-frame.frameX) * scale;
+  const sourceDrawY = frameOriginY + (-frame.frameY) * scale;
+  const sourceDrawW = frame.w * scale;
+  const sourceDrawH = frame.h * scale;
+  const centerX = frameOriginX + virtualW / 2;
+  const centerY = frameOriginY + virtualH / 2;
+  const y = run.gravityFlip
+    ? centerY * 2 - sourceDrawY - sourceDrawH
+    : sourceDrawY;
+  return {
+    x: sourceDrawX,
+    y,
+    drawY: sourceDrawY,
+    w: sourceDrawW,
+    h: sourceDrawH,
+    centerX,
+    centerY
+  };
 }
 
 function currentPlayerFrame(animation, frames) {

@@ -389,6 +389,36 @@ button:disabled {
   min-width: 102px;
 }
 
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-row button {
+  min-height: 36px;
+}
+
+.filter-row button.active {
+  color: var(--ink);
+  background: var(--cyan);
+  border-color: rgba(72, 189, 231, 0.9);
+}
+
+.row-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.buy-button.danger {
+  border-color: rgba(239, 107, 101, 0.55);
+  color: #ffd4d1;
+}
+
+.buy-button.danger:hover {
+  background: rgba(239, 107, 101, 0.18);
+}
+
 .section-stack {
   display: grid;
   gap: 12px;
