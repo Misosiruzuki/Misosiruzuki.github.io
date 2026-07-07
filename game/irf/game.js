@@ -11,7 +11,7 @@ const ADS_ENABLED = (document.documentElement.dataset.adMode || "reward") !== "n
 const MAX_JUMP_HOLD_SECONDS = 1;
 const MIN_JUMP_HOLD_SECONDS = 0.1;
 const BASE_JUMP_VELOCITY = 380;
-const JUMP_UPGRADE_VELOCITY = 34;
+const JUMP_UPGRADE_VELOCITY = 26;
 const BASE_UPGRADE_CAP = 5;
 const PRESTIGE_COIN_REQUIREMENT = 10000000;
 const CHEST_DISTANCE_INTERVAL = 500;
@@ -21,14 +21,13 @@ const FINAL_BOSS_OFFSET = 100;
 
 const upgradeDefs = [
   { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${(lv * 1.2).toFixed(1)}%` },
-  { id: "jump", name: "ジャンプ", base: 15, growth: 1.85, currency: "coins", effect: (lv) => `跳躍 +${Math.round(lv * 4)}%` },
+  { id: "jump", name: "ジャンプ", base: 15, growth: 1.85, currency: "coins", effect: (lv) => `跳躍 +${Math.round(lv * 3)}%` },
   { id: "hp", name: "HP", base: 50, growth: 2.1, currency: "coins", effect: (lv) => `最大HP ${1 + lv}` },
   { id: "coin", name: "コイン倍率", base: 25, growth: 2, currency: "coins", effect: (lv) => `獲得 +${Math.round(lv * 8)}%` },
-  { id: "magnet", name: "磁石", base: 80, growth: 1.95, currency: "coins", effect: (lv) => `吸収範囲 +${lv * 14}` },
+  { id: "magnet", name: "磁石", base: 80, growth: 1.95, currency: "coins", effect: (lv) => `吸収範囲 +${lv * 8}` },
   { id: "dash", name: "ダッシュ", base: 120, growth: 2.05, currency: "coins", effect: (lv) => `持続 +${(lv * 0.18).toFixed(1)}秒` },
-  { id: "regen", name: "自動回復", base: 200, growth: 2.15, currency: "coins", effect: (lv) => lv ? `${Math.max(10, 32 - lv * 2)}秒ごと` : "未開放" },
+  { id: "regen", name: "自動回復", base: 200, growth: 2.15, currency: "coins", effect: (lv) => lv ? `${Math.max(10, 32 - lv * 0.5).toFixed(1)}秒ごと` : "未開放" },
   { id: "combo", name: "コンボ倍率", base: 160, growth: 2, currency: "coins", effect: (lv) => `上限 x${(2 + lv * 0.08).toFixed(2)}` },
-  { id: "chest", name: "宝箱品質", base: 300, growth: 2.05, currency: "coins", effect: (lv) => `高レア +${(lv * 0.4).toFixed(1)}%` },
   { id: "item", name: "アイテム出現率", base: 250, growth: 2.05, currency: "coins", effect: (lv) => `出現 +${(lv * 2).toFixed(1)}%` }
 ];
 
@@ -68,14 +67,14 @@ const permanentDefs = [
 ];
 
 const researchDefs = [
-  { id: "sandBreaker", name: "砂王対策", base: 120, growth: 1.55, description: "草原ボスの粘液核解析から、砂漠ボスの砂装甲を少しだけ崩しやすくします。Lv5でも時々1枚余分に削れる程度です。", effect: (lv) => `砂装甲対策 +${lv * 2}%` },
+  { id: "sandBreaker", name: "砂王ブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "砂漠ボスの砂顎を小型化した近距離破砕アームです。発動時、近づいたボスの装甲や盾を少し削り、Lv5でようやく1ダメージ分の追撃が入ります。", effect: (lv) => lv ? `近距離破砕 ${130 + lv * 8}px` : "未解放" },
   { id: "frostInsulation", name: "凍結対策", base: 160, growth: 1.58, description: "砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
   { id: "heatPlating", name: "灼熱対策", base: 220, growth: 1.6, description: "雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
   { id: "shieldPiercer", name: "シールド解析", base: 300, growth: 1.62, description: "火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
-  { id: "gravityAnchor", name: "重力アンカー", base: 420, growth: 1.65, description: "未来都市ボスの制御回路を応用し、宇宙ボスの重力反転波をまれに受け流します。", effect: (lv) => `重力波耐性 +${lv * 2}%` },
+  { id: "gravityAnchor", name: "巨兵アンカー", base: 420, growth: 1.65, active: true, cooldown: 22, description: "未来都市ボスの脚部固定杭を再現します。発動中だけ重力反転波を受け流しますが、Lv5でも持続は短めです。", effect: (lv) => lv ? `重力固定 ${(0.35 + lv * 0.09).toFixed(2)}s` : "未解放" },
   { id: "voidTether", name: "虚空テザー", base: 580, growth: 1.68, description: "宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", effect: (lv) => `吸引軽減 +${lv * 2}%` },
   { id: "aetherSeal", name: "神気封印", base: 820, growth: 1.7, description: "ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", effect: (lv) => `再生遅延 +${(lv * 0.12).toFixed(2)}s` },
-  { id: "phaseAnchor", name: "位相アンカー", base: 1150, growth: 1.72, description: "神界ボスの神気波形から、無限空間ボスの位相化時間を少しだけ短くします。", effect: (lv) => `位相短縮 +${lv}%` }
+  { id: "phaseAnchor", name: "位相ピン", base: 1150, growth: 1.72, active: true, cooldown: 24, description: "神界ボスの光杭を模した位相固定スキルです。発動中だけ位相化を短く止め、Lv5でも一瞬の攻撃機会を作る程度です。", effect: (lv) => lv ? `位相固定 ${(0.3 + lv * 0.08).toFixed(2)}s` : "未解放" }
 ];
 
 const areas = [
@@ -193,12 +192,7 @@ const rarityDefs = [
 ];
 
 const activeSkillDefs = [
-  { id: "dash", name: "ダッシュ", cooldown: 10 },
-  { id: "shield", name: "無敵", cooldown: 14 },
-  { id: "giant", name: "巨大化", cooldown: 18 },
-  { id: "magnet", name: "磁石", cooldown: 12 },
-  { id: "time", name: "時間停止", cooldown: 18 },
-  { id: "doubleJump", name: "2段ジャンプ", cooldown: 10 }
+  ...researchDefs.filter((def) => def.active)
 ];
 
 const slots = ["頭", "靴", "胴", "アクセサリー"];
@@ -216,7 +210,7 @@ const staticI18n = {
   multiplier: { ja: "倍率", en: "Mult" },
   jump: { ja: "ジャンプ", en: "Jump" },
   slide: { ja: "スライド", en: "Slide" },
-  dash: { ja: "ダッシュ", en: "Dash" },
+  dash: { ja: "スキル", en: "Skill" },
   restart: { ja: "再走", en: "Restart" },
   save: { ja: "保存", en: "Save" },
   upgrades: { ja: "強化", en: "Upgrades" },
@@ -258,14 +252,14 @@ const englishTextPairs = [
   ["長距離用の自動ランナーで、ロボット工場より高収入。", "Long-distance auto runners that earn more than the Robot Factory."],
   ["超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", "Build micro robots that follow the player and increase direct coin gains."],
   ["高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", "Build advanced micro robots that further increase direct coin gains."],
-  ["草原ボスの粘液核解析から、砂漠ボスの砂装甲を少しだけ崩しやすくします。Lv5でも時々1枚余分に削れる程度です。", "Analyze the Grassland boss core to slightly improve Sand Armor breaks against the Desert boss. Even Lv5 only sometimes removes one extra layer."],
+  ["砂漠ボスの砂顎を小型化した近距離破砕アームです。発動時、近づいたボスの装甲や盾を少し削り、Lv5でようやく1ダメージ分の追撃が入ります。", "A short-range crushing arm modeled after the Desert boss jaws. On activation it chips nearby boss armor or shields, and only at Lv5 adds a small 1-damage follow-up."],
   ["砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", "Apply the Desert boss heat organ to slightly shorten the Snow Mountain boss freeze aura."],
   ["雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", "Build heat plating from the Snow Mountain boss cooling core to rarely reduce Volcano boss bonus damage."],
   ["火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", "Analyze the Volcano boss shell to slightly improve pierce chance against Future City energy shields."],
-  ["未来都市ボスの制御回路を応用し、宇宙ボスの重力反転波をまれに受け流します。", "Apply the Future City boss control circuit to rarely deflect Space boss gravity waves."],
+  ["未来都市ボスの脚部固定杭を再現します。発動中だけ重力反転波を受け流しますが、Lv5でも持続は短めです。", "Recreates the Future City boss leg anchor. It deflects gravity waves only while active, and even Lv5 lasts briefly."],
   ["宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", "Use Space boss orbital data to slightly reduce Black Hole boss pull."],
   ["ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", "Use Black Hole singularity residue to slightly delay Aether boss regeneration."],
-  ["神界ボスの神気波形から、無限空間ボスの位相化時間を少しだけ短くします。", "Use Aether boss wave data to slightly shorten Infinite Space boss phasing."],
+  ["神界ボスの光杭を模した位相固定スキルです。発動中だけ位相化を短く止め、Lv5でも一瞬の攻撃機会を作る程度です。", "A phase-lock skill modeled after the Aether boss light pin. It briefly stops phasing only while active, and Lv5 merely creates a short opening."],
   ["宝箱から装備を獲得できます。", "Open chests to get equipment."],
   ["待機時間が終わった宝箱", "Ready chests"],
   ["開封可能な宝箱を全開封", "Open All Ready Chests"],
@@ -295,28 +289,27 @@ const englishTextPairs = [
   ["自動回復", "Auto Heal"],
   ["宝箱速度", "Chest Speed"],
   ["宝箱率", "Chest Rate"],
-  ["宝箱品質", "Chest Quality"],
-  ["高レア", "High Rarity"],
   ["広告倍率", "Ad Multiplier"],
   ["獲得コイン", "Coin Gain"],
   ["レア率", "Rare Rate"],
-  ["砂王対策", "Sand King Counter"],
+  ["砂王ブレイク", "Sand King Break"],
   ["凍結対策", "Freeze Counter"],
   ["灼熱対策", "Heat Counter"],
   ["シールド解析", "Shield Analysis"],
-  ["重力アンカー", "Gravity Anchor"],
+  ["巨兵アンカー", "Giant Anchor"],
   ["虚空テザー", "Void Tether"],
   ["神気封印", "Aether Seal"],
-  ["位相アンカー", "Phase Anchor"],
+  ["位相ピン", "Phase Pin"],
   ["研究ツリー", "Research Tree"],
-  ["アクティブスキル", "Active Skill"],
-  ["セットしたスキルが画面下のスキルボタンで発動します。", "The selected skill fires from the skill button below."],
+  ["研究アクティブ", "Research Active"],
+  ["研究で解放したボス由来スキルを画面下のスキルボタンにセットします。", "Set a boss-derived skill unlocked by research to the skill button below."],
+  ["スキルなし", "No Skill"],
+  ["未解放", "Locked"],
+  ["解放", "Unlocked"],
+  ["アクティブ", "Active"],
+  ["パッシブ", "Passive"],
   ["現在:", "Current:"],
   ["クールダウン", "Cooldown"],
-  ["無敵", "Invincible"],
-  ["巨大化", "Giant"],
-  ["時間停止", "Time Stop"],
-  ["2段ジャンプ", "Double Jump"],
   ["通常強化", "Upgrades"],
   ["放置施設", "Idle Facilities"],
   ["放置倍率", "Idle Multiplier"],
@@ -341,6 +334,7 @@ const englishTextPairs = [
   ["虹宝箱", "Rainbow Chest"],
   ["神宝箱", "God Chest"],
   ["宝箱なし", "No Chests"],
+  ["なし", "None"],
   ["開封できます。", "Ready to open."],
   ["開封", "Open"],
   ["全開封", "Open All"],
@@ -352,14 +346,14 @@ const englishTextPairs = [
   ["受取済", "Claimed"],
   ["受取", "Claim"],
   ["本格研究まで", "Research core in"],
-  ["砂装甲対策", "Sand Armor Counter"],
+  ["近距離破砕", "Close Break"],
   ["凍結時間", "Freeze Time"],
   ["灼熱軽減", "Heat Reduction"],
   ["盾対策", "Shield Counter"],
-  ["重力波耐性", "Gravity Wave Resist"],
+  ["重力固定", "Gravity Lock"],
   ["吸引軽減", "Pull Reduction"],
   ["再生遅延", "Regen Delay"],
-  ["位相短縮", "Phase Shorten"],
+  ["位相固定", "Phase Lock"],
   ["初ジャンプ", "First Jump"],
   ["500m走る", "Run 500m"],
   ["コイン1000枚", "Collect 1,000 coins"],
@@ -504,6 +498,8 @@ const run = {
   skillShield: 0,
   giantTimer: 0,
   timeStop: 0,
+  gravityGuardTimer: 0,
+  phasePinTimer: 0,
   chillTimer: 0,
   nextSpawn: 0.4,
   nextBossMark: 1000,
@@ -662,7 +658,7 @@ function defaultState() {
     },
     settings: {
       bgmEnabled: true,
-      activeSkill: "dash"
+      activeSkill: "none"
     },
     stats: {
       jumps: 0,
@@ -727,6 +723,8 @@ function loadState() {
     }
     normalizeResearchTree(merged);
     normalizeAreaBossClears(merged);
+    normalizeUpgradeTree(merged);
+    normalizeActiveSkill(merged);
     enforceLevelCaps(merged);
     return merged;
   } catch (error) {
@@ -745,6 +743,27 @@ function normalizeResearchTree(targetState = state) {
     if (targetState.researchTree[def.id] === undefined) {
       targetState.researchTree[def.id] = 0;
     }
+  }
+}
+
+function normalizeUpgradeTree(targetState = state) {
+  targetState.upgrades = normalizeDefObject(targetState.upgrades, upgradeDefs);
+}
+
+function normalizeDefObject(source, defs) {
+  const output = {};
+  for (const def of defs) {
+    output[def.id] = Number(source?.[def.id] || 0);
+  }
+  return output;
+}
+
+function normalizeActiveSkill(targetState = state) {
+  targetState.settings = targetState.settings || {};
+  const activeId = targetState.settings.activeSkill;
+  const def = activeSkillDefs.find((entry) => entry.id === activeId);
+  if (!def || Number(targetState.researchTree?.[activeId] || 0) <= 0) {
+    targetState.settings.activeSkill = "none";
   }
 }
 
@@ -1179,6 +1198,8 @@ function updateRun(dt) {
   if (run.skillShield > 0) run.skillShield -= dt;
   if (run.giantTimer > 0) run.giantTimer -= dt;
   if (run.timeStop > 0) run.timeStop -= dt;
+  if (run.gravityGuardTimer > 0) run.gravityGuardTimer -= dt;
+  if (run.phasePinTimer > 0) run.phasePinTimer -= dt;
   if (run.chillTimer > 0) run.chillTimer -= dt;
   if (player.invulnerable > 0) player.invulnerable -= dt;
   if (player.damageTimer > 0) player.damageTimer -= dt;
@@ -1351,16 +1372,11 @@ function updateObjects(dt, scrollSpeed, stats) {
 
 function damageEnemy(obj, amount = 1) {
   if (obj.hitCooldown > 0) return false;
-  const armorPierced = obj.trait === "sandArmor" && researchChance("sandBreaker");
-  if (obj.armor > 0 && !armorPierced) {
+  if (obj.armor > 0) {
     obj.armor -= 1;
     obj.hitCooldown = 0.28;
     burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#d7b878", 8);
     return false;
-  }
-  if (obj.armor > 0) {
-    obj.armor -= 1;
-    burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#f2b84b", 10);
   }
   const shieldPierced = obj.trait === "energyShield" && researchChance("shieldPiercer");
   if (obj.shield > 0 && !shieldPierced) {
@@ -1395,7 +1411,7 @@ function updateEnemyTrait(obj, dt, playerRect) {
   if (obj.trait === "gravityPulse") {
     obj.pulseTimer = (obj.pulseTimer || 1.6) - dt;
     if (distance < 120 && obj.pulseTimer <= 0) {
-      if (!researchChance("gravityAnchor")) {
+      if (run.gravityGuardTimer <= 0) {
         run.gravityFlip = !run.gravityFlip;
         player.vy *= -0.25;
       }
@@ -1412,7 +1428,7 @@ function updateEnemyTrait(obj, dt, playerRect) {
   }
   if (obj.trait === "phase") {
     obj.phaseTimer = (obj.phaseTimer || 0) + dt;
-    obj.phased = Math.sin(obj.phaseTimer * 2.4) > 0.62 + researchLevel("phaseAnchor") * 0.01;
+    obj.phased = run.phasePinTimer <= 0 && Math.sin(obj.phaseTimer * 2.4) > 0.62;
   }
   if (obj.type === "boss") {
     updateBossGimmick(obj, dt, distance);
@@ -1443,7 +1459,7 @@ function updateBossGimmick(obj, dt, distance) {
     obj.bossTimer = 3.6;
   }
   if (obj.bossGimmick === "gravitySurge" && obj.bossTimer <= 0) {
-    if (!researchChance("gravityAnchor")) {
+    if (run.gravityGuardTimer <= 0) {
       run.gravityFlip = !run.gravityFlip;
       player.vy *= -0.35;
     }
@@ -1462,7 +1478,7 @@ function updateBossGimmick(obj, dt, distance) {
   }
   if (obj.bossGimmick === "infinitePhase") {
     obj.phaseTimer = (obj.phaseTimer || 0) + dt;
-    obj.phased = Math.sin(obj.phaseTimer * 3) > 0.45 + researchLevel("phaseAnchor") * 0.01;
+    obj.phased = run.phasePinTimer <= 0 && Math.sin(obj.phaseTimer * 3) > 0.45;
   }
   if (obj.bossGimmick === "slimeSplit" && obj.bossTimer <= 0 && (obj.spawnedMinions || 0) < 2) {
     objects.push(applyEnemyTraits({
@@ -1665,7 +1681,7 @@ function spawnChest(x) {
 }
 
 function pickChestType() {
-  const qualityBonus = state.upgrades.chest * 0.004 + state.permanent.rarity * 0.001;
+  const qualityBonus = state.permanent.rarity * 0.001;
   return weightedPick(Object.entries(chestDefs).map(([value, def]) => {
     const rank = ["wood", "silver", "gold", "rainbow", "god"].indexOf(value);
     const bonus = rank > 0 ? 1 + qualityBonus * rank : 1;
@@ -1731,7 +1747,7 @@ function startAreaBossBattle(index) {
   run.gravityFlip = false;
   run.nextSpawn = 999;
   objects = [];
-  const hp = 6 + index * 2 + Math.floor((state.prestigeCount || 0) / 4);
+  const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor((state.prestigeCount || 0) / 4);
   spawnBoss(index, { finalBoss: true, x: canvasWidth + 90, hp });
   restartPlayerAnimation("running");
   logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
@@ -1744,14 +1760,15 @@ function updateBossBattle(dt) {
     return;
   }
   const anchorX = canvasWidth - 172;
-  const attackX = player.x + 88;
+  const attackX = player.x + (boss.areaIndex === 0 ? 8 : 58);
   run.bossChargeTimer -= dt;
   if (run.bossChargeTimer <= 0) {
     run.bossRetreating = !run.bossRetreating;
     run.bossChargeTimer = run.bossRetreating ? 1.5 : random(2.3, 3.4);
   }
   const targetX = run.bossRetreating ? anchorX : attackX;
-  boss.x += (targetX - boss.x) * Math.min(1, dt * (run.bossRetreating ? 2.4 : 1.5));
+  const approachRate = boss.areaIndex === 0 ? 3.2 : 1.5;
+  boss.x += (targetX - boss.x) * Math.min(1, dt * (run.bossRetreating ? 2.4 : approachRate));
   boss.y = groundY - boss.h - Math.abs(Math.sin(performance.now() / 520)) * 12;
 
   run.bossAttackTimer -= dt;
@@ -1977,6 +1994,8 @@ function clearTemporaryEffects() {
   run.skillShield = 0;
   run.giantTimer = 0;
   run.timeStop = 0;
+  run.gravityGuardTimer = 0;
+  run.phasePinTimer = 0;
   run.chillTimer = 0;
   run.gravityFlip = false;
   player.jumpsUsed = 0;
@@ -2027,6 +2046,8 @@ function resetRun() {
   run.skillShield = 0;
   run.giantTimer = 0;
   run.timeStop = 0;
+  run.gravityGuardTimer = 0;
+  run.phasePinTimer = 0;
   run.chillTimer = 0;
   run.nextSpawn = 0.4;
   run.nextBossMark = nextAreaBossDistance(areaIndexForDistance(startDistance));
@@ -2157,61 +2178,88 @@ function cancelSlideHold() {
 }
 
 function selectActiveSkill(id) {
-  if (!activeSkillDefs.some((def) => def.id === id)) return;
+  if (id === "none") {
+    state.settings.activeSkill = "none";
+    logEvent("NO ACTIVE SKILL");
+    return;
+  }
+  const def = activeSkillDefs.find((entry) => entry.id === id);
+  if (!def || researchLevel(id) <= 0) return;
   state.settings.activeSkill = id;
   logEvent(`${activeSkillName(id)} SET`);
 }
 
 function activeSkillName(id = state.settings.activeSkill) {
-  return activeSkillDefs.find((def) => def.id === id)?.name || "ダッシュ";
+  const def = activeSkillDefs.find((entry) => entry.id === id);
+  return def && researchLevel(id) > 0 ? def.name : "スキルなし";
 }
 
 function activeSkillCooldown(id = state.settings.activeSkill) {
-  return activeSkillDefs.find((def) => def.id === id)?.cooldown || 10;
+  const def = activeSkillDefs.find((entry) => entry.id === id);
+  return def?.cooldown || 0;
+}
+
+function selectedActiveSkillDef() {
+  const id = state.settings.activeSkill || "none";
+  const def = activeSkillDefs.find((entry) => entry.id === id);
+  return def && researchLevel(id) > 0 ? def : null;
 }
 
 function activateActiveSkill() {
   musicScene = "run";
   unlockAudio();
   if (run.gameOver || run.dashCooldown > 0) return;
-  const skill = state.settings.activeSkill || "dash";
-  if (skill === "dash") {
-    activateDashSkill();
-  } else if (skill === "shield") {
-    run.skillShield = Math.max(run.skillShield, 3);
-    run.dashCooldown = activeSkillCooldown(skill);
-    logEvent("ACTIVE SHIELD");
-  } else if (skill === "giant") {
-    run.skillShield = Math.max(run.skillShield, 3.5);
-    run.giantTimer = Math.max(run.giantTimer, 4);
-    run.dashCooldown = activeSkillCooldown(skill);
-    logEvent("ACTIVE GIANT");
-  } else if (skill === "magnet") {
-    run.dashCooldown = activeSkillCooldown(skill);
-    magnetBurst();
-    logEvent("ACTIVE MAGNET");
-  } else if (skill === "time") {
-    run.timeStop = Math.max(run.timeStop, 2.5);
-    run.dashCooldown = activeSkillCooldown(skill);
-    logEvent("ACTIVE TIME STOP");
-  } else if (skill === "doubleJump") {
-    player.jumpsUsed = Math.max(0, player.jumpsUsed - 1);
-    run.dashCooldown = activeSkillCooldown(skill);
-    logEvent("ACTIVE DOUBLE JUMP");
+  const def = selectedActiveSkillDef();
+  if (!def) {
+    logEvent("NO ACTIVE SKILL");
+    return;
   }
+  const level = researchLevel(def.id);
+  if (def.id === "sandBreaker") activateSandBreaker(level);
+  if (def.id === "gravityAnchor") activateGravityAnchor(level);
+  if (def.id === "phaseAnchor") activatePhasePin(level);
+  run.dashCooldown = activeSkillCooldown(def.id);
   updateHud();
-}
-
-function activateDashSkill() {
-  const duration = 1.2 + state.upgrades.dash * 0.18;
-  run.dashTimer = duration;
-  run.dashCooldown = Math.max(7, 16 - state.upgrades.dash * 0.25);
-  restartPlayerAnimation("dash");
-  logEvent("DASH");
 }
 
 function dash() {
   activateActiveSkill();
+}
+
+function activateSandBreaker(level) {
+  const range = 130 + level * 8;
+  const boss = objects.find((obj) => obj.type === "boss" && Math.abs((obj.x + obj.w / 2) - (player.x + player.w / 2)) <= range);
+  if (!boss) {
+    burst(player.x + player.w + range * 0.35, player.y + getPlayerHeight() / 2, "#d7b878", 8);
+    logEvent("SAND BREAK MISS");
+    return;
+  }
+  if (boss.armor > 0) boss.armor -= 1;
+  else if (boss.shield > 0) boss.shield -= 1;
+  if (level >= 5) boss.hp = Math.max(0, boss.hp - 1);
+  boss.hitCooldown = Math.max(boss.hitCooldown || 0, 0.18);
+  burst(boss.x + boss.w / 2, boss.y + boss.h / 2, "#d7b878", 12);
+  if (boss.hp <= 0) defeatBoss(boss);
+  logEvent("SAND KING BREAK");
+}
+
+function activateGravityAnchor(level) {
+  run.gravityGuardTimer = Math.max(run.gravityGuardTimer, 0.35 + level * 0.09);
+  if (run.gravityFlip) {
+    run.gravityFlip = false;
+    player.vy *= -0.2;
+  }
+  burst(player.x + player.w / 2, player.y + getPlayerHeight(), "#48bde7", 10);
+  logEvent("GIANT ANCHOR");
+}
+
+function activatePhasePin(level) {
+  run.phasePinTimer = Math.max(run.phasePinTimer, 0.3 + level * 0.08);
+  for (const obj of objects) {
+    if (obj.type === "boss" || obj.type === "enemy") obj.phased = false;
+  }
+  burst(player.x + player.w + 48, player.y + getPlayerHeight() / 2, "#b98cff", 10);
+  logEvent("PHASE PIN");
 }
 
 function magnetBurst() {
@@ -2231,14 +2279,14 @@ function getStats() {
   const idleMultiplier = 1 + (eq.idle || 0);
   return {
     speed: (5 * (1 + state.upgrades.speed * 0.012) * (1 + state.permanent.speed * 0.02) * (1 + (eq.speed || 0))),
-    jumpPower: (1 + state.upgrades.jump * 0.04 + (eq.jump || 0)),
+    jumpPower: (1 + state.upgrades.jump * 0.03 + (eq.jump || 0)),
     equipmentJump: (eq.jump || 0) * BASE_JUMP_VELOCITY,
     maxHp: 1 + state.upgrades.hp + Math.floor(eq.hp || 0),
     coinMultiplier: (1 + state.upgrades.coin * 0.08) * (1 + state.permanent.coin * 0.05) * (1 + (eq.coin || 0)),
     directCoinMultiplier: 1 + runnerDirectCoinBonus(),
-    magnetRadius: 44 + state.upgrades.magnet * 14,
+    magnetRadius: 44 + state.upgrades.magnet * 8,
     maxCombo: 2 + state.upgrades.combo * 0.08,
-    regenEvery: state.upgrades.regen > 0 ? Math.max(10, 32 - state.upgrades.regen * 2) : 0,
+    regenEvery: state.upgrades.regen > 0 ? Math.max(10, 32 - state.upgrades.regen * 0.5) : 0,
     idleMultiplier
   };
 }
@@ -2402,12 +2450,20 @@ function researchLevel(id) {
   return Number(state.researchTree[id] || 0);
 }
 
+function isActiveResearch(id) {
+  return Boolean(researchDefs.find((def) => def.id === id)?.active);
+}
+
+function passiveResearchLevel(id) {
+  return isActiveResearch(id) ? 0 : researchLevel(id);
+}
+
 function researchChance(id, perLevel = 0.02) {
-  return Math.random() < researchLevel(id) * perLevel;
+  return Math.random() < passiveResearchLevel(id) * perLevel;
 }
 
 function researchReduction(id, perLevel = 0.02) {
-  return Math.max(0.75, 1 - researchLevel(id) * perLevel);
+  return Math.max(0.75, 1 - passiveResearchLevel(id) * perLevel);
 }
 
 function factoryOutput(def, level) {
@@ -2952,15 +3008,19 @@ function renderUpgrades() {
 }
 
 function renderActiveSkillSelector() {
-  const current = state.settings.activeSkill || "dash";
-  const buttons = activeSkillDefs.map((def) => (
-    `<button class="${current === def.id ? "active" : ""}" data-action="selectActiveSkill" data-id="${def.id}" type="button">${def.name}</button>`
-  )).join("");
+  const current = state.settings.activeSkill || "none";
+  const unlocked = activeSkillDefs.filter((def) => researchLevel(def.id) > 0);
+  const buttons = [
+    `<button class="${current === "none" || unlocked.length === 0 ? "active" : ""}" data-action="selectActiveSkill" data-id="none" type="button">なし</button>`,
+    ...unlocked.map((def) => (
+      `<button class="${current === def.id ? "active" : ""}" data-action="selectActiveSkill" data-id="${def.id}" type="button">${def.name}</button>`
+    ))
+  ].join("");
   return `<div class="row-item">
     <div>
-      <h3>アクティブスキル</h3>
-      <p>セットしたスキルが画面下のスキルボタンで発動します。 現在: ${activeSkillName(current)}</p>
-      <div class="meta"><span class="pill">クールダウン ${activeSkillCooldown(current)}s</span></div>
+      <h3>研究アクティブ</h3>
+      <p>研究で解放したボス由来スキルを画面下のスキルボタンにセットします。 現在: ${activeSkillName(current)}</p>
+      <div class="meta"><span class="pill">解放 ${unlocked.length}/${activeSkillDefs.length}</span><span class="pill">クールダウン ${activeSkillCooldown(current) || "-"}${activeSkillCooldown(current) ? "s" : ""}</span></div>
     </div>
     <div class="filter-row skill-picker">${buttons}</div>
   </div>`;
@@ -3239,12 +3299,13 @@ function renderResearch() {
         const level = state.researchTree[def.id] || 0;
         const capped = level >= cap;
         const cost = upgradeCost(def, level);
+        const typeMeta = def.active ? [`アクティブ`, `CD ${def.cooldown}s`] : [`パッシブ`];
         return rowItem({
           title: `${def.name} Lv${level}`,
           desc: `${def.description} 現在: ${def.effect(level)}`,
           meta: capped
-            ? [`上限 Lv${cap}`, `転生で上限 +1`]
-            : [`次 ${def.effect(level + 1)}`, `${formatNumber(cost)} LAB`, `上限 Lv${cap}`],
+            ? [...typeMeta, `上限 Lv${cap}`, `転生で上限 +1`]
+            : [...typeMeta, `次 ${def.effect(level + 1)}`, `${formatNumber(cost)} LAB`, `上限 Lv${cap}`],
           action: "buyResearch",
           id: def.id,
           disabled: capped || state.research < cost,
@@ -3287,7 +3348,7 @@ function updateHud() {
   document.getElementById("levelStat").textContent = state.level;
   document.getElementById("areaName").textContent = `${localizedAreaName(area)} / ${area.line}`;
   const dashButton = document.getElementById("dashBtn");
-  dashButton.disabled = run.dashCooldown > 0 || run.gameOver;
+  dashButton.disabled = run.dashCooldown > 0 || run.gameOver || !selectedActiveSkillDef();
   dashButton.textContent = run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s` : translateText(activeSkillName());
   const bgmButton = document.getElementById("bgmBtn");
   bgmButton.textContent = state.settings.bgmEnabled ? "BGM ON" : "BGM OFF";
