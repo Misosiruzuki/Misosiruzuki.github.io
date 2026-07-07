@@ -46,8 +46,8 @@ const factoryTemplates = [
   { id: "mine", name: "鉱山", base: 2500, growth: 1.22, currency: "coins", category: "gems", outputType: "gems", description: "宝石を少量ずつ採掘する基本施設。", outputBase: 0.008, outputGrowth: 1.035 },
   { id: "deepMine", name: "深層鉱山", base: 85000, growth: 1.23, currency: "coins", category: "gems", outputType: "gems", description: "鉱山より効率よく宝石を採掘する上位施設。", outputBase: 0.06, outputGrowth: 1.04 },
   { id: "crystalForge", name: "結晶炉", base: 600000, growth: 1.25, currency: "coins", category: "gems", outputType: "gems", description: "宝石を人工生成する高出力施設。", outputBase: 0.22, outputGrowth: 1.045 },
-  { id: "lab", name: "研究所", base: 4, growth: 1.2, currency: "gems", category: "research", outputType: "research", description: "研究ポイントを生産する基本施設。", outputBase: 0.006, outputGrowth: 1.032 },
-  { id: "quantumLab", name: "量子研究所", base: 40, growth: 1.22, currency: "gems", category: "research", outputType: "research", description: "研究所より多くの研究ポイントを生産する上位施設。", outputBase: 0.05, outputGrowth: 1.04 },
+  { id: "lab", name: "研究所", base: 4, growth: 1.2, currency: "gems", category: "research", outputType: "research", description: "研究ポイントを少しずつ生産する基本施設。", outputBase: 0.0012, outputGrowth: 1.018 },
+  { id: "quantumLab", name: "量子研究所", base: 40, growth: 1.22, currency: "gems", category: "research", outputType: "research", description: "研究所より多くの研究ポイントを生産する上位施設。", outputBase: 0.006, outputGrowth: 1.022 },
   { id: "robotFactory", name: "ロボット工場", base: 7000, growth: 1.24, currency: "coins", category: "runner", description: "超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", directCoinBonus: 0.012 },
   { id: "eliteRunnerFactory", name: "エリートランナー工場", base: 240000, growth: 1.25, currency: "coins", category: "runner", description: "高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", directCoinBonus: 0.025 }
 ];
@@ -63,11 +63,14 @@ const permanentDefs = [
 ];
 
 const researchDefs = [
-  { id: "jumpStudy", name: "ジャンプ研究", base: 10, growth: 1.28, description: "ジャンプ中の姿勢制御と再ジャンプ技術を研究します。Lvが上がると空中制御が伸び、一定Lvで追加ジャンプも解放されます。", effect: (lv) => `空中制御 +${lv * 2}%` },
-  { id: "speedStudy", name: "速度研究", base: 12, growth: 1.28, description: "脚部モーターと走行制御を最適化します。通常強化とは別枠で基礎速度を底上げします。", effect: (lv) => `速度 +${lv * 1}%` },
-  { id: "idleStudy", name: "放置研究", base: 14, growth: 1.3, description: "工場ライン、鉱山、研究施設の稼働効率をまとめて改善します。ゲームを閉じている間の収入にも影響します。", effect: (lv) => `工場出力 +${lv * 4}%` },
-  { id: "bossStudy", name: "ボス研究", base: 18, growth: 1.32, description: "ボスの弱点解析と報酬回収ルートを研究します。撃破時のコイン、研究ポイント、宝箱期待値が伸びます。", effect: (lv) => `ボス報酬 +${lv * 6}%` },
-  { id: "comboStudy", name: "コンボ研究", base: 16, growth: 1.3, description: "ミスしない走行を評価するスコアリング研究です。コンボによる獲得コイン倍率が成長しやすくなります。", effect: (lv) => `倍率成長 +${lv * 3}%` }
+  { id: "sandBreaker", name: "砂王対策", base: 120, growth: 1.55, description: "草原ボスの粘液核解析から、砂漠ボスの砂装甲を少しだけ崩しやすくします。Lv5でも時々1枚余分に削れる程度です。", effect: (lv) => `砂装甲対策 +${lv * 2}%` },
+  { id: "frostInsulation", name: "凍結対策", base: 160, growth: 1.58, description: "砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
+  { id: "heatPlating", name: "灼熱対策", base: 220, growth: 1.6, description: "雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
+  { id: "shieldPiercer", name: "シールド解析", base: 300, growth: 1.62, description: "火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
+  { id: "gravityAnchor", name: "重力アンカー", base: 420, growth: 1.65, description: "未来都市ボスの制御回路を応用し、宇宙ボスの重力反転波をまれに受け流します。", effect: (lv) => `重力波耐性 +${lv * 2}%` },
+  { id: "voidTether", name: "虚空テザー", base: 580, growth: 1.68, description: "宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", effect: (lv) => `吸引軽減 +${lv * 2}%` },
+  { id: "aetherSeal", name: "神気封印", base: 820, growth: 1.7, description: "ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", effect: (lv) => `再生遅延 +${(lv * 0.12).toFixed(2)}s` },
+  { id: "phaseAnchor", name: "位相アンカー", base: 1150, growth: 1.72, description: "神界ボスの神気波形から、無限空間ボスの位相化時間を少しだけ短くします。", effect: (lv) => `位相短縮 +${lv}%` }
 ];
 
 const areas = [
@@ -224,8 +227,8 @@ const englishAreaNames = {
 
 const englishTextPairs = [
   ["ラン中の宝箱、ボス報酬、リワードから入手できます。", "Get chests from runs, boss rewards, and rewards."],
+  ["コイン、通常強化、装備、宝箱、宝石、研究ポイントをリセットし、永続強化用のPRを得ます。転生ごとに通常強化・放置施設・研究上限が+1されます。", "Reset coins, normal upgrades, equipment, chests, gems, and research points to gain PR for permanent upgrades. Each prestige raises upgrade, facility, and research caps by +1."],
   ["コインと通常強化をリセットし、永続強化用のPRを得ます。", "Reset coins and normal upgrades to gain PR for permanent upgrades."],
-  ["コインと通常強化をリセットし、永続強化用のPRを得ます。転生ごとに通常強化上限が+1されます。", "Reset coins and normal upgrades to gain PR for permanent upgrades. Each prestige raises the normal upgrade cap by +1."],
   ["5分間、獲得と放置のコインが2倍になります。", "Earned and idle coins are doubled for 5 minutes."],
   ["待機中の宝箱を1個だけ準備完了にします。", "Finish one waiting chest instantly."],
   ["銀宝箱相当の装備を1つ獲得します。", "Get one equipment item equal to a Silver Chest."],
@@ -235,17 +238,20 @@ const englishTextPairs = [
   ["宝石を少量ずつ採掘する基本施設。", "Basic facility that mines gems gradually."],
   ["鉱山より効率よく宝石を採掘する上位施設。", "Advanced facility that mines gems more efficiently than a Mine."],
   ["宝石を人工生成する高出力施設。", "High-output facility that synthesizes gems."],
-  ["研究ポイントを生産する基本施設。", "Basic facility that produces research points."],
+  ["研究ポイントを少しずつ生産する基本施設。", "Basic facility that slowly produces research points."],
   ["研究所より多くの研究ポイントを生産する上位施設。", "Advanced facility that produces more research points than a Lab."],
   ["自動ランナーが走行し、コインを持ち帰る施設。", "Auto runners travel and bring back coins."],
   ["長距離用の自動ランナーで、ロボット工場より高収入。", "Long-distance auto runners that earn more than the Robot Factory."],
   ["超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", "Build micro robots that follow the player and increase direct coin gains."],
   ["高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", "Build advanced micro robots that further increase direct coin gains."],
-  ["ジャンプ中の姿勢制御と再ジャンプ技術を研究します。Lvが上がると空中制御が伸び、一定Lvで追加ジャンプも解放されます。", "Research aerial control and re-jump systems. Higher levels improve air control, and later levels unlock extra jumps."],
-  ["脚部モーターと走行制御を最適化します。通常強化とは別枠で基礎速度を底上げします。", "Optimize leg motors and running control. This raises base speed separately from normal upgrades."],
-  ["工場ライン、鉱山、研究施設の稼働効率をまとめて改善します。ゲームを閉じている間の収入にも影響します。", "Improve factory lines, mines, and labs together. This also affects income while the game is closed."],
-  ["ボスの弱点解析と報酬回収ルートを研究します。撃破時のコイン、研究ポイント、宝箱期待値が伸びます。", "Analyze boss weaknesses and reward recovery routes. Boss coin, research, and chest rewards improve."],
-  ["ミスしない走行を評価するスコアリング研究です。コンボによる獲得コイン倍率が成長しやすくなります。", "Study scoring that rewards clean runs. Combo-based coin multipliers grow more easily."],
+  ["草原ボスの粘液核解析から、砂漠ボスの砂装甲を少しだけ崩しやすくします。Lv5でも時々1枚余分に削れる程度です。", "Analyze the Grassland boss core to slightly improve Sand Armor breaks against the Desert boss. Even Lv5 only sometimes removes one extra layer."],
+  ["砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", "Apply the Desert boss heat organ to slightly shorten the Snow Mountain boss freeze aura."],
+  ["雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", "Build heat plating from the Snow Mountain boss cooling core to rarely reduce Volcano boss bonus damage."],
+  ["火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", "Analyze the Volcano boss shell to slightly improve pierce chance against Future City energy shields."],
+  ["未来都市ボスの制御回路を応用し、宇宙ボスの重力反転波をまれに受け流します。", "Apply the Future City boss control circuit to rarely deflect Space boss gravity waves."],
+  ["宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", "Use Space boss orbital data to slightly reduce Black Hole boss pull."],
+  ["ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", "Use Black Hole singularity residue to slightly delay Aether boss regeneration."],
+  ["神界ボスの神気波形から、無限空間ボスの位相化時間を少しだけ短くします。", "Use Aether boss wave data to slightly shorten Infinite Space boss phasing."],
   ["宝箱から装備を獲得できます。", "Open chests to get equipment."],
   ["待機時間が終わった宝箱", "Ready chests"],
   ["開封可能な宝箱を全開封", "Open All Ready Chests"],
@@ -269,7 +275,6 @@ const englishTextPairs = [
   ["コンボ倍率", "Combo Multiplier"],
   ["ロボット工場", "Robot Factory"],
   ["コイン工場", "Coin Factory"],
-  ["ジャンプ研究", "Jump Research"],
   ["スピード", "Speed"],
   ["ジャンプ", "Jump"],
   ["コイン倍率", "Coin Multiplier"],
@@ -279,10 +284,14 @@ const englishTextPairs = [
   ["広告倍率", "Ad Multiplier"],
   ["獲得コイン", "Coin Gain"],
   ["レア率", "Rare Rate"],
-  ["速度研究", "Speed Research"],
-  ["放置研究", "Idle Research"],
-  ["ボス研究", "Boss Research"],
-  ["コンボ研究", "Combo Research"],
+  ["砂王対策", "Sand King Counter"],
+  ["凍結対策", "Freeze Counter"],
+  ["灼熱対策", "Heat Counter"],
+  ["シールド解析", "Shield Analysis"],
+  ["重力アンカー", "Gravity Anchor"],
+  ["虚空テザー", "Void Tether"],
+  ["神気封印", "Aether Seal"],
+  ["位相アンカー", "Phase Anchor"],
   ["研究ツリー", "Research Tree"],
   ["通常強化", "Upgrades"],
   ["放置施設", "Idle Facilities"],
@@ -320,10 +329,14 @@ const englishTextPairs = [
   ["受取済", "Claimed"],
   ["受取", "Claim"],
   ["本格研究まで", "Research core in"],
-  ["空中制御", "Air Control"],
-  ["工場出力", "Factory Output"],
-  ["ボス報酬", "Boss Reward"],
-  ["倍率成長", "Multiplier Growth"],
+  ["砂装甲対策", "Sand Armor Counter"],
+  ["凍結時間", "Freeze Time"],
+  ["灼熱軽減", "Heat Reduction"],
+  ["盾対策", "Shield Counter"],
+  ["重力波耐性", "Gravity Wave Resist"],
+  ["吸引軽減", "Pull Reduction"],
+  ["再生遅延", "Regen Delay"],
+  ["位相短縮", "Phase Shorten"],
   ["初ジャンプ", "First Jump"],
   ["500m走る", "Run 500m"],
   ["コイン1000枚", "Collect 1,000 coins"],
@@ -363,6 +376,8 @@ const englishTextPairs = [
   ["残り", "Left"],
   ["所持", "Owned"],
   ["次", "Next"],
+  ["転生 /", " prestiges /"],
+  ["回", " times"],
   ["強化", "Upgrade"],
   ["建設", "Build"],
   ["永続Lv", "Permanent Lv"],
@@ -679,10 +694,41 @@ function loadState() {
     if (parsed.currentPrestigeDistance === undefined) {
       merged.currentPrestigeDistance = merged.bestDistance || 0;
     }
+    normalizeResearchTree(merged);
+    enforceLevelCaps(merged);
     return merged;
   } catch (error) {
     console.warn(error);
     return defaultState();
+  }
+}
+
+function normalizeResearchTree(targetState = state) {
+  const allowed = new Set(researchDefs.map((def) => def.id));
+  targetState.researchTree = targetState.researchTree || {};
+  for (const key of Object.keys(targetState.researchTree)) {
+    if (!allowed.has(key)) delete targetState.researchTree[key];
+  }
+  for (const def of researchDefs) {
+    if (targetState.researchTree[def.id] === undefined) {
+      targetState.researchTree[def.id] = 0;
+    }
+  }
+}
+
+function enforceLevelCaps(targetState = state) {
+  const cap = BASE_UPGRADE_CAP + Number(targetState.prestigeCount || 0);
+  clampLevelGroup(targetState.upgrades, upgradeDefs, cap);
+  clampLevelGroup(targetState.factories, factoryDefs, cap);
+  clampLevelGroup(targetState.researchTree, researchDefs, cap);
+}
+
+function clampLevelGroup(group, defs, cap) {
+  if (!group) return;
+  for (const def of defs) {
+    if (Number(group[def.id] || 0) > cap) {
+      group[def.id] = cap;
+    }
   }
 }
 
@@ -1132,9 +1178,8 @@ function updatePlayer(dt, stats) {
     player.jumpsUsed = 0;
   }
 
-  const controlBonus = 1 + state.researchTree.jumpStudy * 0.02;
   if (player.jumpsUsed > 0) {
-    player.vy += (run.gravityFlip ? -1 : 1) * 12 * stats.jumpPower * controlBonus * dt;
+    player.vy += (run.gravityFlip ? -1 : 1) * 12 * stats.jumpPower * dt;
   }
 }
 
@@ -1233,17 +1278,27 @@ function updateObjects(dt, scrollSpeed, stats) {
 
 function damageEnemy(obj, amount = 1) {
   if (obj.hitCooldown > 0) return false;
-  if (obj.armor > 0) {
+  const armorPierced = obj.trait === "sandArmor" && researchChance("sandBreaker");
+  if (obj.armor > 0 && !armorPierced) {
     obj.armor -= 1;
     obj.hitCooldown = 0.28;
     burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#d7b878", 8);
     return false;
   }
-  if (obj.shield > 0) {
+  if (obj.armor > 0) {
+    obj.armor -= 1;
+    burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#f2b84b", 10);
+  }
+  const shieldPierced = obj.trait === "energyShield" && researchChance("shieldPiercer");
+  if (obj.shield > 0 && !shieldPierced) {
     obj.shield -= 1;
     obj.hitCooldown = 0.38;
     burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#48bde7", 10);
     return false;
+  }
+  if (obj.shield > 0) {
+    obj.shield -= 1;
+    burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#9fd9ff", 10);
   }
   obj.hp = (obj.hp || 1) - amount;
   obj.hitCooldown = 0.22;
@@ -1256,31 +1311,35 @@ function updateEnemyTrait(obj, dt, playerRect) {
   const distance = Math.hypot(dx, dy);
 
   if (obj.trait === "frostAura" && distance < 135) {
-    run.chillTimer = Math.max(run.chillTimer, obj.type === "boss" ? 1.6 : 0.85);
+    const duration = (obj.type === "boss" ? 1.6 : 0.85) * researchReduction("frostInsulation");
+    run.chillTimer = Math.max(run.chillTimer, duration);
   }
   if (obj.trait === "voidPull" && distance < 190) {
-    obj.x -= 34 * dt;
-    player.vy += Math.sign(dy || 1) * 70 * dt;
+    const pullScale = researchReduction("voidTether");
+    obj.x -= 34 * pullScale * dt;
+    player.vy += Math.sign(dy || 1) * 70 * pullScale * dt;
   }
   if (obj.trait === "gravityPulse") {
     obj.pulseTimer = (obj.pulseTimer || 1.6) - dt;
     if (distance < 120 && obj.pulseTimer <= 0) {
-      run.gravityFlip = !run.gravityFlip;
-      player.vy *= -0.25;
+      if (!researchChance("gravityAnchor")) {
+        run.gravityFlip = !run.gravityFlip;
+        player.vy *= -0.25;
+      }
       obj.pulseTimer = obj.type === "boss" ? 4.5 : 3.2;
       logEvent("GRAVITY PULSE");
     }
   }
   if (obj.trait === "regen" && obj.hp && obj.maxHp && obj.hp < obj.maxHp) {
-    obj.regenTimer = (obj.regenTimer || 1.5) - dt;
+    obj.regenTimer = (obj.regenTimer || (1.5 + researchLevel("aetherSeal") * 0.12)) - dt;
     if (obj.regenTimer <= 0) {
       obj.hp = Math.min(obj.maxHp, obj.hp + 1);
-      obj.regenTimer = obj.type === "boss" ? 2.4 : 3.5;
+      obj.regenTimer = (obj.type === "boss" ? 2.4 : 3.5) + researchLevel("aetherSeal") * 0.12;
     }
   }
   if (obj.trait === "phase") {
     obj.phaseTimer = (obj.phaseTimer || 0) + dt;
-    obj.phased = Math.sin(obj.phaseTimer * 2.4) > 0.62;
+    obj.phased = Math.sin(obj.phaseTimer * 2.4) > 0.62 + researchLevel("phaseAnchor") * 0.01;
   }
   if (obj.type === "boss") {
     updateBossGimmick(obj, dt, distance);
@@ -1300,7 +1359,7 @@ function updateBossGimmick(obj, dt, distance) {
     }
   }
   if (obj.bossGimmick === "frostPrison" && distance < 210) {
-    run.chillTimer = Math.max(run.chillTimer, 1.2);
+    run.chillTimer = Math.max(run.chillTimer, 1.2 * researchReduction("frostInsulation"));
   }
   if (obj.bossGimmick === "lavaMeteor" && obj.bossTimer <= 0) {
     objects.push({ type: "obstacle", kind: "meteor", x: obj.x - 90, y: groundY - random(130, 250), w: 34, h: 34, color: "#ef6b65" });
@@ -1311,24 +1370,26 @@ function updateBossGimmick(obj, dt, distance) {
     obj.bossTimer = 3.6;
   }
   if (obj.bossGimmick === "gravitySurge" && obj.bossTimer <= 0) {
-    run.gravityFlip = !run.gravityFlip;
-    player.vy *= -0.35;
+    if (!researchChance("gravityAnchor")) {
+      run.gravityFlip = !run.gravityFlip;
+      player.vy *= -0.35;
+    }
     obj.bossTimer = 5.2;
     logEvent("BOSS GRAVITY SURGE");
   }
   if (obj.bossGimmick === "singularity" && distance < 250) {
-    player.vy += (run.gravityFlip ? -1 : 1) * 95 * dt;
+    player.vy += (run.gravityFlip ? -1 : 1) * 95 * researchReduction("voidTether") * dt;
   }
   if (obj.bossGimmick === "aetherRegen" && obj.hp < obj.maxHp) {
-    obj.regenTimer = (obj.regenTimer || 1.6) - dt;
+    obj.regenTimer = (obj.regenTimer || (1.6 + researchLevel("aetherSeal") * 0.12)) - dt;
     if (obj.regenTimer <= 0) {
       obj.hp = Math.min(obj.maxHp, obj.hp + 1);
-      obj.regenTimer = 1.8;
+      obj.regenTimer = 1.8 + researchLevel("aetherSeal") * 0.12;
     }
   }
   if (obj.bossGimmick === "infinitePhase") {
     obj.phaseTimer = (obj.phaseTimer || 0) + dt;
-    obj.phased = Math.sin(obj.phaseTimer * 3) > 0.45;
+    obj.phased = Math.sin(obj.phaseTimer * 3) > 0.45 + researchLevel("phaseAnchor") * 0.01;
   }
   if (obj.bossGimmick === "slimeSplit" && obj.bossTimer <= 0 && (obj.spawnedMinions || 0) < 2) {
     objects.push(applyEnemyTraits({
@@ -1566,7 +1627,7 @@ function spawnBoss() {
 
 function collectCoin(value, x, y) {
   const stats = getStats();
-  const comboBoost = 1 + Math.min(stats.maxCombo - 1, run.combo * (0.012 + state.researchTree.comboStudy * 0.0003));
+  const comboBoost = 1 + Math.min(stats.maxCombo - 1, run.combo * 0.012);
   const eventBoost = run.event === "coin3" ? 3 : run.event === "fever" ? 2 : 1;
   const adBoost = state.boosts.coinDouble > 0 ? 2 : 1;
   const gained = Math.ceil(value * stats.coinMultiplier * stats.directCoinMultiplier * comboBoost * eventBoost * adBoost);
@@ -1645,9 +1706,8 @@ function defeatEnemy(obj) {
 }
 
 function defeatBoss(obj) {
-  const bossBoost = 1 + state.researchTree.bossStudy * 0.06;
-  const coinReward = directCoinAmount((600 + areaIndex() * 350 + obj.maxHp * 90) * bossBoost);
-  const researchReward = Math.ceil((1 + areaIndex() * 0.5) * bossBoost);
+  const coinReward = directCoinAmount(600 + areaIndex() * 350 + obj.maxHp * 90);
+  const researchReward = Math.max(1, Math.ceil(0.5 + areaIndex() * 0.25));
   state.coins += coinReward;
   state.research += researchReward;
   state.lifetimeBosses += 1;
@@ -1678,7 +1738,10 @@ function damagePlayer(options = {}) {
 
 function incomingDamageAmount(options = {}) {
   const areaDamage = 1 + Math.floor(areaIndexForDistance(run.distance || 0) / 3);
-  const traitBonus = options.source?.trait === "burning" ? 1 : 0;
+  let traitBonus = options.source?.trait === "burning" ? 1 : 0;
+  if (traitBonus > 0 && researchChance("heatPlating")) {
+    traitBonus = 0;
+  }
   return Math.max(1, Math.ceil(options.amount || areaDamage) + traitBonus);
 }
 
@@ -1804,7 +1867,7 @@ function performJump(heldSeconds = MAX_JUMP_HOLD_SECONDS) {
 
 function beginJump() {
   const stats = getStats();
-  const maxJumps = 1 + (state.upgrades.jump >= 8 ? 1 : 0) + (state.researchTree.jumpStudy >= 12 ? 1 : 0);
+  const maxJumps = 1 + (state.upgrades.jump >= 8 ? 1 : 0);
   if (player.jumpsUsed >= maxJumps) return false;
   const jumpVelocity = jumpVelocityCap(stats);
   if (jumpVelocity <= 0) return false;
@@ -1822,7 +1885,7 @@ function beginJump() {
 }
 
 function jumpVelocityCap(stats) {
-  const upgradeVelocity = state.upgrades.jump * JUMP_UPGRADE_VELOCITY + state.researchTree.jumpStudy * 6 + (stats.equipmentJump || 0);
+  const upgradeVelocity = state.upgrades.jump * JUMP_UPGRADE_VELOCITY + (stats.equipmentJump || 0);
   return BASE_JUMP_VELOCITY + upgradeVelocity;
 }
 
@@ -1878,9 +1941,9 @@ function restartPlayerAnimation(key) {
 
 function getStats() {
   const eq = equipmentBonuses();
-  const idleStudy = 1 + state.researchTree.idleStudy * 0.04 + (eq.idle || 0);
+  const idleMultiplier = 1 + (eq.idle || 0);
   return {
-    speed: (5 * (1 + state.upgrades.speed * 0.02) * (1 + state.permanent.speed * 0.02) * (1 + state.researchTree.speedStudy * 0.01) * (1 + (eq.speed || 0))),
+    speed: (5 * (1 + state.upgrades.speed * 0.02) * (1 + state.permanent.speed * 0.02) * (1 + (eq.speed || 0))),
     jumpPower: (1 + state.upgrades.jump * 0.04 + (eq.jump || 0)),
     equipmentJump: (eq.jump || 0) * BASE_JUMP_VELOCITY,
     maxHp: 1 + state.upgrades.hp + Math.floor(eq.hp || 0),
@@ -1889,7 +1952,7 @@ function getStats() {
     magnetRadius: 44 + state.upgrades.magnet * 14,
     maxCombo: 2 + state.upgrades.combo * 0.15,
     regenEvery: state.upgrades.regen > 0 ? Math.max(10, 32 - state.upgrades.regen * 2) : 0,
-    idleMultiplier: idleStudy
+    idleMultiplier
   };
 }
 
@@ -2040,6 +2103,26 @@ function normalUpgradeCap() {
   return BASE_UPGRADE_CAP + state.prestigeCount;
 }
 
+function factoryLevelCap() {
+  return BASE_UPGRADE_CAP + state.prestigeCount;
+}
+
+function researchLevelCap() {
+  return BASE_UPGRADE_CAP + state.prestigeCount;
+}
+
+function researchLevel(id) {
+  return Number(state.researchTree[id] || 0);
+}
+
+function researchChance(id, perLevel = 0.02) {
+  return Math.random() < researchLevel(id) * perLevel;
+}
+
+function researchReduction(id, perLevel = 0.02) {
+  return Math.max(0.75, 1 - researchLevel(id) * perLevel);
+}
+
 function factoryOutput(def, level) {
   if (!def || !level) return 0;
   if (!def.outputType) return 0;
@@ -2142,6 +2225,11 @@ function buyFactory(id) {
   const def = factoryDefs.find((entry) => entry.id === id);
   if (!def) return;
   const level = state.factories[id] || 0;
+  const cap = factoryLevelCap();
+  if (level >= cap) {
+    logEvent(`FACTORY CAP Lv${cap}`);
+    return;
+  }
   const cost = upgradeCost(def, level);
   if (!spend(def.currency, cost)) return;
   state.factories[id] = level + 1;
@@ -2164,6 +2252,11 @@ function buyResearch(id) {
   const def = researchDefs.find((entry) => entry.id === id);
   if (!def) return;
   const level = state.researchTree[id] || 0;
+  const cap = researchLevelCap();
+  if (level >= cap) {
+    logEvent(`RESEARCH CAP Lv${cap}`);
+    return;
+  }
   const cost = upgradeCost(def, level);
   if (state.research < cost) return;
   state.research -= cost;
@@ -2184,8 +2277,13 @@ function prestige() {
   state.prestigePoints += gain;
   state.prestigeCount += 1;
   state.coins = 0;
+  state.gems = 0;
+  state.research = 0;
   state.currentPrestigeDistance = 0;
   state.upgrades = objectFromDefs(upgradeDefs);
+  state.equipment = [];
+  state.equipped = {};
+  state.chests = [];
   addMissionProgress("weeklyPrestige", 1);
   logEvent(`PRESTIGE +${gain} PR`);
   resetRun();
@@ -2557,6 +2655,7 @@ function renderUpgrades() {
 
 function renderFactory() {
   const stats = getStats();
+  const cap = factoryLevelCap();
   const coinPs = factoryOutputPerSecond("coins") * stats.idleMultiplier;
   const gemPs = factoryOutputPerSecond("gems") * stats.idleMultiplier;
   const researchPs = factoryOutputPerSecond("research") * stats.idleMultiplier;
@@ -2570,7 +2669,7 @@ function renderFactory() {
     `<button class="${factoryView === filter.id ? "active" : ""}" data-action="factoryFilter" data-id="${filter.id}" type="button">${filter.label}</button>`
   )).join("");
   const html = [
-    panelHead("放置施設", `放置倍率 x${stats.idleMultiplier.toFixed(2)} / 直接コイン x${stats.directCoinMultiplier.toFixed(3)}`),
+    panelHead("放置施設", `放置倍率 x${stats.idleMultiplier.toFixed(2)} / 直接コイン x${stats.directCoinMultiplier.toFixed(3)} / 上限 Lv${cap}`),
     `<div class="summary-band">
       <div><span>コイン/秒</span><strong>${formatNumber(coinPs)}</strong></div>
       <div><span>宝石/秒</span><strong>${formatNumber(gemPs, 2)}</strong></div>
@@ -2581,15 +2680,18 @@ function renderFactory() {
     `<div class="list">`,
     ...visibleFactories.map((def) => {
       const level = state.factories[def.id] || 0;
+      const capped = level >= cap;
       const cost = upgradeCost(def, level);
       return rowItem({
         title: `${def.name} Lv${level}`,
         desc: `${def.description} 現在: ${factoryEffect(def, level)}`,
-        meta: [`役割 ${factoryOutputLabel(def.outputType || def.category)}`, `次 ${factoryEffect(def, level + 1)}`, `${formatCurrency(cost, def.currency)}`],
+        meta: capped
+          ? [`役割 ${factoryOutputLabel(def.outputType || def.category)}`, `上限 Lv${cap}`, `転生で上限 +1`]
+          : [`役割 ${factoryOutputLabel(def.outputType || def.category)}`, `次 ${factoryEffect(def, level + 1)}`, `${formatCurrency(cost, def.currency)}`, `上限 Lv${cap}`],
         action: "buyFactory",
         id: def.id,
-        disabled: (state[def.currency] || 0) < cost,
-        label: "建設"
+        disabled: capped || (state[def.currency] || 0) < cost,
+        label: capped ? "上限" : "建設"
       });
     }),
     `</div>`
@@ -2612,7 +2714,7 @@ function renderPrestige() {
       <div class="row-item">
         <div>
           <h3>100万コインで転生</h3>
-          <p>コインと通常強化をリセットし、永続強化用のPRを得ます。転生ごとに通常強化上限が+1されます。</p>
+          <p>コイン、通常強化、装備、宝箱、宝石、研究ポイントをリセットし、永続強化用のPRを得ます。転生ごとに通常強化・放置施設・研究上限が+1されます。</p>
           <div class="meta"><span class="pill">現在上限 Lv${normalUpgradeCap()}</span><span class="pill">転生後 Lv${normalUpgradeCap() + 1}</span></div>
           <div class="progress"><i style="width:${progress * 100}%"></i></div>
         </div>
@@ -2808,9 +2910,10 @@ function renderMissionGroup(group, defs) {
 }
 
 function renderResearch() {
+  const cap = researchLevelCap();
   const unlockText = state.prestigeCount >= 100
     ? "ENDGAME ONLINE"
-    : `本格研究まで ${Math.max(0, 100 - state.prestigeCount)}転生`;
+    : `本格研究まで ${Math.max(0, 100 - state.prestigeCount)}転生 / 上限 Lv${cap}`;
   panelContent.innerHTML = [
     panelHead("研究ツリー", unlockText),
     `<div class="section-stack">
@@ -2821,15 +2924,18 @@ function renderResearch() {
       <div class="list">
       ${researchDefs.map((def) => {
         const level = state.researchTree[def.id] || 0;
+        const capped = level >= cap;
         const cost = upgradeCost(def, level);
         return rowItem({
           title: `${def.name} Lv${level}`,
           desc: `${def.description} 現在: ${def.effect(level)}`,
-          meta: [`次 ${def.effect(level + 1)}`, `${formatNumber(cost)} LAB`],
+          meta: capped
+            ? [`上限 Lv${cap}`, `転生で上限 +1`]
+            : [`次 ${def.effect(level + 1)}`, `${formatNumber(cost)} LAB`, `上限 Lv${cap}`],
           action: "buyResearch",
           id: def.id,
-          disabled: state.research < cost,
-          label: "研究"
+          disabled: capped || state.research < cost,
+          label: capped ? "上限" : "研究"
         });
       }).join("")}
       </div>
