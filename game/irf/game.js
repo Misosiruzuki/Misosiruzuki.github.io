@@ -82,6 +82,30 @@ const areas = [
   { name: "無限空間", line: "Infinite Span", start: 160000, sky: ["#11151d", "#2e465b"], ground: "#24313a", accent: "#4cc38a", obstacle: "#394859" }
 ];
 
+const areaEnemyTraits = [
+  { id: "plain", name: "標準" },
+  { id: "sandArmor", name: "砂装甲" },
+  { id: "frostAura", name: "凍結オーラ" },
+  { id: "burning", name: "灼熱" },
+  { id: "energyShield", name: "エネルギー盾" },
+  { id: "gravityPulse", name: "重力波" },
+  { id: "voidPull", name: "吸引" },
+  { id: "regen", name: "再生" },
+  { id: "phase", name: "位相化" }
+];
+
+const bossGimmicks = [
+  { id: "slimeSplit", name: "分裂スライム" },
+  { id: "sandBurrow", name: "砂潜り" },
+  { id: "frostPrison", name: "凍結監獄" },
+  { id: "lavaMeteor", name: "溶岩隕石" },
+  { id: "laserGrid", name: "レーザー格子" },
+  { id: "gravitySurge", name: "重力反転波" },
+  { id: "singularity", name: "特異点吸引" },
+  { id: "aetherRegen", name: "神気再生" },
+  { id: "infinitePhase", name: "無限位相" }
+];
+
 const areaMusicFiles = [
   "草原エリアBGM.ogg",
   "砂漠エリアBGM.ogg",
@@ -223,6 +247,8 @@ const englishTextPairs = [
   ["ボスの弱点解析と報酬回収ルートを研究します。撃破時のコイン、研究ポイント、宝箱期待値が伸びます。", "Analyze boss weaknesses and reward recovery routes. Boss coin, research, and chest rewards improve."],
   ["ミスしない走行を評価するスコアリング研究です。コンボによる獲得コイン倍率が成長しやすくなります。", "Study scoring that rewards clean runs. Combo-based coin multipliers grow more easily."],
   ["宝箱から装備を獲得できます。", "Open chests to get equipment."],
+  ["待機時間が終わった宝箱", "Ready chests"],
+  ["開封可能な宝箱を全開封", "Open All Ready Chests"],
   ["100万コインで転生", "Prestige at 1,000,000 coins"],
   ["リワード: 宝箱即開封", "Reward: Instant Chest"],
   ["リワード: コイン2倍", "Reward: Coin x2"],
@@ -270,6 +296,11 @@ const englishTextPairs = [
   ["所持PR", "Owned PR"],
   ["直接コイン倍率", "Direct Coin Mult"],
   ["直接コイン", "Direct Coin"],
+  ["ロボット工場系", "Robot Factories"],
+  ["コイン工場系", "Coin Factories"],
+  ["研究所系", "Labs"],
+  ["鉱山系", "Mines"],
+  ["開封可能", "Ready"],
   ["獲得予定", "Expected Gain"],
   ["木宝箱", "Wood Chest"],
   ["銀宝箱", "Silver Chest"],
@@ -279,6 +310,7 @@ const englishTextPairs = [
   ["宝箱なし", "No Chests"],
   ["開封できます。", "Ready to open."],
   ["開封", "Open"],
+  ["全開封", "Open All"],
   ["装備中", "Equipped"],
   ["未装備", "Not Equipped"],
   ["現在:", "Current:"],
@@ -362,6 +394,7 @@ const englishTextPairs = [
   ["靴", "Boots"],
   ["胴", "Body"],
   ["秒", "s"],
+  ["個", ""],
   ["回", " times"]
 ].sort((a, b) => b[0].length - a[0].length);
 
@@ -396,6 +429,7 @@ const overlayText = document.getElementById("overlayText");
 
 let state = loadState();
 let activeTab = "upgrades";
+let factoryView = "coins";
 let equipmentView = "chests";
 let canvasWidth = 960;
 let canvasHeight = 420;
@@ -432,6 +466,7 @@ const run = {
   skillShield: 0,
   giantTimer: 0,
   timeStop: 0,
+  chillTimer: 0,
   nextSpawn: 0.4,
   nextBossMark: 1000,
   event: null,
@@ -612,6 +647,7 @@ function buildFactoryDefs() {
         name: tierIndex === 0 ? template.name : `${tier.name}${template.name}`,
         base: Math.ceil(template.base * currencyScale),
         growth: Number((template.growth + tierIndex * 0.004).toFixed(3)),
+        areaIndex: tierIndex,
         areaName: tier.name,
         areaKey: tier.key,
         color: template.category === "runner" ? runnerColor(tier, templateIndex) : tier.color,
@@ -852,10 +888,12 @@ function bindEvents() {
     const { action, id } = button.dataset;
     if (action === "buyUpgrade") buyUpgrade(id);
     if (action === "buyFactory") buyFactory(id);
+    if (action === "factoryFilter") factoryView = id || "coins";
     if (action === "buyPermanent") buyPermanent(id);
     if (action === "buyResearch") buyResearch(id);
     if (action === "prestige") prestige();
     if (action === "openChest") openChest(id);
+    if (action === "openAllChests") openAllChests();
     if (action === "equip") equipItem(id);
     if (action === "discardEquipment") discardEquipment(id);
     if (action === "equipmentFilter") equipmentView = id || "chests";
@@ -1024,8 +1062,9 @@ function updateRun(dt) {
   const stats = getStats();
   const dashMult = run.dashTimer > 0 ? 1.9 : 1;
   const eventSpeed = run.event === "fever" ? 1.25 : 1;
+  const chillMult = run.chillTimer > 0 ? 0.78 : 1;
   const stopped = run.timeStop > 0;
-  const speedMeters = stats.speed * dashMult * eventSpeed;
+  const speedMeters = stats.speed * dashMult * eventSpeed * chillMult;
   const scrollSpeed = stopped ? 0 : speedMeters * 48;
 
   run.distance += speedMeters * dt;
@@ -1055,6 +1094,7 @@ function updateRun(dt) {
   if (run.skillShield > 0) run.skillShield -= dt;
   if (run.giantTimer > 0) run.giantTimer -= dt;
   if (run.timeStop > 0) run.timeStop -= dt;
+  if (run.chillTimer > 0) run.chillTimer -= dt;
   if (player.invulnerable > 0) player.invulnerable -= dt;
   if (player.damageTimer > 0) player.damageTimer -= dt;
 
@@ -1105,6 +1145,10 @@ function updateObjects(dt, scrollSpeed, stats) {
 
   for (const obj of objects) {
     obj.x -= scrollSpeed * dt;
+    if (obj.hitCooldown > 0) obj.hitCooldown -= dt;
+    if (obj.type === "enemy" || obj.type === "boss") {
+      updateEnemyTrait(obj, dt, playerRect);
+    }
 
     if (obj.type === "boss" && obj.x + obj.w < 0) {
       damagePlayer({ force: true });
@@ -1127,6 +1171,7 @@ function updateObjects(dt, scrollSpeed, stats) {
     }
 
     if (rectsOverlap(playerRect, obj)) {
+      if ((obj.type === "enemy" || obj.type === "boss") && obj.phased) continue;
       if (obj.type === "coin") {
         collectCoin(obj.value, obj.x, obj.y);
         removed.add(obj);
@@ -1150,24 +1195,33 @@ function updateObjects(dt, scrollSpeed, stats) {
         }
       } else if (obj.type === "enemy") {
         if (canStomp(obj) || isInvincible()) {
-          defeatEnemy(obj);
-          removed.add(obj);
-        } else {
-          damagePlayer();
-          obj.x -= 85;
-        }
-      } else if (obj.type === "boss") {
-        if (canStomp(obj) || isInvincible()) {
-          obj.hp -= isInvincible() ? 2 : 1;
-          player.vy = run.gravityFlip ? 480 : -480;
-          burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#ef6b65", 14);
-          gainCombo(3);
-          if (obj.hp <= 0) {
-            defeatBoss(obj);
+          if (damageEnemy(obj, isInvincible() ? 2 : 1)) {
+            defeatEnemy(obj);
             removed.add(obj);
           }
         } else {
-          damagePlayer();
+          damagePlayer({ source: obj });
+          obj.x -= 85;
+        }
+      } else if (obj.type === "boss") {
+        if (run.dashTimer > 0) {
+          if (obj.hitCooldown <= 0 && damageEnemy(obj, 1)) {
+            defeatBoss(obj);
+            removed.add(obj);
+          }
+          obj.hitCooldown = Math.max(obj.hitCooldown, 0.72);
+          player.vy = run.gravityFlip ? 360 : -360;
+          burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#f2b84b", 10);
+        } else if (canStomp(obj) || run.skillShield > 0 || player.invulnerable > 0.05) {
+          if (damageEnemy(obj, run.skillShield > 0 ? 2 : 1)) {
+            defeatBoss(obj);
+            removed.add(obj);
+          }
+          player.vy = run.gravityFlip ? 480 : -480;
+          burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#ef6b65", 14);
+          gainCombo(3);
+        } else {
+          damagePlayer({ source: obj });
           obj.x -= 90;
         }
       }
@@ -1175,6 +1229,120 @@ function updateObjects(dt, scrollSpeed, stats) {
   }
 
   objects = objects.filter((obj) => obj.x > -220 && !removed.has(obj));
+}
+
+function damageEnemy(obj, amount = 1) {
+  if (obj.hitCooldown > 0) return false;
+  if (obj.armor > 0) {
+    obj.armor -= 1;
+    obj.hitCooldown = 0.28;
+    burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#d7b878", 8);
+    return false;
+  }
+  if (obj.shield > 0) {
+    obj.shield -= 1;
+    obj.hitCooldown = 0.38;
+    burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#48bde7", 10);
+    return false;
+  }
+  obj.hp = (obj.hp || 1) - amount;
+  obj.hitCooldown = 0.22;
+  return obj.hp <= 0;
+}
+
+function updateEnemyTrait(obj, dt, playerRect) {
+  const dx = (playerRect.x + playerRect.w / 2) - (obj.x + obj.w / 2);
+  const dy = (playerRect.y + playerRect.h / 2) - (obj.y + obj.h / 2);
+  const distance = Math.hypot(dx, dy);
+
+  if (obj.trait === "frostAura" && distance < 135) {
+    run.chillTimer = Math.max(run.chillTimer, obj.type === "boss" ? 1.6 : 0.85);
+  }
+  if (obj.trait === "voidPull" && distance < 190) {
+    obj.x -= 34 * dt;
+    player.vy += Math.sign(dy || 1) * 70 * dt;
+  }
+  if (obj.trait === "gravityPulse") {
+    obj.pulseTimer = (obj.pulseTimer || 1.6) - dt;
+    if (distance < 120 && obj.pulseTimer <= 0) {
+      run.gravityFlip = !run.gravityFlip;
+      player.vy *= -0.25;
+      obj.pulseTimer = obj.type === "boss" ? 4.5 : 3.2;
+      logEvent("GRAVITY PULSE");
+    }
+  }
+  if (obj.trait === "regen" && obj.hp && obj.maxHp && obj.hp < obj.maxHp) {
+    obj.regenTimer = (obj.regenTimer || 1.5) - dt;
+    if (obj.regenTimer <= 0) {
+      obj.hp = Math.min(obj.maxHp, obj.hp + 1);
+      obj.regenTimer = obj.type === "boss" ? 2.4 : 3.5;
+    }
+  }
+  if (obj.trait === "phase") {
+    obj.phaseTimer = (obj.phaseTimer || 0) + dt;
+    obj.phased = Math.sin(obj.phaseTimer * 2.4) > 0.62;
+  }
+  if (obj.type === "boss") {
+    updateBossGimmick(obj, dt, distance);
+  }
+}
+
+function updateBossGimmick(obj, dt, distance) {
+  obj.bossTimer = (obj.bossTimer || 2) - dt;
+  if (obj.bossGimmick === "sandBurrow") {
+    obj.y = groundY - obj.h - Math.abs(Math.sin(performance.now() / 620)) * 22;
+    if (obj.bossTimer <= 0) {
+      obj.phased = true;
+      obj.hitCooldown = Math.max(obj.hitCooldown, 0.75);
+      obj.bossTimer = 4.4;
+    } else if (obj.bossTimer < 3.4) {
+      obj.phased = false;
+    }
+  }
+  if (obj.bossGimmick === "frostPrison" && distance < 210) {
+    run.chillTimer = Math.max(run.chillTimer, 1.2);
+  }
+  if (obj.bossGimmick === "lavaMeteor" && obj.bossTimer <= 0) {
+    objects.push({ type: "obstacle", kind: "meteor", x: obj.x - 90, y: groundY - random(130, 250), w: 34, h: 34, color: "#ef6b65" });
+    obj.bossTimer = 3.1;
+  }
+  if (obj.bossGimmick === "laserGrid" && obj.bossTimer <= 0) {
+    objects.push({ type: "obstacle", kind: "laser", x: obj.x - 80, y: groundY - 128, w: 24, h: 88, color: "#ef6b65" });
+    obj.bossTimer = 3.6;
+  }
+  if (obj.bossGimmick === "gravitySurge" && obj.bossTimer <= 0) {
+    run.gravityFlip = !run.gravityFlip;
+    player.vy *= -0.35;
+    obj.bossTimer = 5.2;
+    logEvent("BOSS GRAVITY SURGE");
+  }
+  if (obj.bossGimmick === "singularity" && distance < 250) {
+    player.vy += (run.gravityFlip ? -1 : 1) * 95 * dt;
+  }
+  if (obj.bossGimmick === "aetherRegen" && obj.hp < obj.maxHp) {
+    obj.regenTimer = (obj.regenTimer || 1.6) - dt;
+    if (obj.regenTimer <= 0) {
+      obj.hp = Math.min(obj.maxHp, obj.hp + 1);
+      obj.regenTimer = 1.8;
+    }
+  }
+  if (obj.bossGimmick === "infinitePhase") {
+    obj.phaseTimer = (obj.phaseTimer || 0) + dt;
+    obj.phased = Math.sin(obj.phaseTimer * 3) > 0.45;
+  }
+  if (obj.bossGimmick === "slimeSplit" && obj.bossTimer <= 0 && (obj.spawnedMinions || 0) < 2) {
+    objects.push(applyEnemyTraits({
+      type: "enemy",
+      kind: "slime",
+      x: obj.x - 48,
+      y: groundY - 30,
+      w: 30,
+      h: 30,
+      color: "#75d05e"
+    }, obj.areaIndex || 0));
+    obj.spawnedMinions = (obj.spawnedMinions || 0) + 1;
+    obj.bossTimer = 4.2;
+  }
 }
 
 function updateParticles(dt) {
@@ -1286,7 +1454,7 @@ function spawnObstacleOrEnemy(x, area) {
 
   if (kind === "slime" || kind === "bird" || kind === "bomb") {
     const airborne = kind === "bird";
-    objects.push({
+    objects.push(applyEnemyTraits({
       type: "enemy",
       kind,
       x,
@@ -1294,7 +1462,7 @@ function spawnObstacleOrEnemy(x, area) {
       w: airborne ? 42 : 40,
       h: airborne ? 28 : 38,
       color: kind === "bird" ? area.accent : kind === "bomb" ? "#30333c" : "#75d05e"
-    });
+    }, areaIndex()));
     return;
   }
 
@@ -1321,6 +1489,26 @@ function spawnObstacleOrEnemy(x, area) {
     h: height,
     color: area.obstacle
   });
+}
+
+function applyEnemyTraits(obj, index) {
+  const trait = areaEnemyTraits[index]?.id || "plain";
+  obj.areaIndex = index;
+  obj.trait = trait;
+  obj.hitCooldown = obj.hitCooldown || 0;
+  if (trait === "sandArmor") obj.armor = obj.type === "boss" ? 2 : 1;
+  if (trait === "energyShield") obj.shield = obj.type === "boss" ? 2 : 1;
+  if (trait === "gravityPulse") obj.pulseTimer = random(1.2, 2.8);
+  if (trait === "regen") {
+    obj.hp = obj.hp || (obj.type === "boss" ? obj.maxHp : 2);
+    obj.maxHp = Math.max(obj.maxHp || obj.hp, obj.hp);
+    obj.regenTimer = 1.5;
+  }
+  if (trait === "phase") {
+    obj.phaseTimer = Math.random() * Math.PI * 2;
+    obj.phased = false;
+  }
+  return obj;
 }
 
 function spawnChest(x) {
@@ -1356,19 +1544,24 @@ function spawnItem(x) {
 
 function spawnBoss() {
   const area = currentArea();
-  const hp = 3 + areaIndex() + Math.floor(run.distance / 10000);
-  objects.push({
+  const index = areaIndex();
+  const hp = 3 + index + Math.floor(run.distance / 10000);
+  objects.push(applyEnemyTraits({
     type: "boss",
-    kind: bossName(areaIndex()),
+    kind: bossName(index),
     x: canvasWidth + 160,
     y: groundY - 100,
     w: 92,
     h: 100,
     hp,
     maxHp: hp,
-    color: area.accent
-  });
-  logEvent(`BOSS ${bossName(areaIndex()).toUpperCase()}`);
+    color: area.accent,
+    areaIndex: index,
+    bossGimmick: bossGimmicks[index]?.id || "slimeSplit",
+    bossTimer: 1.8,
+    hitCooldown: 0
+  }, index));
+  logEvent(`BOSS ${bossName(index).toUpperCase()}`);
 }
 
 function collectCoin(value, x, y) {
@@ -1472,14 +1665,21 @@ function defeatBoss(obj) {
 
 function damagePlayer(options = {}) {
   if (!options.force && (player.invulnerable > 0 || run.skillShield > 0 || run.dashTimer > 0)) return;
-  run.hp -= 1;
+  const damage = incomingDamageAmount(options);
+  run.hp -= damage;
   run.combo = 0;
   player.invulnerable = 1.25;
   player.damageTimer = 0.45;
   restartPlayerAnimation("damage");
   burst(player.x + player.w / 2, player.y + player.h / 2, "#ef6b65", 12);
   if (run.hp <= 0) endRun();
-  else logEvent(`DAMAGE HP ${run.hp}`);
+  else logEvent(`DAMAGE -${damage} HP ${run.hp}`);
+}
+
+function incomingDamageAmount(options = {}) {
+  const areaDamage = 1 + Math.floor(areaIndexForDistance(run.distance || 0) / 3);
+  const traitBonus = options.source?.trait === "burning" ? 1 : 0;
+  return Math.max(1, Math.ceil(options.amount || areaDamage) + traitBonus);
 }
 
 function clearTemporaryEffects() {
@@ -1487,6 +1687,7 @@ function clearTemporaryEffects() {
   run.skillShield = 0;
   run.giantTimer = 0;
   run.timeStop = 0;
+  run.chillTimer = 0;
   run.gravityFlip = false;
   player.jumpsUsed = 0;
   player.slideTimer = 0;
@@ -1536,6 +1737,7 @@ function resetRun() {
   run.skillShield = 0;
   run.giantTimer = 0;
   run.timeStop = 0;
+  run.chillTimer = 0;
   run.nextSpawn = 0.4;
   run.nextBossMark = Math.floor(startDistance / 1000) * 1000 + 1000;
   run.event = null;
@@ -1890,25 +2092,31 @@ function factoryOutputLabel(outputType) {
   }[outputType] || outputType;
 }
 
-function visibleFactoryDefs() {
+function visibleFactoryDefs(category = factoryView) {
   const visible = new Set();
-  for (const def of factoryDefs) {
+  const categoryDefs = factoryDefs
+    .filter((def) => def.category === category)
+    .sort((a, b) => a.unlockOrder - b.unlockOrder);
+  for (const def of categoryDefs) {
     const level = state.factories[def.id] || 0;
     const cost = upgradeCost(def, level);
-    if (level > 0 || (state[def.currency] || 0) >= cost) {
+    if (level > 0 || (isFactoryVisibleCandidate(def, categoryDefs) && (state[def.currency] || 0) >= cost)) {
       visible.add(def.id);
     }
   }
-  for (const category of ["coins", "gems", "research", "runner"]) {
-    const next = factoryDefs
-      .filter((def) => def.category === category)
-      .sort((a, b) => a.unlockOrder - b.unlockOrder)
-      .find((def) => !visible.has(def.id));
-    if (next) visible.add(next.id);
-  }
-  return factoryDefs
+  const next = categoryDefs.find((def) => !visible.has(def.id) && isFactoryVisibleCandidate(def, categoryDefs));
+  if (next) visible.add(next.id);
+  return categoryDefs
     .filter((def) => visible.has(def.id))
     .sort((a, b) => a.unlockOrder - b.unlockOrder);
+}
+
+function isFactoryVisibleCandidate(def, categoryDefs) {
+  if (def.areaIndex > areaIndexForDistance(state.currentPrestigeDistance || 0)) return false;
+  const index = categoryDefs.findIndex((entry) => entry.id === def.id);
+  if (index <= 0) return true;
+  const previous = categoryDefs[index - 1];
+  return (state.factories[previous.id] || 0) >= 1;
 }
 
 function upgradeCost(def, level) {
@@ -1995,14 +2203,38 @@ function spend(currency, amount) {
 function openChest(chestId) {
   const chest = state.chests.find((entry) => entry.id === chestId);
   if (!chest || chest.remaining > 0) return;
+  openChestReward(chest);
+}
+
+function openChestReward(chest) {
   const index = state.chests.indexOf(chest);
-  state.chests.splice(index, 1);
+  if (index >= 0) state.chests.splice(index, 1);
   const item = generateEquipment(chest.type);
   const coinReward = directCoinAmount(chestCoinReward(chest.type));
   state.coins += coinReward;
+  state.lifetimeCoins += coinReward;
   addEquipment(item);
   state.stats.chestsOpened += 1;
   logEvent(`${item.rarity}${item.slot} GET`);
+}
+
+function openAllChests() {
+  const readyChests = state.chests.filter((chest) => chest.remaining <= 0);
+  if (readyChests.length === 0) return;
+  let coinReward = 0;
+  const items = [];
+  for (const chest of readyChests) {
+    const index = state.chests.indexOf(chest);
+    if (index >= 0) state.chests.splice(index, 1);
+    const item = generateEquipment(chest.type);
+    coinReward += directCoinAmount(chestCoinReward(chest.type));
+    items.push(item);
+  }
+  state.coins += coinReward;
+  state.lifetimeCoins += coinReward;
+  for (const item of items) addEquipment(item);
+  state.stats.chestsOpened += readyChests.length;
+  logEvent(`CHESTS OPENED x${readyChests.length}`);
 }
 
 function generateEquipment(chestType) {
@@ -2092,11 +2324,19 @@ function equipItem(itemId) {
 function discardEquipment(itemId) {
   const item = state.equipment.find((entry) => entry.id === itemId);
   if (!item) return;
+  const refund = directCoinAmount(equipmentDiscardValue(item));
+  state.coins += refund;
+  state.lifetimeCoins += refund;
   state.equipment = state.equipment.filter((entry) => entry.id !== itemId);
   if (state.equipped[item.slot] === itemId) {
     delete state.equipped[item.slot];
   }
-  logEvent(`${item.name} DISCARDED`);
+  logEvent(`${item.name} DISCARDED +${formatNumber(refund)} COIN`);
+}
+
+function equipmentDiscardValue(item) {
+  const rarity = rarityRank(item.rarity);
+  return Math.max(10, Math.ceil(18 * rarity * rarity + Number(item.value || 0) * 120));
 }
 
 function ensureMissions() {
@@ -2321,6 +2561,14 @@ function renderFactory() {
   const gemPs = factoryOutputPerSecond("gems") * stats.idleMultiplier;
   const researchPs = factoryOutputPerSecond("research") * stats.idleMultiplier;
   const visibleFactories = visibleFactoryDefs();
+  const factoryFilters = [
+    { id: "coins", label: "コイン工場系" },
+    { id: "gems", label: "鉱山系" },
+    { id: "research", label: "研究所系" },
+    { id: "runner", label: "ロボット工場系" }
+  ].map((filter) => (
+    `<button class="${factoryView === filter.id ? "active" : ""}" data-action="factoryFilter" data-id="${filter.id}" type="button">${filter.label}</button>`
+  )).join("");
   const html = [
     panelHead("放置施設", `放置倍率 x${stats.idleMultiplier.toFixed(2)} / 直接コイン x${stats.directCoinMultiplier.toFixed(3)}`),
     `<div class="summary-band">
@@ -2329,6 +2577,7 @@ function renderFactory() {
       <div><span>研究/秒</span><strong>${formatNumber(researchPs, 2)}</strong></div>
       <div><span>直接コイン倍率</span><strong>x${stats.directCoinMultiplier.toFixed(3)}</strong></div>
     </div>`,
+    `<div class="filter-row">${factoryFilters}</div>`,
     `<div class="list">`,
     ...visibleFactories.map((def) => {
       const level = state.factories[def.id] || 0;
@@ -2452,7 +2701,17 @@ function renderEquipment() {
 }
 
 function renderChestList(chests) {
+  const readyCount = chests.filter((chest) => chest.remaining <= 0).length;
+  const openAll = `<div class="row-item">
+    <div>
+      <h3>開封可能な宝箱を全開封</h3>
+      <p>待機時間が終わった宝箱 ${readyCount}個をまとめて開封します。</p>
+      <div class="meta"><span class="pill">宝箱 ${chests.length}</span><span class="pill">開封可能 ${readyCount}</span></div>
+    </div>
+    <button class="buy-button" data-action="openAllChests" data-id="all" ${readyCount <= 0 ? "disabled" : ""}>全開封</button>
+  </div>`;
   return `<div class="list">
+    ${chests.length ? openAll : ""}
     ${chests.length ? chests.map((chest) => {
       const def = chestDefs[chest.type];
       return rowItem({
@@ -2965,6 +3224,8 @@ function drawObstacle(obj) {
 }
 
 function drawEnemy(obj) {
+  ctx.save();
+  if (obj.phased) ctx.globalAlpha = 0.38;
   ctx.fillStyle = obj.color;
   if (obj.kind === "bird") {
     ctx.beginPath();
@@ -2981,9 +3242,17 @@ function drawEnemy(obj) {
     ctx.fillRect(obj.x + 11, obj.y + 12, 5, 5);
     ctx.fillRect(obj.x + obj.w - 16, obj.y + 12, 5, 5);
   }
+  if (obj.armor > 0 || obj.shield > 0) {
+    ctx.strokeStyle = obj.shield > 0 ? "#48bde7" : "#d7b878";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
+  }
+  ctx.restore();
 }
 
 function drawBoss(obj) {
+  ctx.save();
+  if (obj.phased) ctx.globalAlpha = 0.42;
   ctx.fillStyle = obj.color;
   roundRect(obj.x, obj.y, obj.w, obj.h, 8);
   ctx.fill();
@@ -2994,6 +3263,12 @@ function drawBoss(obj) {
   ctx.fillRect(obj.x, obj.y - 12, obj.w, 6);
   ctx.fillStyle = "#ef6b65";
   ctx.fillRect(obj.x, obj.y - 12, obj.w * Math.max(0, obj.hp / obj.maxHp), 6);
+  if (obj.armor > 0 || obj.shield > 0) {
+    ctx.strokeStyle = obj.shield > 0 ? "#48bde7" : "#d7b878";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(obj.x - 3, obj.y - 3, obj.w + 6, obj.h + 6);
+  }
+  ctx.restore();
 }
 
 function drawParticles() {
