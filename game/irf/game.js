@@ -13,18 +13,23 @@ const MIN_JUMP_HOLD_SECONDS = 0.1;
 const BASE_JUMP_VELOCITY = 380;
 const JUMP_UPGRADE_VELOCITY = 34;
 const BASE_UPGRADE_CAP = 5;
+const PRESTIGE_COIN_REQUIREMENT = 10000000;
+const CHEST_DISTANCE_INTERVAL = 500;
+const HAZARD_MIN_GAP = 190;
+const ITEM_MIN_GAP = 960;
+const FINAL_BOSS_OFFSET = 100;
 
 const upgradeDefs = [
-  { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${Math.round(lv * 2)}%` },
+  { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${(lv * 1.2).toFixed(1)}%` },
   { id: "jump", name: "ジャンプ", base: 15, growth: 1.85, currency: "coins", effect: (lv) => `跳躍 +${Math.round(lv * 4)}%` },
   { id: "hp", name: "HP", base: 50, growth: 2.1, currency: "coins", effect: (lv) => `最大HP ${1 + lv}` },
-  { id: "coin", name: "コイン倍率", base: 25, growth: 2, currency: "coins", effect: (lv) => `獲得 +${Math.round(lv * 15)}%` },
+  { id: "coin", name: "コイン倍率", base: 25, growth: 2, currency: "coins", effect: (lv) => `獲得 +${Math.round(lv * 8)}%` },
   { id: "magnet", name: "磁石", base: 80, growth: 1.95, currency: "coins", effect: (lv) => `吸収範囲 +${lv * 14}` },
   { id: "dash", name: "ダッシュ", base: 120, growth: 2.05, currency: "coins", effect: (lv) => `持続 +${(lv * 0.18).toFixed(1)}秒` },
   { id: "regen", name: "自動回復", base: 200, growth: 2.15, currency: "coins", effect: (lv) => lv ? `${Math.max(10, 32 - lv * 2)}秒ごと` : "未開放" },
-  { id: "combo", name: "コンボ倍率", base: 160, growth: 2, currency: "coins", effect: (lv) => `上限 x${(2 + lv * 0.15).toFixed(2)}` },
-  { id: "chest", name: "宝箱率", base: 300, growth: 2.05, currency: "coins", effect: (lv) => `出現 +${Math.round(lv * 3)}%` },
-  { id: "item", name: "アイテム出現率", base: 250, growth: 2.05, currency: "coins", effect: (lv) => `出現 +${Math.round(lv * 4)}%` }
+  { id: "combo", name: "コンボ倍率", base: 160, growth: 2, currency: "coins", effect: (lv) => `上限 x${(2 + lv * 0.08).toFixed(2)}` },
+  { id: "chest", name: "宝箱品質", base: 300, growth: 2.05, currency: "coins", effect: (lv) => `高レア +${(lv * 0.4).toFixed(1)}%` },
+  { id: "item", name: "アイテム出現率", base: 250, growth: 2.05, currency: "coins", effect: (lv) => `出現 +${(lv * 2).toFixed(1)}%` }
 ];
 
 const factoryAreaTiers = [
@@ -171,20 +176,29 @@ const playerAnimationDefs = {
 };
 
 const chestDefs = {
-  wood: { name: "木", seconds: 30, color: "#a97942", weight: 56 },
-  silver: { name: "銀", seconds: 300, color: "#aeb7c2", weight: 28 },
-  gold: { name: "金", seconds: 1800, color: "#e7b84d", weight: 12 },
-  rainbow: { name: "虹", seconds: 28800, color: "#b98cff", weight: 3 },
-  god: { name: "神", seconds: 28800, color: "#fff1a5", weight: 1 }
+  wood: { name: "木", seconds: 30, color: "#a97942", weight: 76 },
+  silver: { name: "銀", seconds: 300, color: "#aeb7c2", weight: 20 },
+  gold: { name: "金", seconds: 1800, color: "#e7b84d", weight: 3.3 },
+  rainbow: { name: "虹", seconds: 28800, color: "#b98cff", weight: 0.6 },
+  god: { name: "神", seconds: 28800, color: "#fff1a5", weight: 0.1 }
 };
 
 const rarityDefs = [
-  { id: "N", rank: 1, colorClass: "rarity-n", weight: 50 },
+  { id: "N", rank: 1, colorClass: "rarity-n", weight: 62 },
   { id: "R", rank: 2, colorClass: "rarity-r", weight: 25 },
-  { id: "SR", rank: 3, colorClass: "rarity-sr", weight: 14 },
-  { id: "SSR", rank: 4, colorClass: "rarity-ssr", weight: 7 },
-  { id: "UR", rank: 5, colorClass: "rarity-ur", weight: 3 },
-  { id: "LR", rank: 6, colorClass: "rarity-lr", weight: 1 }
+  { id: "SR", rank: 3, colorClass: "rarity-sr", weight: 9 },
+  { id: "SSR", rank: 4, colorClass: "rarity-ssr", weight: 3 },
+  { id: "UR", rank: 5, colorClass: "rarity-ur", weight: 0.8 },
+  { id: "LR", rank: 6, colorClass: "rarity-lr", weight: 0.2 }
+];
+
+const activeSkillDefs = [
+  { id: "dash", name: "ダッシュ", cooldown: 10 },
+  { id: "shield", name: "無敵", cooldown: 14 },
+  { id: "giant", name: "巨大化", cooldown: 18 },
+  { id: "magnet", name: "磁石", cooldown: 12 },
+  { id: "time", name: "時間停止", cooldown: 18 },
+  { id: "doubleJump", name: "2段ジャンプ", cooldown: 10 }
 ];
 
 const slots = ["頭", "靴", "胴", "アクセサリー"];
@@ -255,7 +269,7 @@ const englishTextPairs = [
   ["宝箱から装備を獲得できます。", "Open chests to get equipment."],
   ["待機時間が終わった宝箱", "Ready chests"],
   ["開封可能な宝箱を全開封", "Open All Ready Chests"],
-  ["100万コインで転生", "Prestige at 1,000,000 coins"],
+  ["1000万コインで転生", "Prestige at 10,000,000 coins"],
   ["リワード: 宝箱即開封", "Reward: Instant Chest"],
   ["リワード: コイン2倍", "Reward: Coin x2"],
   ["リワード: 無料ガチャ", "Reward: Free Gacha"],
@@ -281,6 +295,8 @@ const englishTextPairs = [
   ["自動回復", "Auto Heal"],
   ["宝箱速度", "Chest Speed"],
   ["宝箱率", "Chest Rate"],
+  ["宝箱品質", "Chest Quality"],
+  ["高レア", "High Rarity"],
   ["広告倍率", "Ad Multiplier"],
   ["獲得コイン", "Coin Gain"],
   ["レア率", "Rare Rate"],
@@ -293,6 +309,14 @@ const englishTextPairs = [
   ["神気封印", "Aether Seal"],
   ["位相アンカー", "Phase Anchor"],
   ["研究ツリー", "Research Tree"],
+  ["アクティブスキル", "Active Skill"],
+  ["セットしたスキルが画面下のスキルボタンで発動します。", "The selected skill fires from the skill button below."],
+  ["現在:", "Current:"],
+  ["クールダウン", "Cooldown"],
+  ["無敵", "Invincible"],
+  ["巨大化", "Giant"],
+  ["時間停止", "Time Stop"],
+  ["2段ジャンプ", "Double Jump"],
   ["通常強化", "Upgrades"],
   ["放置施設", "Idle Facilities"],
   ["放置倍率", "Idle Multiplier"],
@@ -322,7 +346,6 @@ const englishTextPairs = [
   ["全開封", "Open All"],
   ["装備中", "Equipped"],
   ["未装備", "Not Equipped"],
-  ["現在:", "Current:"],
   ["任務と実績", "Missions & Achievements"],
   ["達成済み", "Completed"],
   ["未達成", "Not Completed"],
@@ -484,6 +507,12 @@ const run = {
   chillTimer: 0,
   nextSpawn: 0.4,
   nextBossMark: 1000,
+  nextChestMark: CHEST_DISTANCE_INTERVAL,
+  bossBattle: false,
+  bossAreaIndex: -1,
+  bossAttackTimer: 0,
+  bossChargeTimer: 0,
+  bossRetreating: false,
   event: null,
   eventTimer: 0,
   eventCooldown: 50,
@@ -611,6 +640,7 @@ function defaultState() {
     totalDistance: 0,
     bestDistance: 0,
     currentPrestigeDistance: 0,
+    areaBossClears: {},
     lifetimeCoins: 0,
     lifetimeEnemies: 0,
     lifetimeBosses: 0,
@@ -631,7 +661,8 @@ function defaultState() {
       coinDouble: 0
     },
     settings: {
-      bgmEnabled: true
+      bgmEnabled: true,
+      activeSkill: "dash"
     },
     stats: {
       jumps: 0,
@@ -695,6 +726,7 @@ function loadState() {
       merged.currentPrestigeDistance = merged.bestDistance || 0;
     }
     normalizeResearchTree(merged);
+    normalizeAreaBossClears(merged);
     enforceLevelCaps(merged);
     return merged;
   } catch (error) {
@@ -712,6 +744,16 @@ function normalizeResearchTree(targetState = state) {
   for (const def of researchDefs) {
     if (targetState.researchTree[def.id] === undefined) {
       targetState.researchTree[def.id] = 0;
+    }
+  }
+}
+
+function normalizeAreaBossClears(targetState = state) {
+  targetState.areaBossClears = targetState.areaBossClears || {};
+  const distance = targetState.currentPrestigeDistance || 0;
+  for (let i = 0; i < areas.length - 1; i += 1) {
+    if (distance >= areas[i + 1].start) {
+      targetState.areaBossClears[i] = true;
     }
   }
 }
@@ -859,7 +901,7 @@ function bindEvents() {
 
   bindHoldButton(document.getElementById("jumpBtn"), startJumpHold, releaseJumpHold);
   bindHoldButton(document.getElementById("slideBtn"), startSlideHold, cancelSlideHold);
-  document.getElementById("dashBtn").addEventListener("click", dash);
+  document.getElementById("dashBtn").addEventListener("click", activateActiveSkill);
   document.getElementById("restartBtn").addEventListener("click", restartFromButton);
   document.getElementById("overlayRestart").addEventListener("click", restartFromButton);
   document.getElementById("saveBtn").addEventListener("click", saveState);
@@ -933,6 +975,7 @@ function bindEvents() {
     if (!button) return;
     const { action, id } = button.dataset;
     if (action === "buyUpgrade") buyUpgrade(id);
+    if (action === "selectActiveSkill") selectActiveSkill(id);
     if (action === "buyFactory") buyFactory(id);
     if (action === "factoryFilter") factoryView = id || "coins";
     if (action === "buyPermanent") buyPermanent(id);
@@ -1110,30 +1153,26 @@ function updateRun(dt) {
   const eventSpeed = run.event === "fever" ? 1.25 : 1;
   const chillMult = run.chillTimer > 0 ? 0.78 : 1;
   const stopped = run.timeStop > 0;
-  const speedMeters = stats.speed * dashMult * eventSpeed * chillMult;
-  const scrollSpeed = stopped ? 0 : speedMeters * 48;
+  const speedMeters = run.bossBattle ? 0 : stats.speed * dashMult * eventSpeed * chillMult;
+  const scrollSpeed = stopped || run.bossBattle ? 0 : speedMeters * 48;
 
-  run.distance += speedMeters * dt;
-  state.totalDistance += speedMeters * dt;
-  addMissionProgress("dailyDistance", speedMeters * dt);
-  addMissionProgress("weeklyDistance", speedMeters * dt);
+  if (run.bossBattle) {
+    updateBossBattle(dt);
+  } else {
+    advanceRunDistance(speedMeters * dt);
+    maybeSpawnScheduledChest();
 
-  run.nextBossMark = Math.max(run.nextBossMark, 1000);
-  if (run.distance >= run.nextBossMark) {
-    spawnBoss();
-    run.nextBossMark += 1000;
-  }
-
-  run.nextSpawn -= dt;
-  if (run.nextSpawn <= 0 && !stopped) {
-    spawnSegment(stats);
-    run.nextSpawn = random(0.5, Math.max(0.95, 1.35 - Math.min(0.55, stats.speed / 42)));
+    run.nextSpawn -= dt;
+    if (run.nextSpawn <= 0 && !stopped) {
+      spawnSegment(stats);
+      run.nextSpawn = random(0.6, Math.max(1.05, 1.48 - Math.min(0.45, stats.speed / 48)));
+    }
   }
 
   updatePlayer(dt, stats);
   updateObjects(dt, scrollSpeed, stats);
   updateParticles(dt);
-  updateEvent(dt);
+  if (!run.bossBattle) updateEvent(dt);
 
   if (run.dashTimer > 0) run.dashTimer -= dt;
   if (run.dashCooldown > 0) run.dashCooldown -= dt;
@@ -1155,6 +1194,34 @@ function updateRun(dt) {
 
   state.bestDistance = Math.max(state.bestDistance, run.distance);
   state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
+}
+
+function advanceRunDistance(delta) {
+  if (delta <= 0) return;
+  const area = areaIndexForDistance(run.distance);
+  const bossMark = nextAreaBossDistance(area);
+  const shouldFight = Number.isFinite(bossMark) && !isAreaBossCleared(area);
+  const nextDistance = run.distance + delta;
+  const appliedDelta = shouldFight && nextDistance >= bossMark
+    ? Math.max(0, bossMark - run.distance)
+    : delta;
+  if (appliedDelta > 0) {
+    run.distance += appliedDelta;
+    state.totalDistance += appliedDelta;
+    addMissionProgress("dailyDistance", appliedDelta);
+    addMissionProgress("weeklyDistance", appliedDelta);
+  }
+  if (shouldFight && nextDistance >= bossMark) {
+    run.distance = bossMark;
+    startAreaBossBattle(area);
+  }
+}
+
+function maybeSpawnScheduledChest() {
+  while (!run.bossBattle && run.distance >= run.nextChestMark) {
+    spawnChest(canvasWidth + 260);
+    run.nextChestMark += CHEST_DISTANCE_INTERVAL;
+  }
 }
 
 function updatePlayer(dt, stats) {
@@ -1189,9 +1256,15 @@ function updateObjects(dt, scrollSpeed, stats) {
   const removed = new Set();
 
   for (const obj of objects) {
-    obj.x -= scrollSpeed * dt;
+    const frozen = run.timeStop > 0 && obj.type !== "boss";
+    if (!frozen) {
+      obj.x += (obj.vx || 0) * dt;
+      obj.y += (obj.vy || 0) * dt;
+      if (obj.gravity) obj.vy = (obj.vy || 0) + obj.gravity * dt;
+      obj.x -= scrollSpeed * dt;
+    }
     if (obj.hitCooldown > 0) obj.hitCooldown -= dt;
-    if (obj.type === "enemy" || obj.type === "boss") {
+    if (!frozen && (obj.type === "enemy" || obj.type === "boss")) {
       updateEnemyTrait(obj, dt, playerRect);
     }
 
@@ -1362,11 +1435,11 @@ function updateBossGimmick(obj, dt, distance) {
     run.chillTimer = Math.max(run.chillTimer, 1.2 * researchReduction("frostInsulation"));
   }
   if (obj.bossGimmick === "lavaMeteor" && obj.bossTimer <= 0) {
-    objects.push({ type: "obstacle", kind: "meteor", x: obj.x - 90, y: groundY - random(130, 250), w: 34, h: 34, color: "#ef6b65" });
+    objects.push({ type: "obstacle", kind: "meteor", bossAttack: run.bossBattle, x: obj.x - 90, y: groundY - random(130, 250), w: 34, h: 34, vx: run.bossBattle ? -120 : 0, vy: run.bossBattle ? 80 : 0, gravity: run.bossBattle ? 70 : 0, color: "#ef6b65" });
     obj.bossTimer = 3.1;
   }
   if (obj.bossGimmick === "laserGrid" && obj.bossTimer <= 0) {
-    objects.push({ type: "obstacle", kind: "laser", x: obj.x - 80, y: groundY - 128, w: 24, h: 88, color: "#ef6b65" });
+    objects.push({ type: "obstacle", kind: "laser", bossAttack: run.bossBattle, x: obj.x - 80, y: groundY - 128, w: 24, h: 88, vx: run.bossBattle ? -135 : 0, color: "#ef6b65" });
     obj.bossTimer = 3.6;
   }
   if (obj.bossGimmick === "gravitySurge" && obj.bossTimer <= 0) {
@@ -1395,10 +1468,12 @@ function updateBossGimmick(obj, dt, distance) {
     objects.push(applyEnemyTraits({
       type: "enemy",
       kind: "slime",
+      bossAttack: run.bossBattle,
       x: obj.x - 48,
       y: groundY - 30,
       w: 30,
       h: 30,
+      vx: run.bossBattle ? -115 : 0,
       color: "#75d05e"
     }, obj.areaIndex || 0));
     obj.spawnedMinions = (obj.spawnedMinions || 0) + 1;
@@ -1447,16 +1522,11 @@ function spawnSegment(stats) {
 
   if (run.event === "clearPath") return;
 
-  if (roll > 0.23 && roll < 0.74) {
+  if (roll > 0.23 && roll < 0.68) {
     spawnObstacleOrEnemy(baseX + random(120, 220), area);
   }
 
-  const chestChance = 0.035 + state.upgrades.chest * 0.003 + state.permanent.chest * 0.001;
-  if (Math.random() < chestChance || run.event === "chestRush") {
-    spawnChest(baseX + random(260, 380));
-  }
-
-  const itemChance = 0.04 + state.upgrades.item * 0.004;
+  const itemChance = 0.025 + state.upgrades.item * 0.002;
   if (Math.random() < itemChance) {
     spawnItem(baseX + random(180, 320));
   }
@@ -1504,6 +1574,7 @@ function spawnCoinLine(startX, arc) {
 }
 
 function spawnObstacleOrEnemy(x, area) {
+  if (!canSpawnHazardAt(x)) return false;
   const kind = weightedPick([
     { value: "crate", weight: 28 },
     { value: "spike", weight: 24 },
@@ -1524,7 +1595,7 @@ function spawnObstacleOrEnemy(x, area) {
       h: airborne ? 28 : 38,
       color: kind === "bird" ? area.accent : kind === "bomb" ? "#30333c" : "#75d05e"
     }, areaIndex()));
-    return;
+    return true;
   }
 
   if (kind === "laser") {
@@ -1537,7 +1608,7 @@ function spawnObstacleOrEnemy(x, area) {
       h: 78,
       color: "#ef6b65"
     });
-    return;
+    return true;
   }
 
   const height = kind === "spike" ? 42 : randomInt(44, 70);
@@ -1550,6 +1621,15 @@ function spawnObstacleOrEnemy(x, area) {
     h: height,
     color: area.obstacle
   });
+  return true;
+}
+
+function canSpawnHazardAt(x, gap = HAZARD_MIN_GAP) {
+  return !objects.some((obj) => isHazardObject(obj) && Math.abs(obj.x - x) < gap);
+}
+
+function isHazardObject(obj) {
+  return obj.type === "obstacle" || obj.type === "enemy" || obj.type === "boss";
 }
 
 function applyEnemyTraits(obj, index) {
@@ -1573,7 +1653,7 @@ function applyEnemyTraits(obj, index) {
 }
 
 function spawnChest(x) {
-  const chestType = weightedPick(Object.entries(chestDefs).map(([value, def]) => ({ value, weight: def.weight })));
+  const chestType = pickChestType();
   objects.push({
     type: "chest",
     chestType,
@@ -1584,7 +1664,17 @@ function spawnChest(x) {
   });
 }
 
+function pickChestType() {
+  const qualityBonus = state.upgrades.chest * 0.004 + state.permanent.rarity * 0.001;
+  return weightedPick(Object.entries(chestDefs).map(([value, def]) => {
+    const rank = ["wood", "silver", "gold", "rainbow", "god"].indexOf(value);
+    const bonus = rank > 0 ? 1 + qualityBonus * rank : 1;
+    return { value, weight: def.weight * bonus };
+  }));
+}
+
 function spawnItem(x) {
+  if (objects.some((obj) => obj.type === "item" && Math.abs(obj.x - x) < ITEM_MIN_GAP)) return false;
   const kind = weightedPick([
     { value: "dash", weight: 24 },
     { value: "shield", weight: 22 },
@@ -1601,28 +1691,142 @@ function spawnItem(x) {
     w: 26,
     h: 26
   });
+  return true;
 }
 
-function spawnBoss() {
-  const area = currentArea();
-  const index = areaIndex();
+function spawnBoss(index = areaIndex(), options = {}) {
+  const area = areas[index] || currentArea();
   const hp = 3 + index + Math.floor(run.distance / 10000);
-  objects.push(applyEnemyTraits({
+  const boss = applyEnemyTraits({
     type: "boss",
     kind: bossName(index),
-    x: canvasWidth + 160,
+    x: options.x ?? canvasWidth + 160,
     y: groundY - 100,
     w: 92,
     h: 100,
-    hp,
-    maxHp: hp,
+    hp: options.hp ?? hp,
+    maxHp: options.hp ?? hp,
     color: area.accent,
     areaIndex: index,
     bossGimmick: bossGimmicks[index]?.id || "slimeSplit",
     bossTimer: 1.8,
-    hitCooldown: 0
-  }, index));
+    hitCooldown: 0,
+    finalBoss: Boolean(options.finalBoss),
+    chargePhase: "approach"
+  }, index);
+  objects.push(boss);
   logEvent(`BOSS ${bossName(index).toUpperCase()}`);
+  return boss;
+}
+
+function startAreaBossBattle(index) {
+  if (run.bossBattle || isAreaBossCleared(index)) return;
+  run.bossBattle = true;
+  run.bossAreaIndex = index;
+  run.bossAttackTimer = 1.1;
+  run.bossChargeTimer = 2.4;
+  run.bossRetreating = false;
+  run.event = null;
+  run.eventTimer = 0;
+  run.gravityFlip = false;
+  run.nextSpawn = 999;
+  objects = [];
+  const hp = 6 + index * 2 + Math.floor((state.prestigeCount || 0) / 4);
+  spawnBoss(index, { finalBoss: true, x: canvasWidth + 90, hp });
+  restartPlayerAnimation("running");
+  logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
+}
+
+function updateBossBattle(dt) {
+  const boss = objects.find((obj) => obj.type === "boss" && obj.finalBoss);
+  if (!boss) {
+    run.bossBattle = false;
+    return;
+  }
+  const anchorX = canvasWidth - 172;
+  const attackX = player.x + 88;
+  run.bossChargeTimer -= dt;
+  if (run.bossChargeTimer <= 0) {
+    run.bossRetreating = !run.bossRetreating;
+    run.bossChargeTimer = run.bossRetreating ? 1.5 : random(2.3, 3.4);
+  }
+  const targetX = run.bossRetreating ? anchorX : attackX;
+  boss.x += (targetX - boss.x) * Math.min(1, dt * (run.bossRetreating ? 2.4 : 1.5));
+  boss.y = groundY - boss.h - Math.abs(Math.sin(performance.now() / 520)) * 12;
+
+  run.bossAttackTimer -= dt;
+  if (run.bossAttackTimer <= 0) {
+    spawnBossAttack(boss);
+    run.bossAttackTimer = Math.max(0.85, 1.7 - run.bossAreaIndex * 0.07);
+  }
+}
+
+function spawnBossAttack(boss) {
+  const index = boss.areaIndex || 0;
+  const pattern = index % 5;
+  if (pattern === 0) {
+    objects.push(applyEnemyTraits({
+      type: "enemy",
+      kind: "slime",
+      bossAttack: true,
+      x: boss.x - 42,
+      y: groundY - 32,
+      w: 32,
+      h: 32,
+      vx: -125 - index * 8,
+      color: "#75d05e"
+    }, index));
+  } else if (pattern === 1) {
+    objects.push({
+      type: "obstacle",
+      kind: "spike",
+      bossAttack: true,
+      x: boss.x - 38,
+      y: groundY - 42,
+      w: 46,
+      h: 42,
+      vx: -145 - index * 8,
+      color: boss.color
+    });
+  } else if (pattern === 2) {
+    objects.push(applyEnemyTraits({
+      type: "enemy",
+      kind: "bird",
+      bossAttack: true,
+      x: boss.x - 44,
+      y: groundY - 150,
+      w: 42,
+      h: 28,
+      vx: -155 - index * 8,
+      color: boss.color
+    }, index));
+  } else if (pattern === 3) {
+    objects.push({
+      type: "obstacle",
+      kind: "meteor",
+      bossAttack: true,
+      x: boss.x - 30,
+      y: groundY - 230,
+      w: 34,
+      h: 34,
+      vx: -110 - index * 6,
+      vy: 115,
+      gravity: 80,
+      color: "#ef6b65"
+    });
+  } else {
+    objects.push({
+      type: "obstacle",
+      kind: "laser",
+      bossAttack: true,
+      x: boss.x - 34,
+      y: groundY - 120,
+      w: 24,
+      h: 86,
+      vx: -130 - index * 7,
+      color: "#ef6b65"
+    });
+  }
 }
 
 function collectCoin(value, x, y) {
@@ -1681,11 +1885,8 @@ function activateItem(kind) {
     run.giantTimer = Math.max(run.giantTimer, 4);
     logEvent("GIANT MODE");
   } else if (kind === "magnet") {
-    player.invulnerable = Math.max(player.invulnerable, 0.8);
+    magnetBurst();
     logEvent("MAGNET BURST");
-    for (const obj of objects) {
-      if (obj.type === "coin" || obj.type === "rare") obj.x = Math.min(obj.x, player.x + random(20, 70));
-    }
   } else if (kind === "time") {
     run.timeStop = Math.max(run.timeStop, 2.5);
     logEvent("TIME STOP");
@@ -1715,12 +1916,38 @@ function defeatBoss(obj) {
   addMissionProgress("weeklyBoss", 1);
   gainXp(80 + areaIndex() * 16);
   addChest(weightedPick([
-    { value: "silver", weight: 55 },
-    { value: "gold", weight: 32 },
-    { value: "rainbow", weight: 10 },
-    { value: "god", weight: 3 }
+    { value: "silver", weight: 75 },
+    { value: "gold", weight: 22 },
+    { value: "rainbow", weight: 2.7 },
+    { value: "god", weight: 0.3 }
   ]));
+  if (obj.finalBoss) {
+    completeAreaBoss(obj.areaIndex || 0);
+  }
   logEvent(`BOSS CLEAR +${formatNumber(coinReward)} COIN`);
+}
+
+function completeAreaBoss(index) {
+  state.areaBossClears[index] = true;
+  run.bossBattle = false;
+  run.bossAreaIndex = -1;
+  run.bossAttackTimer = 0;
+  run.bossChargeTimer = 0;
+  run.bossRetreating = false;
+  const nextStart = areas[index + 1]?.start;
+  if (Number.isFinite(nextStart)) {
+    const gainedDistance = Math.max(0, nextStart - run.distance);
+    run.distance = nextStart;
+    state.totalDistance += gainedDistance;
+    addMissionProgress("dailyDistance", gainedDistance);
+    addMissionProgress("weeklyDistance", gainedDistance);
+    state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, nextStart);
+    run.nextBossMark = nextAreaBossDistance(index + 1);
+    run.nextChestMark = nextStart;
+  }
+  objects = objects.filter((entry) => entry.type !== "boss" && !entry.bossAttack);
+  player.invulnerable = Math.max(player.invulnerable, 1);
+  logEvent(`${localizedAreaName(areas[index])} CLEAR`);
 }
 
 function damagePlayer(options = {}) {
@@ -1802,7 +2029,13 @@ function resetRun() {
   run.timeStop = 0;
   run.chillTimer = 0;
   run.nextSpawn = 0.4;
-  run.nextBossMark = Math.floor(startDistance / 1000) * 1000 + 1000;
+  run.nextBossMark = nextAreaBossDistance(areaIndexForDistance(startDistance));
+  run.nextChestMark = Math.floor(startDistance / CHEST_DISTANCE_INTERVAL) * CHEST_DISTANCE_INTERVAL + CHEST_DISTANCE_INTERVAL;
+  run.bossBattle = false;
+  run.bossAreaIndex = -1;
+  run.bossAttackTimer = 0;
+  run.bossChargeTimer = 0;
+  run.bossRetreating = false;
   run.event = null;
   run.eventTimer = 0;
   run.eventCooldown = random(45, 85);
@@ -1923,15 +2156,69 @@ function cancelSlideHold() {
   player.slideTimer = 0;
 }
 
-function dash() {
+function selectActiveSkill(id) {
+  if (!activeSkillDefs.some((def) => def.id === id)) return;
+  state.settings.activeSkill = id;
+  logEvent(`${activeSkillName(id)} SET`);
+}
+
+function activeSkillName(id = state.settings.activeSkill) {
+  return activeSkillDefs.find((def) => def.id === id)?.name || "ダッシュ";
+}
+
+function activeSkillCooldown(id = state.settings.activeSkill) {
+  return activeSkillDefs.find((def) => def.id === id)?.cooldown || 10;
+}
+
+function activateActiveSkill() {
   musicScene = "run";
   unlockAudio();
   if (run.gameOver || run.dashCooldown > 0) return;
+  const skill = state.settings.activeSkill || "dash";
+  if (skill === "dash") {
+    activateDashSkill();
+  } else if (skill === "shield") {
+    run.skillShield = Math.max(run.skillShield, 3);
+    run.dashCooldown = activeSkillCooldown(skill);
+    logEvent("ACTIVE SHIELD");
+  } else if (skill === "giant") {
+    run.skillShield = Math.max(run.skillShield, 3.5);
+    run.giantTimer = Math.max(run.giantTimer, 4);
+    run.dashCooldown = activeSkillCooldown(skill);
+    logEvent("ACTIVE GIANT");
+  } else if (skill === "magnet") {
+    run.dashCooldown = activeSkillCooldown(skill);
+    magnetBurst();
+    logEvent("ACTIVE MAGNET");
+  } else if (skill === "time") {
+    run.timeStop = Math.max(run.timeStop, 2.5);
+    run.dashCooldown = activeSkillCooldown(skill);
+    logEvent("ACTIVE TIME STOP");
+  } else if (skill === "doubleJump") {
+    player.jumpsUsed = Math.max(0, player.jumpsUsed - 1);
+    run.dashCooldown = activeSkillCooldown(skill);
+    logEvent("ACTIVE DOUBLE JUMP");
+  }
+  updateHud();
+}
+
+function activateDashSkill() {
   const duration = 1.2 + state.upgrades.dash * 0.18;
   run.dashTimer = duration;
   run.dashCooldown = Math.max(7, 16 - state.upgrades.dash * 0.25);
   restartPlayerAnimation("dash");
   logEvent("DASH");
+}
+
+function dash() {
+  activateActiveSkill();
+}
+
+function magnetBurst() {
+  player.invulnerable = Math.max(player.invulnerable, 0.8);
+  for (const obj of objects) {
+    if (obj.type === "coin" || obj.type === "rare") obj.x = Math.min(obj.x, player.x + random(20, 70));
+  }
 }
 
 function restartPlayerAnimation(key) {
@@ -1943,14 +2230,14 @@ function getStats() {
   const eq = equipmentBonuses();
   const idleMultiplier = 1 + (eq.idle || 0);
   return {
-    speed: (5 * (1 + state.upgrades.speed * 0.02) * (1 + state.permanent.speed * 0.02) * (1 + (eq.speed || 0))),
+    speed: (5 * (1 + state.upgrades.speed * 0.012) * (1 + state.permanent.speed * 0.02) * (1 + (eq.speed || 0))),
     jumpPower: (1 + state.upgrades.jump * 0.04 + (eq.jump || 0)),
     equipmentJump: (eq.jump || 0) * BASE_JUMP_VELOCITY,
     maxHp: 1 + state.upgrades.hp + Math.floor(eq.hp || 0),
-    coinMultiplier: (1 + state.upgrades.coin * 0.15) * (1 + state.permanent.coin * 0.05) * (1 + (eq.coin || 0)),
+    coinMultiplier: (1 + state.upgrades.coin * 0.08) * (1 + state.permanent.coin * 0.05) * (1 + (eq.coin || 0)),
     directCoinMultiplier: 1 + runnerDirectCoinBonus(),
     magnetRadius: 44 + state.upgrades.magnet * 14,
-    maxCombo: 2 + state.upgrades.combo * 0.15,
+    maxCombo: 2 + state.upgrades.combo * 0.08,
     regenEvery: state.upgrades.regen > 0 ? Math.max(10, 32 - state.upgrades.regen * 2) : 0,
     idleMultiplier
   };
@@ -2265,8 +2552,8 @@ function buyResearch(id) {
 }
 
 function prestigeGain() {
-  if (state.coins < 1000000) return 0;
-  const coinPart = Math.floor(Math.sqrt(state.coins / 1000000));
+  if (state.coins < PRESTIGE_COIN_REQUIREMENT) return 0;
+  const coinPart = Math.floor(Math.sqrt(state.coins / PRESTIGE_COIN_REQUIREMENT));
   const distancePart = Math.floor(state.bestDistance / 25000);
   return Math.max(1, coinPart + distancePart);
 }
@@ -2280,6 +2567,7 @@ function prestige() {
   state.gems = 0;
   state.research = 0;
   state.currentPrestigeDistance = 0;
+  state.areaBossClears = {};
   state.upgrades = objectFromDefs(upgradeDefs);
   state.equipment = [];
   state.equipped = {};
@@ -2336,10 +2624,10 @@ function openAllChests() {
 }
 
 function generateEquipment(chestType) {
-  const typeBoost = { wood: 0, silver: 8, gold: 18, rainbow: 34, god: 50 }[chestType] || 0;
+  const typeBoost = { wood: 0, silver: 1.5, gold: 4, rainbow: 8, god: 12 }[chestType] || 0;
   const rarity = weightedPick(rarityDefs.map((rarityDef) => ({
     value: rarityDef,
-    weight: Math.max(1, rarityDef.weight + typeBoost * (rarityDef.rank - 2))
+    weight: Math.max(0.1, rarityDef.weight + typeBoost * Math.max(0, rarityDef.rank - 2))
   })));
   const slot = slots[randomInt(0, slots.length - 1)];
   const stat = weightedPick([
@@ -2555,7 +2843,6 @@ function startRandomEvent() {
     { value: "coinRain", weight: 18 },
     { value: "meteor", weight: 12 },
     { value: "fever", weight: 16 },
-    { value: "chestRush", weight: 12 },
     { value: "gravity", weight: 11 },
     { value: "clearPath", weight: 15 },
     { value: "coin3", weight: 16 }
@@ -2572,7 +2859,7 @@ function spawnMeteorWave() {
     objects.push({
       type: "obstacle",
       kind: "meteor",
-      x: canvasWidth + 150 + i * 120,
+      x: canvasWidth + 150 + i * HAZARD_MIN_GAP,
       y: groundY - random(120, 250),
       w: 34,
       h: 34,
@@ -2609,6 +2896,16 @@ function areaIndexForDistance(distance) {
   return index;
 }
 
+function nextAreaBossDistance(index) {
+  const nextArea = areas[index + 1];
+  if (!nextArea) return Infinity;
+  return Math.max(0, nextArea.start - FINAL_BOSS_OFFSET);
+}
+
+function isAreaBossCleared(index) {
+  return Boolean(state.areaBossClears?.[index]);
+}
+
 function runStartDistance() {
   return areas[areaIndexForDistance(state.currentPrestigeDistance || 0)]?.start || 0;
 }
@@ -2631,6 +2928,7 @@ function renderUpgrades() {
   const cap = normalUpgradeCap();
   const html = [
     panelHead("通常強化", `Lv合計 ${sumValues(state.upgrades)} / 上限 Lv${cap}`),
+    renderActiveSkillSelector(),
     `<div class="list">`,
     ...upgradeDefs.map((def) => {
       const level = state.upgrades[def.id] || 0;
@@ -2651,6 +2949,21 @@ function renderUpgrades() {
     `</div>`
   ].join("");
   panelContent.innerHTML = html;
+}
+
+function renderActiveSkillSelector() {
+  const current = state.settings.activeSkill || "dash";
+  const buttons = activeSkillDefs.map((def) => (
+    `<button class="${current === def.id ? "active" : ""}" data-action="selectActiveSkill" data-id="${def.id}" type="button">${def.name}</button>`
+  )).join("");
+  return `<div class="row-item">
+    <div>
+      <h3>アクティブスキル</h3>
+      <p>セットしたスキルが画面下のスキルボタンで発動します。 現在: ${activeSkillName(current)}</p>
+      <div class="meta"><span class="pill">クールダウン ${activeSkillCooldown(current)}s</span></div>
+    </div>
+    <div class="filter-row skill-picker">${buttons}</div>
+  </div>`;
 }
 
 function renderFactory() {
@@ -2701,7 +3014,7 @@ function renderFactory() {
 
 function renderPrestige() {
   const gain = prestigeGain();
-  const progress = Math.min(1, state.coins / 1000000);
+  const progress = Math.min(1, state.coins / PRESTIGE_COIN_REQUIREMENT);
   const permanentList = permanentDefs.filter((def) => ADS_ENABLED || def.id !== "ad");
   const html = [
     panelHead("Prestige", `転生 ${state.prestigeCount}回`),
@@ -2713,7 +3026,7 @@ function renderPrestige() {
       </div>
       <div class="row-item">
         <div>
-          <h3>100万コインで転生</h3>
+          <h3>1000万コインで転生</h3>
           <p>コイン、通常強化、装備、宝箱、宝石、研究ポイントをリセットし、永続強化用のPRを得ます。転生ごとに通常強化・放置施設・研究上限が+1されます。</p>
           <div class="meta"><span class="pill">現在上限 Lv${normalUpgradeCap()}</span><span class="pill">転生後 Lv${normalUpgradeCap() + 1}</span></div>
           <div class="progress"><i style="width:${progress * 100}%"></i></div>
@@ -2975,7 +3288,7 @@ function updateHud() {
   document.getElementById("areaName").textContent = `${localizedAreaName(area)} / ${area.line}`;
   const dashButton = document.getElementById("dashBtn");
   dashButton.disabled = run.dashCooldown > 0 || run.gameOver;
-  dashButton.textContent = run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s` : staticI18n.dash[currentLanguage];
+  dashButton.textContent = run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s` : translateText(activeSkillName());
   const bgmButton = document.getElementById("bgmBtn");
   bgmButton.textContent = state.settings.bgmEnabled ? "BGM ON" : "BGM OFF";
 }
@@ -3050,6 +3363,9 @@ function drawForeground(area) {
   if (run.event) {
     ctx.fillStyle = area.accent;
     ctx.fillText(`${eventName(run.event)} ${Math.ceil(run.eventTimer)}s`, canvasWidth - 190, 14);
+  } else if (run.bossBattle) {
+    ctx.fillStyle = area.accent;
+    ctx.fillText(`FINAL BOSS ${bossName(run.bossAreaIndex)}`, canvasWidth - 260, 14);
   }
 }
 
@@ -3221,6 +3537,9 @@ function playerSpriteMetrics(rect, frame) {
 }
 
 function currentPlayerFrame(animation, frames) {
+  if (run.bossBattle && animation === "running") {
+    return frames[0] || frames[frames.length - 1];
+  }
   const def = playerAnimationDefs[animation] || playerAnimationDefs.running;
   const elapsed = Math.max(0, (performance.now() - player.animationStartedAt) / 1000);
   const rawIndex = Math.floor(elapsed * def.fps);

@@ -405,6 +405,11 @@ button:disabled {
   border-color: rgba(72, 189, 231, 0.9);
 }
 
+.skill-picker {
+  justify-content: flex-end;
+  max-width: 240px;
+}
+
 .row-actions {
   display: grid;
   gap: 6px;
