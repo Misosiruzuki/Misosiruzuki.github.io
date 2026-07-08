@@ -69,7 +69,7 @@ const permanentDefs = [
 ];
 
 const researchDefs = [
-  { id: "sandBreaker", sourceAreaIndex: 0, name: "粘液コアブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力が少しずつ上がります。", effect: (lv) => lv ? `範囲 ${130 + lv * 8}px / 対ボス ${sandBreakerBossDamage(lv)} ダメージ` : "未解放" },
+  { id: "sandBreaker", sourceAreaIndex: 0, name: "粘液コアブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力が少しずつ上がります。", effect: (lv) => lv ? `範囲 ${sandBreakerRange(lv)}px / 対ボス ${sandBreakerBossDamage(lv)} ダメージ` : "未解放" },
   { id: "frostInsulation", sourceAreaIndex: 1, name: "凍結対策", base: 160, growth: 1.58, description: "砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
   { id: "heatPlating", sourceAreaIndex: 2, name: "灼熱対策", base: 220, growth: 1.6, description: "雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
   { id: "shieldPiercer", sourceAreaIndex: 3, name: "シールド解析", base: 300, growth: 1.62, description: "火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
@@ -1638,28 +1638,37 @@ function bindEvents() {
   document.addEventListener("keydown", unlockAudio, { once: true });
 
   document.addEventListener("keydown", (event) => {
+    const gameplayKey = event.code === "Space"
+      || event.code === "ArrowUp"
+      || event.code === "ArrowDown"
+      || event.code === "ArrowLeft"
+      || event.code === "ArrowRight"
+      || event.code === "KeyD";
+    if (gameplayKey) event.preventDefault();
     if (event.repeat) return;
     if (event.code === "Space" || event.code === "ArrowUp") {
-      event.preventDefault();
       startJumpHold();
     }
     if (event.code === "ArrowDown") {
-      event.preventDefault();
       startSlideHold();
     }
     if (event.code === "KeyD") {
-      event.preventDefault();
       dash();
     }
   });
 
   document.addEventListener("keyup", (event) => {
+    const gameplayKey = event.code === "Space"
+      || event.code === "ArrowUp"
+      || event.code === "ArrowDown"
+      || event.code === "ArrowLeft"
+      || event.code === "ArrowRight"
+      || event.code === "KeyD";
+    if (gameplayKey) event.preventDefault();
     if (event.code === "Space" || event.code === "ArrowUp") {
-      event.preventDefault();
       releaseJumpHold();
     }
     if (event.code === "ArrowDown") {
-      event.preventDefault();
       cancelSlideHold();
     }
   });
@@ -1980,7 +1989,8 @@ function updateRun(dt) {
 
 function advanceRunDistance(delta) {
   if (delta <= 0) return;
-  const area = areaIndexForDistance(run.distance);
+  const previousArea = areaIndexForDistance(run.distance);
+  const area = previousArea;
   const bossMark = nextAreaBossDistance(area);
   const shouldFight = Number.isFinite(bossMark) && !isAreaBossCleared(area);
   const nextDistance = run.distance + delta;
@@ -1992,6 +2002,10 @@ function advanceRunDistance(delta) {
     state.totalDistance += appliedDelta;
     addMissionProgress("dailyDistance", appliedDelta);
     addMissionProgress("weeklyDistance", appliedDelta);
+  }
+  const newArea = areaIndexForDistance(run.distance);
+  if (newArea !== previousArea) {
+    maybeExplainAreaTrait(newArea);
   }
   if (shouldFight && nextDistance >= bossMark) {
     run.distance = bossMark;
@@ -2285,7 +2299,7 @@ function updateFinalBossGimmick(boss, dt) {
 
   if (run.bossPhase === "vulnerable") {
     boss.phased = false;
-    if (boss.bossGimmick === "sandBurrow") boss.y = groundY - boss.h;
+    if (boss.bossGimmick === "sandBurrow") boss.y = finalBossVulnerableY(boss);
     return;
   }
 
@@ -2633,16 +2647,18 @@ function updateBossBattle(dt) {
   }
   const index = boss.areaIndex || 0;
   const anchorX = canvasWidth - 170;
-  const vulnerableX = player.x + 30;
+  const vulnerableX = finalBossVulnerableX(boss);
   const vulnerable = run.bossPhase === "vulnerable";
   boss.vulnerable = vulnerable;
   boss.attackPattern = run.bossPatternIndex % FINAL_BOSS_ATTACK_PATTERNS;
 
   run.bossChargeTimer -= dt;
   const targetX = vulnerable ? vulnerableX : anchorX;
-  const moveRate = vulnerable ? 3.7 : 2.2;
+  const moveRate = vulnerable ? 8.5 : 2.2;
   boss.x += (targetX - boss.x) * Math.min(1, dt * moveRate);
-  boss.y = groundY - boss.h - Math.abs(Math.sin(performance.now() / (vulnerable ? 460 : 560))) * (vulnerable ? 5 : 13);
+  boss.y = vulnerable
+    ? finalBossVulnerableY(boss) - Math.abs(Math.sin(performance.now() / 460)) * 3
+    : groundY - boss.h - Math.abs(Math.sin(performance.now() / 560)) * 13;
 
   if (vulnerable) {
     if (run.bossChargeTimer <= 0) {
@@ -2689,11 +2705,19 @@ function finalBossAttackDuration(index) {
 }
 
 function finalBossVulnerableDuration(index) {
-  return Math.max(0.9, 1.45 - index * 0.035);
+  return Math.max(1.65, 2.05 - index * 0.03);
 }
 
 function finalBossAttackInterval(index, pattern) {
   return Math.max(0.42, 0.78 - index * 0.035 - pattern * 0.04);
+}
+
+function finalBossVulnerableX(boss) {
+  return player.x + player.w - Math.min(18, boss.w * 0.2);
+}
+
+function finalBossVulnerableY(boss) {
+  return groundY - Math.min(boss.h, 72);
 }
 
 function spawnBossAttack(boss) {
@@ -2994,21 +3018,15 @@ function completeAreaBoss(index) {
   run.bossVolley = 0;
   run.nextSpawn = 0.4;
   run.eventCooldown = random(45, 85);
-  const nextStart = areas[index + 1]?.start;
-  if (Number.isFinite(nextStart)) {
-    const gainedDistance = Math.max(0, nextStart - run.distance);
-    run.distance = nextStart;
-    state.totalDistance += gainedDistance;
-    addMissionProgress("dailyDistance", gainedDistance);
-    addMissionProgress("weeklyDistance", gainedDistance);
-    state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, nextStart);
-    run.nextBossMark = nextAreaBossDistance(index + 1);
-    run.nextChestMark = nextStart;
-  }
+  state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
+  run.nextBossMark = nextAreaBossDistance(index + 1);
+  run.nextChestMark = Math.max(
+    run.nextChestMark || 0,
+    Math.floor(run.distance / CHEST_DISTANCE_INTERVAL) * CHEST_DISTANCE_INTERVAL + CHEST_DISTANCE_INTERVAL
+  );
   objects = objects.filter((entry) => entry.type !== "boss" && !entry.bossAttack);
   player.invulnerable = Math.max(player.invulnerable, 1);
   logEvent(`${localizedAreaName(areas[index])} CLEAR`);
-  maybeExplainAreaTrait(index + 1);
 }
 
 function damagePlayer(options = {}) {
@@ -3283,7 +3301,7 @@ function dash() {
 }
 
 function activateSandBreaker(level) {
-  const range = 130 + level * 8;
+  const range = sandBreakerRange(level);
   const playerCenter = {
     x: player.x + player.w / 2,
     y: player.y + getPlayerHeight() / 2
@@ -3327,6 +3345,10 @@ function sandBreakerBossDamage(level) {
 
 function sandBreakerNormalDamage(level) {
   return 1 + Math.max(0, level - 5);
+}
+
+function sandBreakerRange(level) {
+  return 130 + Math.min(level, 5) * 8;
 }
 
 function activateGravityAnchor(level) {
@@ -3447,7 +3469,8 @@ function canStomp(obj) {
   if (run.gravityFlip) {
     return player.vy < -80 && player.y + 12 < obj.y + obj.h;
   }
-  return player.vy > 80 && player.y + getPlayerHeight() - 8 < obj.y + 18;
+  const stompDepth = obj.finalBoss && obj.vulnerable ? Math.min(56, obj.h * 0.6) : 18;
+  return player.vy > 80 && player.y + getPlayerHeight() - 8 < obj.y + stompDepth;
 }
 
 function gainCombo(amount) {
