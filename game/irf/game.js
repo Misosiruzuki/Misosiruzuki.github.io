@@ -113,6 +113,123 @@ const bossGimmicks = [
   { id: "infinitePhase", name: "無限位相" }
 ];
 
+const introGuideSteps = [
+  {
+    target: ".canvas-frame",
+    title: { ja: "ラン画面", en: "Run Field" },
+    text: {
+      ja: "ロボットは自動で前へ走ります。コインを集め、障害物を避けながら距離を伸ばしましょう。",
+      en: "Your robot runs forward automatically. Collect coins, avoid hazards, and push the distance farther."
+    }
+  },
+  {
+    target: ".command-row",
+    title: { ja: "操作", en: "Controls" },
+    text: {
+      ja: "ジャンプは長押しで飛距離が伸びます。スライドはボタンを離すと早めに解除できます。スキルは研究後にセットできます。",
+      en: "Hold Jump to travel farther. Release Slide to cancel early. Skills become usable after research."
+    }
+  },
+  {
+    target: ".hud-grid",
+    title: { ja: "ラン情報", en: "Run Stats" },
+    text: {
+      ja: "距離、HP、倍率を見ながら走ります。HPが0になるとラン終了です。",
+      en: "Watch distance, HP, and multiplier while running. The run ends when HP reaches 0."
+    }
+  },
+  {
+    target: ".resource-strip",
+    title: { ja: "資源", en: "Resources" },
+    text: {
+      ja: "コインは強化に、宝石と研究ポイントは後半の育成に使います。少しずつできることが増えます。",
+      en: "Coins buy upgrades. Gems and research points support later growth. More systems unlock over time."
+    }
+  },
+  {
+    target: ".side-panel",
+    title: { ja: "育成メニュー", en: "Growth Menus" },
+    text: {
+      ja: "右側で強化、工場、装備、任務、研究を管理します。短いランを重ねるほど成長します。",
+      en: "Manage upgrades, factories, equipment, missions, and research here. Short runs steadily build long-term power."
+    }
+  },
+  {
+    target: ".tab-bar",
+    title: { ja: "最初の目標", en: "First Goal" },
+    text: {
+      ja: "まずはコインで通常強化を進め、100mより先を目指しましょう。新しい説明は初見の時だけ止まって表示されます。",
+      en: "Start by spending coins on upgrades and aim beyond 100m. New explanations pause the game only the first time they appear."
+    }
+  }
+];
+
+const hazardGuideDefs = {
+  crate: {
+    title: { ja: "箱型障害物", en: "Crate Hazard" },
+    text: { ja: "低めの障害物です。ジャンプで越えましょう。無敵中なら壊せることもあります。", en: "A low obstacle. Jump over it; invincible effects can sometimes smash through." }
+  },
+  spike: {
+    title: { ja: "トゲ", en: "Spikes" },
+    text: { ja: "触れるとダメージを受けます。早めのジャンプで越えるのが基本です。", en: "Touching these hurts. A clean early jump is the safest answer." }
+  },
+  laser: {
+    title: { ja: "レーザー", en: "Laser" },
+    text: { ja: "高い位置まで伸びる障害物です。スライドでくぐるタイミングを覚えましょう。", en: "A tall hazard. Learn the timing and slide under it." }
+  },
+  slime: {
+    title: { ja: "スライム", en: "Slime" },
+    text: { ja: "小さな敵です。上から踏むと倒せますが、横から触れるとダメージになります。", en: "A small enemy. Stomp from above to defeat it; side contact hurts." }
+  },
+  bird: {
+    title: { ja: "空中の敵", en: "Flying Enemy" },
+    text: { ja: "空中を飛ぶ敵です。高さを見てジャンプするか、くぐって避けましょう。", en: "A flying enemy. Read its height, then jump or duck underneath." }
+  },
+  bomb: {
+    title: { ja: "爆弾", en: "Bomb" },
+    text: { ja: "接触が危険な敵です。無理に踏まず、余裕を持って避ける判断も大切です。", en: "A risky enemy. Do not force a stomp; giving it space is often wiser." }
+  },
+  meteor: {
+    title: { ja: "落下物", en: "Falling Hazard" },
+    text: { ja: "上から落ちてくる攻撃です。足元だけでなく、上方向の動きも見て避けましょう。", en: "This attack drops from above. Watch vertical motion, not just the ground line." }
+  }
+};
+
+const traitGuideDefs = {
+  sandArmor: {
+    title: { ja: "このエリアの敵: 砂装甲", en: "Area Trait: Sand Armor" },
+    text: { ja: "この先の敵は、最初の一撃を装甲で受け止めることがあります。踏む・スキルで削ってから本体を狙いましょう。", en: "Enemies here may absorb the first hit with armor. Chip it away with stomps or skills before going for the body." }
+  },
+  frostAura: {
+    title: { ja: "このエリアの敵: 凍結オーラ", en: "Area Trait: Frost Aura" },
+    text: { ja: "近づくと動きが少し鈍る敵が出ます。距離を取り、遅くなる前提でジャンプを早めに入力しましょう。", en: "Some enemies slow you when you get close. Keep distance and jump a bit earlier." }
+  },
+  burning: {
+    title: { ja: "このエリアの敵: 灼熱", en: "Area Trait: Burning" },
+    text: { ja: "被弾時の痛みが増す敵がいます。HPに余裕がない時ほど接触を避けましょう。", en: "Some enemies make hits more painful. Avoid contact carefully when HP is low." }
+  },
+  energyShield: {
+    title: { ja: "このエリアの敵: エネルギー盾", en: "Area Trait: Energy Shield" },
+    text: { ja: "盾で攻撃を受け流す敵がいます。連続で踏める位置取りや、研究スキルが重要になります。", en: "Some enemies deflect attacks with shields. Positioning for repeated hits and research skills matter more here." }
+  },
+  gravityPulse: {
+    title: { ja: "このエリアの敵: 重力波", en: "Area Trait: Gravity Pulse" },
+    text: { ja: "近距離で重力が乱れることがあります。画面の上下感覚を崩されても、着地点を見て動きましょう。", en: "Gravity can distort at close range. Watch your landing spot even when up and down feel wrong." }
+  },
+  voidPull: {
+    title: { ja: "このエリアの敵: 吸引", en: "Area Trait: Pull" },
+    text: { ja: "近くの敵に引き寄せられます。早めに距離を作り、吸われる前にラインを外しましょう。", en: "Nearby enemies can pull you in. Create distance early before the pull sets up danger." }
+  },
+  regen: {
+    title: { ja: "このエリアの敵: 再生", en: "Area Trait: Regeneration" },
+    text: { ja: "時間をかけると回復する敵がいます。攻める時は短い間隔で削る意識が必要です。", en: "Some enemies heal over time. When you attack, try to keep pressure on them." }
+  },
+  phase: {
+    title: { ja: "このエリアの敵: 位相化", en: "Area Trait: Phasing" },
+    text: { ja: "一瞬だけ攻撃が通りにくくなる敵がいます。光り方や動きを見て、当たるタイミングを待ちましょう。", en: "Some enemies briefly become hard to hit. Watch their motion and wait for the opening." }
+  }
+};
+
 const areaMusicFiles = [
   "草原エリアBGM.ogg",
   "砂漠エリアBGM.ogg",
@@ -460,6 +577,13 @@ const eventLog = document.getElementById("eventLog");
 const runOverlay = document.getElementById("runOverlay");
 const overlayTitle = document.getElementById("overlayTitle");
 const overlayText = document.getElementById("overlayText");
+const guideOverlay = document.getElementById("guideOverlay");
+const guideSpotlight = document.getElementById("guideSpotlight");
+const guideCard = document.getElementById("guideCard");
+const guideStep = document.getElementById("guideStep");
+const guideTitle = document.getElementById("guideTitle");
+const guideText = document.getElementById("guideText");
+const guideNext = document.getElementById("guideNext");
 
 let state = loadState();
 let activeTab = "upgrades";
@@ -473,6 +597,7 @@ let autosaveTimer = 0;
 let uiTimer = 0;
 let messageTimer = 0;
 let musicScene = "run";
+let languageSelectionActive = false;
 
 const player = {
   x: 112,
@@ -524,6 +649,15 @@ const run = {
 let objects = [];
 let particles = [];
 
+const guideState = {
+  active: false,
+  steps: [],
+  index: 0,
+  queue: [],
+  onComplete: null,
+  targetElement: null
+};
+
 const inputState = {
   jumpHolding: false,
   jumpStartedAt: 0,
@@ -566,6 +700,7 @@ function init() {
   renderPanel();
   updateHud();
   logEvent("RUN START");
+  maybeStartIntroGuide();
   requestAnimationFrame(loop);
 }
 
@@ -573,8 +708,10 @@ function initLanguage() {
   const savedLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY);
   const hasSavedLanguage = savedLanguage === "ja" || savedLanguage === "en";
   const initialLanguage = LANGUAGE_MODE === "en" ? "en" : hasSavedLanguage ? savedLanguage : "ja";
+  languageSelectionActive = false;
   setLanguage(initialLanguage, { persist: false, refresh: false });
   if (LANGUAGE_MODE !== "en" && !hasSavedLanguage) {
+    languageSelectionActive = true;
     document.getElementById("languageOverlay")?.classList.remove("hidden");
   }
 }
@@ -583,6 +720,8 @@ function setLanguage(language, options = {}) {
   const { persist = true, refresh = true } = options;
   const nextLanguage = LANGUAGE_MODE === "en" ? "en" : language;
   if (nextLanguage !== "ja" && nextLanguage !== "en") return;
+  const shouldStartIntro = languageSelectionActive && persist;
+  languageSelectionActive = false;
   currentLanguage = nextLanguage;
   document.documentElement.lang = currentLanguage;
   document.documentElement.dataset.currentLanguage = currentLanguage;
@@ -598,6 +737,7 @@ function setLanguage(language, options = {}) {
     renderPanel();
     updateHud();
     logEvent("RUN START");
+    maybeStartIntroGuide({ force: shouldStartIntro });
   }
 }
 
@@ -625,6 +765,162 @@ function localizeElement(root) {
   for (const node of nodes) {
     node.nodeValue = translateText(node.nodeValue);
   }
+}
+
+function persistStateQuiet() {
+  state.lastSavedAt = Date.now();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function guideValue(value) {
+  if (!value || typeof value !== "object") return value || "";
+  return value[currentLanguage] || value.ja || "";
+}
+
+function isGuideActive() {
+  return Boolean(guideState.active);
+}
+
+function isGameplayPaused() {
+  return languageSelectionActive || isGuideActive();
+}
+
+function maybeStartIntroGuide(options = {}) {
+  normalizeTutorialState(state);
+  if (languageSelectionActive || guideState.active || state.tutorial.introComplete) return;
+  if (!options.force && state.tutorial.introComplete) return;
+  queueGuide(introGuideSteps, {
+    onComplete: () => {
+      state.tutorial.introComplete = true;
+      persistStateQuiet();
+      maybeExplainAreaTrait(areaIndex());
+    }
+  });
+}
+
+function queueGuide(steps, options = {}) {
+  const normalizedSteps = (Array.isArray(steps) ? steps : [steps]).filter(Boolean);
+  if (normalizedSteps.length === 0 || !guideOverlay) return;
+  const entry = { steps: normalizedSteps, onComplete: options.onComplete || null };
+  if (guideState.active) {
+    guideState.queue.push(entry);
+    return;
+  }
+  beginGuide(entry);
+}
+
+function beginGuide(entry) {
+  guideState.active = true;
+  guideState.steps = entry.steps;
+  guideState.index = 0;
+  guideState.onComplete = entry.onComplete;
+  showGuideStep();
+}
+
+function showGuideStep() {
+  const step = guideState.steps[guideState.index];
+  if (!step) {
+    finishGuide();
+    return;
+  }
+  guideTitle.textContent = guideValue(step.title);
+  guideText.textContent = guideValue(step.text);
+  guideStep.textContent = `${guideState.index + 1}/${guideState.steps.length}`;
+  guideNext.textContent = currentLanguage === "en"
+    ? guideState.index >= guideState.steps.length - 1 ? "Close" : "Next"
+    : guideState.index >= guideState.steps.length - 1 ? "閉じる" : "次へ";
+  guideOverlay.classList.remove("hidden");
+  updateGuideHighlight(step.target);
+}
+
+function advanceGuide() {
+  if (!guideState.active) return;
+  guideState.index += 1;
+  if (guideState.index >= guideState.steps.length) {
+    finishGuide();
+  } else {
+    showGuideStep();
+  }
+}
+
+function finishGuide() {
+  const onComplete = guideState.onComplete;
+  clearGuideHighlight();
+  guideOverlay?.classList.add("hidden");
+  guideState.active = false;
+  guideState.steps = [];
+  guideState.index = 0;
+  guideState.onComplete = null;
+  if (onComplete) onComplete();
+  const next = guideState.queue.shift();
+  if (next) beginGuide(next);
+}
+
+function clearGuideHighlight() {
+  guideState.targetElement?.classList?.remove("guide-target");
+  guideState.targetElement = null;
+  guideSpotlight?.classList.add("hidden");
+}
+
+function updateGuideHighlight(target) {
+  clearGuideHighlight();
+  const element = typeof target === "string" ? document.querySelector(target) : target;
+  if (!element || !guideSpotlight) {
+    guideCard?.classList.remove("guide-card-top");
+    return;
+  }
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    guideCard?.classList.remove("guide-card-top");
+    return;
+  }
+  const pad = 8;
+  guideState.targetElement = element;
+  element.classList?.add("guide-target");
+  guideSpotlight.style.left = `${Math.max(8, rect.left - pad)}px`;
+  guideSpotlight.style.top = `${Math.max(8, rect.top - pad)}px`;
+  guideSpotlight.style.width = `${Math.min(window.innerWidth - 16, rect.width + pad * 2)}px`;
+  guideSpotlight.style.height = `${Math.min(window.innerHeight - 16, rect.height + pad * 2)}px`;
+  guideSpotlight.classList.remove("hidden");
+  guideCard?.classList.toggle("guide-card-top", rect.top > window.innerHeight * 0.52);
+}
+
+function markTutorialSeen(group, id) {
+  normalizeTutorialState(state);
+  state.tutorial[group][id] = true;
+  persistStateQuiet();
+}
+
+function maybeExplainHazard(kind) {
+  const def = hazardGuideDefs[kind];
+  if (!def || state.tutorial?.seenHazards?.[kind]) return;
+  markTutorialSeen("seenHazards", kind);
+  queueGuide([{ ...def, target: ".canvas-frame" }]);
+}
+
+function maybeExplainBoss(index) {
+  const id = String(index);
+  if (state.tutorial?.seenBosses?.[id]) return;
+  markTutorialSeen("seenBosses", id);
+  queueGuide([{
+    target: ".canvas-frame",
+    title: {
+      ja: `ボス出現: ${bossName(index)}`,
+      en: `Boss Appears: ${bossName(index)}`
+    },
+    text: {
+      ja: "エリア終盤では距離が止まり、ボス戦になります。攻撃を避けながら、近づいた瞬間に踏むか、セットしたスキルで少しずつ削りましょう。",
+      en: "Near the end of an area, distance stops and a boss fight begins. Dodge attacks, then stomp when it approaches or chip it down with your equipped skill."
+    }
+  }]);
+}
+
+function maybeExplainAreaTrait(index) {
+  const trait = areaEnemyTraits[index]?.id;
+  const def = traitGuideDefs[trait];
+  if (!def || state.tutorial?.seenTraits?.[trait]) return;
+  markTutorialSeen("seenTraits", trait);
+  queueGuide([{ ...def, target: ".canvas-frame" }]);
 }
 
 function defaultState() {
@@ -667,6 +963,12 @@ function defaultState() {
       jumps: 0,
       chestsOpened: 0,
       adsWatched: 0
+    },
+    tutorial: {
+      introComplete: false,
+      seenHazards: {},
+      seenBosses: {},
+      seenTraits: {}
     },
     lastSavedAt: Date.now()
   };
@@ -729,6 +1031,7 @@ function loadState() {
     normalizeDefeatedAreaBosses(merged);
     normalizeUpgradeTree(merged);
     normalizeActiveSkill(merged);
+    normalizeTutorialState(merged);
     enforceLevelCaps(merged);
     return merged;
   } catch (error) {
@@ -793,6 +1096,16 @@ function normalizeDefeatedAreaBosses(targetState = state) {
       targetState.defeatedAreaBosses[def.sourceAreaIndex] = true;
     }
   }
+}
+
+function normalizeTutorialState(targetState = state) {
+  targetState.tutorial = targetState.tutorial && typeof targetState.tutorial === "object"
+    ? targetState.tutorial
+    : {};
+  targetState.tutorial.introComplete = Boolean(targetState.tutorial.introComplete);
+  targetState.tutorial.seenHazards = targetState.tutorial.seenHazards || {};
+  targetState.tutorial.seenBosses = targetState.tutorial.seenBosses || {};
+  targetState.tutorial.seenTraits = targetState.tutorial.seenTraits || {};
 }
 
 function enforceLevelCaps(targetState = state) {
@@ -906,6 +1219,9 @@ function parseRobotAtlas(xmlText) {
 
 function bindEvents() {
   window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("resize", () => {
+    if (guideState.active) showGuideStep();
+  });
   document.addEventListener("pointerdown", unlockAudio, { once: true });
   document.addEventListener("keydown", unlockAudio, { once: true });
 
@@ -943,6 +1259,7 @@ function bindEvents() {
   document.getElementById("overlayRestart").addEventListener("click", restartFromButton);
   document.getElementById("saveBtn").addEventListener("click", saveState);
   document.getElementById("bgmBtn").addEventListener("click", toggleBgm);
+  guideNext?.addEventListener("click", advanceGuide);
   document.querySelectorAll("[data-language-choice]").forEach((button) => {
     button.addEventListener("click", () => setLanguage(button.dataset.languageChoice));
   });
@@ -1146,6 +1463,11 @@ function loop(now) {
 }
 
 function update(dt) {
+  if (isGameplayPaused()) {
+    if (messageTimer > 0) messageTimer -= dt;
+    syncBgm();
+    return;
+  }
   ensureMissions();
   updateInputHolds();
   tickIdle(dt);
@@ -1629,6 +1951,7 @@ function spawnObstacleOrEnemy(x, area) {
       h: airborne ? 28 : 38,
       color: kind === "bird" ? area.accent : kind === "bomb" ? "#30333c" : "#75d05e"
     }, areaIndex()));
+    maybeExplainHazard(kind);
     return true;
   }
 
@@ -1642,6 +1965,7 @@ function spawnObstacleOrEnemy(x, area) {
       h: 78,
       color: "#ef6b65"
     });
+    maybeExplainHazard(kind);
     return true;
   }
 
@@ -1655,6 +1979,7 @@ function spawnObstacleOrEnemy(x, area) {
     h: height,
     color: area.obstacle
   });
+  maybeExplainHazard(kind);
   return true;
 }
 
@@ -1769,6 +2094,7 @@ function startAreaBossBattle(index) {
   spawnBoss(index, { finalBoss: true, x: canvasWidth + 90, hp });
   restartPlayerAnimation("running");
   logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
+  maybeExplainBoss(index);
 }
 
 function updateBossBattle(dt) {
@@ -1811,6 +2137,7 @@ function spawnBossAttack(boss) {
       vx: -125 - index * 8,
       color: "#75d05e"
     }, index));
+    maybeExplainHazard("slime");
   } else if (pattern === 1) {
     objects.push({
       type: "obstacle",
@@ -1823,6 +2150,7 @@ function spawnBossAttack(boss) {
       vx: -145 - index * 8,
       color: boss.color
     });
+    maybeExplainHazard("spike");
   } else if (pattern === 2) {
     objects.push(applyEnemyTraits({
       type: "enemy",
@@ -1835,6 +2163,7 @@ function spawnBossAttack(boss) {
       vx: -155 - index * 8,
       color: boss.color
     }, index));
+    maybeExplainHazard("bird");
   } else if (pattern === 3) {
     objects.push({
       type: "obstacle",
@@ -1849,6 +2178,7 @@ function spawnBossAttack(boss) {
       gravity: 80,
       color: "#ef6b65"
     });
+    maybeExplainHazard("meteor");
   } else {
     objects.push({
       type: "obstacle",
@@ -1861,6 +2191,7 @@ function spawnBossAttack(boss) {
       vx: -130 - index * 7,
       color: "#ef6b65"
     });
+    maybeExplainHazard("laser");
   }
 }
 
@@ -1988,6 +2319,7 @@ function completeAreaBoss(index) {
   objects = objects.filter((entry) => entry.type !== "boss" && !entry.bossAttack);
   player.invulnerable = Math.max(player.invulnerable, 1);
   logEvent(`${localizedAreaName(areas[index])} CLEAR`);
+  maybeExplainAreaTrait(index + 1);
 }
 
 function damagePlayer(options = {}) {
@@ -2049,6 +2381,7 @@ function endRun() {
 }
 
 function restartFromButton() {
+  if (isGameplayPaused()) return;
   resetRun();
   musicScene = "run";
   syncBgm();
@@ -2109,9 +2442,13 @@ function resetRun() {
   inputState.pointerJumpActive = false;
   restartPlayerAnimation("running");
   runOverlay.classList.add("hidden");
+  if (state.tutorial?.introComplete) {
+    maybeExplainAreaTrait(areaIndexForDistance(startDistance));
+  }
 }
 
 function startJumpHold(startedAt = performance.now()) {
+  if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
   if (run.gameOver) {
@@ -2125,6 +2462,7 @@ function startJumpHold(startedAt = performance.now()) {
 }
 
 function releaseJumpHold() {
+  if (isGameplayPaused()) return;
   if (!inputState.jumpHolding) return;
   const heldSeconds = (performance.now() - inputState.jumpStartedAt) / 1000;
   finishHeldJump(heldSeconds);
@@ -2132,6 +2470,7 @@ function releaseJumpHold() {
 }
 
 function performJump(heldSeconds = MAX_JUMP_HOLD_SECONDS) {
+  if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
   if (run.gameOver) {
@@ -2184,6 +2523,7 @@ function finishHeldJump(heldSeconds) {
 }
 
 function startSlideHold() {
+  if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
   if (run.gameOver) return;
@@ -2229,6 +2569,7 @@ function selectedActiveSkillDef() {
 }
 
 function activateActiveSkill() {
+  if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
   if (run.gameOver || run.dashCooldown > 0) return;
@@ -3234,10 +3575,13 @@ function renderEquipment() {
 
 function renderChestList(chests) {
   const readyCount = chests.filter((chest) => chest.remaining <= 0).length;
+  const openAllDescription = currentLanguage === "en"
+    ? `Open ${readyCount} ready chests together.`
+    : `待機時間が終わった宝箱 ${readyCount}個をまとめて開封します。`;
   const openAll = `<div class="row-item">
     <div>
       <h3>開封可能な宝箱を全開封</h3>
-      <p>待機時間が終わった宝箱 ${readyCount}個をまとめて開封します。</p>
+      <p>${openAllDescription}</p>
       <div class="meta"><span class="pill">宝箱 ${chests.length}</span><span class="pill">開封可能 ${readyCount}</span></div>
     </div>
     <button class="buy-button" data-action="openAllChests" data-id="all" ${readyCount <= 0 ? "disabled" : ""}>全開封</button>

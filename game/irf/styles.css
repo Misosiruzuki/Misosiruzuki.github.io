@@ -102,6 +102,75 @@ button:disabled {
   min-height: 48px;
 }
 
+.guide-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(8, 10, 14, 0.54);
+  display: block;
+  pointer-events: auto;
+}
+
+.guide-overlay.hidden,
+.guide-spotlight.hidden {
+  display: none;
+}
+
+.guide-spotlight {
+  position: fixed;
+  z-index: 31;
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 9999px rgba(8, 10, 14, 0.5),
+    0 0 24px rgba(242, 184, 75, 0.62);
+  pointer-events: none;
+  transition: left 140ms ease, top 140ms ease, width 140ms ease, height 140ms ease;
+}
+
+.guide-card {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 32;
+  width: min(390px, calc(100vw - 36px));
+  border: 1px solid #6c7890;
+  border-radius: 8px;
+  background: #181c23;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.44);
+  padding: 18px;
+}
+
+.guide-card.guide-card-top {
+  top: 18px;
+  bottom: auto;
+}
+
+.guide-step {
+  color: var(--gold);
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.guide-card strong {
+  display: block;
+  font-size: 1.16rem;
+}
+
+.guide-card p {
+  color: #cbd6e2;
+  line-height: 1.55;
+  margin: 8px 0 16px;
+}
+
+.guide-card button {
+  width: 100%;
+  border-color: rgba(242, 184, 75, 0.72);
+  background: #2b2517;
+}
+
 .app-shell {
   width: min(1500px, 100%);
   min-height: 100vh;
