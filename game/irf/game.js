@@ -2495,6 +2495,10 @@ function updateFinalBossGimmick(boss, dt) {
     return;
   }
 
+  if (run.bossChargeTimer <= 0) {
+    return;
+  }
+
   boss.gimmickTimer = (boss.gimmickTimer || 0.75) - dt;
 
   if (boss.bossGimmick === "slimeSplit" && boss.gimmickTimer <= 0) {
@@ -2868,11 +2872,11 @@ function updateBossBattle(dt) {
   }
 
   run.bossAttackTimer -= dt;
-  if (run.bossAttackTimer <= 0) {
+  if (run.bossChargeTimer > 0 && run.bossAttackTimer <= 0) {
     spawnBossAttack(boss);
     run.bossAttackTimer = finalBossAttackInterval(index, boss.attackPattern);
   }
-  if (run.bossChargeTimer <= 0) {
+  if (run.bossChargeTimer <= 0 && bossAttackTailPassedPlayer()) {
     switchBossPhase(boss, "vulnerable");
   }
 }
@@ -2917,7 +2921,7 @@ function updateBossSoulMode(boss, dt) {
     run.webLane = 1;
   }
 
-  if (mode === "blue" && run.bossPhase === "attack") {
+  if (mode === "blue" && run.bossPhase === "attack" && run.bossChargeTimer > 0) {
     run.bossModePulse -= dt;
     if (run.bossModePulse <= 0) {
       run.gravityFlip = !run.gravityFlip;
@@ -2942,6 +2946,16 @@ function finalBossVulnerableDuration(index) {
 
 function finalBossAttackInterval(index, pattern) {
   return Math.max(0.58, 1.02 - index * 0.025 - pattern * 0.03);
+}
+
+function bossAttackTailPassedPlayer() {
+  const passX = getPlayerRect().x - 8;
+  return !objects.some((obj) => {
+    if (!obj.bossAttack) return false;
+    if (obj.type === "boss" || obj.type === "playerShot") return false;
+    const right = (obj.x || 0) + (obj.w || 0);
+    return right >= passX;
+  });
 }
 
 function clearBossAttackObjects() {
