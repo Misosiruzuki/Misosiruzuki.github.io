@@ -2320,6 +2320,17 @@ function handleSoulEnemyCollision(obj, removed) {
     }
     return true;
   }
+  if (obj.soulRule === "shield") {
+    if (shieldDirection() === obj.shieldLane) {
+      removed.add(obj);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#60d878", 8);
+      gainCombo(1);
+    } else {
+      damagePlayer({ source: obj });
+      obj.x -= 85;
+    }
+    return true;
+  }
   return false;
 }
 
@@ -2868,6 +2879,7 @@ function updateBossBattle(dt) {
 
 function switchBossPhase(boss, phase) {
   const index = boss.areaIndex || 0;
+  const mode = activeBossSoulMode();
   run.bossPhase = phase;
   run.bossRetreating = phase === "attack";
   run.bossVolley = 0;
@@ -2876,13 +2888,16 @@ function switchBossPhase(boss, phase) {
   boss.vulnerable = phase === "vulnerable";
   boss.phased = false;
   if (phase === "attack") {
+    clearBossAttackObjects();
     run.bossPatternIndex = (run.bossPatternIndex + 1) % FINAL_BOSS_ATTACK_PATTERNS;
     boss.attackPattern = run.bossPatternIndex;
-    run.bossModePulse = 0.6;
+    run.bossModePulse = 0.85;
     run.bossChargeTimer = finalBossAttackDuration(index);
-    run.bossAttackTimer = 0.35;
+    run.bossAttackTimer = 0.7;
     logEvent(`${bossName(index).toUpperCase()} PATTERN ${boss.attackPattern + 1}`);
   } else {
+    clearBossAttackObjects();
+    resetBossSoulModeMovement(mode);
     run.bossModePulse = 0.4;
     run.bossChargeTimer = finalBossVulnerableDuration(index);
     run.bossAttackTimer = 99;
@@ -2895,7 +2910,7 @@ function updateBossSoulMode(boss, dt) {
   const mode = activeBossSoulMode();
   run.bossSoulMode = mode;
   run.bossModeTimer += dt;
-  run.echoActive = mode === "dual";
+  run.echoActive = mode === "dual" && run.bossPhase === "attack";
   if (run.justiceCooldown > 0) run.justiceCooldown -= dt;
 
   if (mode !== "purple") {
@@ -2926,7 +2941,26 @@ function finalBossVulnerableDuration(index) {
 }
 
 function finalBossAttackInterval(index, pattern) {
-  return Math.max(0.42, 0.78 - index * 0.035 - pattern * 0.04);
+  return Math.max(0.58, 1.02 - index * 0.025 - pattern * 0.03);
+}
+
+function clearBossAttackObjects() {
+  objects = objects.filter((obj) => obj.type === "boss" || !obj.bossAttack);
+}
+
+function resetBossSoulModeMovement(mode) {
+  run.echoActive = false;
+  if (mode === "blue" || mode === "purple" || mode === "dual" || mode === "rainbow") {
+    run.gravityFlip = false;
+    run.webLane = 1;
+    player.y = groundY - getPlayerHeight();
+    player.vy = 0;
+    player.jumpsUsed = 0;
+    player.slideTimer = 0;
+    inputState.jumpHolding = false;
+    inputState.jumpActive = false;
+    inputState.slideHolding = false;
+  }
 }
 
 function finalBossVulnerableX(boss) {
@@ -3012,7 +3046,7 @@ function applyBossSoulRule(obj, boss, options = {}) {
   obj.soulMode = mode;
   if (mode === "cyan") obj.soulRule = "patience";
   if (mode === "orange") obj.soulRule = "bravery";
-  if (mode === "green" && obj.type === "obstacle") {
+  if (mode === "green") {
     obj.soulRule = "shield";
     obj.shieldLane = options.shieldLane || inferShieldLane(obj);
   }
@@ -3264,6 +3298,7 @@ function completeAreaBoss(index) {
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
+  run.gravityFlip = false;
   run.nextSpawn = 0.4;
   run.eventCooldown = random(45, 85);
   state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
