@@ -67,14 +67,14 @@ const permanentDefs = [
 ];
 
 const researchDefs = [
-  { id: "sandBreaker", name: "砂王ブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "砂漠ボスの砂顎を小型化した近距離破砕アームです。発動時、近づいたボスの装甲や盾を少し削り、Lv5でようやく1ダメージ分の追撃が入ります。", effect: (lv) => lv ? `近距離破砕 ${130 + lv * 8}px` : "未解放" },
-  { id: "frostInsulation", name: "凍結対策", base: 160, growth: 1.58, description: "砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
-  { id: "heatPlating", name: "灼熱対策", base: 220, growth: 1.6, description: "雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
-  { id: "shieldPiercer", name: "シールド解析", base: 300, growth: 1.62, description: "火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
-  { id: "gravityAnchor", name: "巨兵アンカー", base: 420, growth: 1.65, active: true, cooldown: 22, description: "未来都市ボスの脚部固定杭を再現します。発動中だけ重力反転波を受け流しますが、Lv5でも持続は短めです。", effect: (lv) => lv ? `重力固定 ${(0.35 + lv * 0.09).toFixed(2)}s` : "未解放" },
-  { id: "voidTether", name: "虚空テザー", base: 580, growth: 1.68, description: "宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", effect: (lv) => `吸引軽減 +${lv * 2}%` },
-  { id: "aetherSeal", name: "神気封印", base: 820, growth: 1.7, description: "ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", effect: (lv) => `再生遅延 +${(lv * 0.12).toFixed(2)}s` },
-  { id: "phaseAnchor", name: "位相ピン", base: 1150, growth: 1.72, active: true, cooldown: 24, description: "神界ボスの光杭を模した位相固定スキルです。発動中だけ位相化を短く止め、Lv5でも一瞬の攻撃機会を作る程度です。", effect: (lv) => lv ? `位相固定 ${(0.3 + lv * 0.08).toFixed(2)}s` : "未解放" }
+  { id: "sandBreaker", sourceAreaIndex: 0, name: "粘液コアブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入ります。", effect: (lv) => lv ? `粘液破砕 ${130 + lv * 8}px` : "未解放" },
+  { id: "frostInsulation", sourceAreaIndex: 1, name: "凍結対策", base: 160, growth: 1.58, description: "砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
+  { id: "heatPlating", sourceAreaIndex: 2, name: "灼熱対策", base: 220, growth: 1.6, description: "雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
+  { id: "shieldPiercer", sourceAreaIndex: 3, name: "シールド解析", base: 300, growth: 1.62, description: "火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
+  { id: "gravityAnchor", sourceAreaIndex: 4, name: "巨兵アンカー", base: 420, growth: 1.65, active: true, cooldown: 22, description: "未来都市ボスの脚部固定杭を再現します。発動中だけ重力反転波を受け流しますが、Lv5でも持続は短めです。", effect: (lv) => lv ? `重力固定 ${(0.35 + lv * 0.09).toFixed(2)}s` : "未解放" },
+  { id: "voidTether", sourceAreaIndex: 5, name: "虚空テザー", base: 580, growth: 1.68, description: "宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", effect: (lv) => `吸引軽減 +${lv * 2}%` },
+  { id: "aetherSeal", sourceAreaIndex: 6, name: "神気封印", base: 820, growth: 1.7, description: "ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", effect: (lv) => `再生遅延 +${(lv * 0.12).toFixed(2)}s` },
+  { id: "phaseAnchor", sourceAreaIndex: 7, name: "位相ピン", base: 1150, growth: 1.72, active: true, cooldown: 24, description: "神界ボスの光杭を模した位相固定スキルです。発動中だけ位相化を短く止め、Lv5でも一瞬の攻撃機会を作る程度です。", effect: (lv) => lv ? `位相固定 ${(0.3 + lv * 0.08).toFixed(2)}s` : "未解放" }
 ];
 
 const areas = [
@@ -252,7 +252,7 @@ const englishTextPairs = [
   ["長距離用の自動ランナーで、ロボット工場より高収入。", "Long-distance auto runners that earn more than the Robot Factory."],
   ["超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", "Build micro robots that follow the player and increase direct coin gains."],
   ["高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", "Build advanced micro robots that further increase direct coin gains."],
-  ["砂漠ボスの砂顎を小型化した近距離破砕アームです。発動時、近づいたボスの装甲や盾を少し削り、Lv5でようやく1ダメージ分の追撃が入ります。", "A short-range crushing arm modeled after the Desert boss jaws. On activation it chips nearby boss armor or shields, and only at Lv5 adds a small 1-damage follow-up."],
+  ["草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入ります。", "A short-range breaking skill made from compressed Grassland boss slime core. It is specialized against the Desert boss sand armor and shocks every enemy in range. Normal enemies take 1 damage; bosses only lose armor or shields until Lv5 adds a small 1-damage follow-up."],
   ["砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", "Apply the Desert boss heat organ to slightly shorten the Snow Mountain boss freeze aura."],
   ["雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", "Build heat plating from the Snow Mountain boss cooling core to rarely reduce Volcano boss bonus damage."],
   ["火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", "Analyze the Volcano boss shell to slightly improve pierce chance against Future City energy shields."],
@@ -292,7 +292,7 @@ const englishTextPairs = [
   ["広告倍率", "Ad Multiplier"],
   ["獲得コイン", "Coin Gain"],
   ["レア率", "Rare Rate"],
-  ["砂王ブレイク", "Sand King Break"],
+  ["粘液コアブレイク", "Slime Core Break"],
   ["凍結対策", "Freeze Counter"],
   ["灼熱対策", "Heat Counter"],
   ["シールド解析", "Shield Analysis"],
@@ -346,7 +346,9 @@ const englishTextPairs = [
   ["受取済", "Claimed"],
   ["受取", "Claim"],
   ["本格研究まで", "Research core in"],
-  ["近距離破砕", "Close Break"],
+  ["粘液破砕", "Slime Break"],
+  ["研究候補なし", "No Research Candidates"],
+  ["エリア最終ボスを撃破すると、そのボスをもとにした次エリア攻略用の研究が見つかります。", "Defeat an area final boss to discover research based on that boss for the next area."],
   ["凍結時間", "Freeze Time"],
   ["灼熱軽減", "Heat Reduction"],
   ["盾対策", "Shield Counter"],
@@ -637,6 +639,7 @@ function defaultState() {
     bestDistance: 0,
     currentPrestigeDistance: 0,
     areaBossClears: {},
+    defeatedAreaBosses: {},
     lifetimeCoins: 0,
     lifetimeEnemies: 0,
     lifetimeBosses: 0,
@@ -723,6 +726,7 @@ function loadState() {
     }
     normalizeResearchTree(merged);
     normalizeAreaBossClears(merged);
+    normalizeDefeatedAreaBosses(merged);
     normalizeUpgradeTree(merged);
     normalizeActiveSkill(merged);
     enforceLevelCaps(merged);
@@ -773,6 +777,20 @@ function normalizeAreaBossClears(targetState = state) {
   for (let i = 0; i < areas.length - 1; i += 1) {
     if (distance >= areas[i + 1].start) {
       targetState.areaBossClears[i] = true;
+    }
+  }
+}
+
+function normalizeDefeatedAreaBosses(targetState = state) {
+  targetState.defeatedAreaBosses = targetState.defeatedAreaBosses || {};
+  for (let i = 0; i < areas.length - 1; i += 1) {
+    if (targetState.areaBossClears?.[i]) {
+      targetState.defeatedAreaBosses[i] = true;
+    }
+  }
+  for (const def of researchDefs) {
+    if ((targetState.researchTree?.[def.id] || 0) > 0 && def.sourceAreaIndex !== undefined) {
+      targetState.defeatedAreaBosses[def.sourceAreaIndex] = true;
     }
   }
 }
@@ -1945,12 +1963,17 @@ function defeatBoss(obj) {
 }
 
 function completeAreaBoss(index) {
+  state.areaBossClears = state.areaBossClears || {};
+  state.defeatedAreaBosses = state.defeatedAreaBosses || {};
   state.areaBossClears[index] = true;
+  state.defeatedAreaBosses[index] = true;
   run.bossBattle = false;
   run.bossAreaIndex = -1;
   run.bossAttackTimer = 0;
   run.bossChargeTimer = 0;
   run.bossRetreating = false;
+  run.nextSpawn = 0.4;
+  run.eventCooldown = random(45, 85);
   const nextStart = areas[index + 1]?.start;
   if (Number.isFinite(nextStart)) {
     const gainedDistance = Math.max(0, nextStart - run.distance);
@@ -2184,14 +2207,14 @@ function selectActiveSkill(id) {
     return;
   }
   const def = activeSkillDefs.find((entry) => entry.id === id);
-  if (!def || researchLevel(id) <= 0) return;
+  if (!def || researchLevel(id) <= 0 || !isResearchDiscovered(def)) return;
   state.settings.activeSkill = id;
   logEvent(`${activeSkillName(id)} SET`);
 }
 
 function activeSkillName(id = state.settings.activeSkill) {
   const def = activeSkillDefs.find((entry) => entry.id === id);
-  return def && researchLevel(id) > 0 ? def.name : "スキルなし";
+  return def && researchLevel(id) > 0 && isResearchDiscovered(def) ? def.name : "スキルなし";
 }
 
 function activeSkillCooldown(id = state.settings.activeSkill) {
@@ -2202,7 +2225,7 @@ function activeSkillCooldown(id = state.settings.activeSkill) {
 function selectedActiveSkillDef() {
   const id = state.settings.activeSkill || "none";
   const def = activeSkillDefs.find((entry) => entry.id === id);
-  return def && researchLevel(id) > 0 ? def : null;
+  return def && researchLevel(id) > 0 && isResearchDiscovered(def) ? def : null;
 }
 
 function activateActiveSkill() {
@@ -2228,19 +2251,41 @@ function dash() {
 
 function activateSandBreaker(level) {
   const range = 130 + level * 8;
-  const boss = objects.find((obj) => obj.type === "boss" && Math.abs((obj.x + obj.w / 2) - (player.x + player.w / 2)) <= range);
-  if (!boss) {
+  const playerCenter = {
+    x: player.x + player.w / 2,
+    y: player.y + getPlayerHeight() / 2
+  };
+  const targets = objects.filter((obj) => {
+    if (obj.type !== "enemy" && obj.type !== "boss") return false;
+    const dx = (obj.x + obj.w / 2) - playerCenter.x;
+    const dy = (obj.y + obj.h / 2) - playerCenter.y;
+    return Math.hypot(dx, dy) <= range;
+  });
+  if (targets.length === 0) {
     burst(player.x + player.w + range * 0.35, player.y + getPlayerHeight() / 2, "#d7b878", 8);
-    logEvent("SAND BREAK MISS");
+    logEvent("CORE BREAK MISS");
     return;
   }
-  if (boss.armor > 0) boss.armor -= 1;
-  else if (boss.shield > 0) boss.shield -= 1;
-  if (level >= 5) boss.hp = Math.max(0, boss.hp - 1);
-  boss.hitCooldown = Math.max(boss.hitCooldown || 0, 0.18);
-  burst(boss.x + boss.w / 2, boss.y + boss.h / 2, "#d7b878", 12);
-  if (boss.hp <= 0) defeatBoss(boss);
-  logEvent("SAND KING BREAK");
+  const defeated = [];
+  for (const target of targets) {
+    if (target.armor > 0) target.armor -= 1;
+    else if (target.shield > 0) target.shield -= 1;
+    const damage = target.type === "boss" ? (level >= 5 ? 1 : 0) : 1;
+    if (damage > 0) target.hp = Math.max(0, (target.hp || 1) - damage);
+    target.hitCooldown = Math.max(target.hitCooldown || 0, 0.18);
+    burst(target.x + target.w / 2, target.y + target.h / 2, "#d7b878", 10);
+    if ((target.hp || 0) <= 0 && damage > 0) defeated.push(target);
+  }
+  for (const target of defeated) {
+    if (target.type === "boss") {
+      defeatBoss(target);
+      if (!target.finalBoss) objects = objects.filter((entry) => entry !== target);
+    } else {
+      defeatEnemy(target);
+      objects = objects.filter((entry) => entry !== target);
+    }
+  }
+  logEvent(`SLIME CORE BREAK x${targets.length}`);
 }
 
 function activateGravityAnchor(level) {
@@ -2466,6 +2511,14 @@ function researchReduction(id, perLevel = 0.02) {
   return Math.max(0.75, 1 - passiveResearchLevel(id) * perLevel);
 }
 
+function isResearchDiscovered(def) {
+  return def.sourceAreaIndex === undefined || Boolean(state.defeatedAreaBosses?.[def.sourceAreaIndex]);
+}
+
+function visibleResearchDefs() {
+  return researchDefs.filter(isResearchDiscovered);
+}
+
 function factoryOutput(def, level) {
   if (!def || !level) return 0;
   if (!def.outputType) return 0;
@@ -2594,6 +2647,10 @@ function buyPermanent(id) {
 function buyResearch(id) {
   const def = researchDefs.find((entry) => entry.id === id);
   if (!def) return;
+  if (!isResearchDiscovered(def)) {
+    logEvent("RESEARCH LOCKED");
+    return;
+  }
   const level = state.researchTree[id] || 0;
   const cap = researchLevelCap();
   if (level >= cap) {
@@ -3009,7 +3066,7 @@ function renderUpgrades() {
 
 function renderActiveSkillSelector() {
   const current = state.settings.activeSkill || "none";
-  const unlocked = activeSkillDefs.filter((def) => researchLevel(def.id) > 0);
+  const unlocked = activeSkillDefs.filter((def) => researchLevel(def.id) > 0 && isResearchDiscovered(def));
   const buttons = [
     `<button class="${current === "none" || unlocked.length === 0 ? "active" : ""}" data-action="selectActiveSkill" data-id="none" type="button">なし</button>`,
     ...unlocked.map((def) => (
@@ -3284,6 +3341,7 @@ function renderMissionGroup(group, defs) {
 
 function renderResearch() {
   const cap = researchLevelCap();
+  const visibleDefs = visibleResearchDefs();
   const unlockText = state.prestigeCount >= 100
     ? "ENDGAME ONLINE"
     : `本格研究まで ${Math.max(0, 100 - state.prestigeCount)}転生 / 上限 Lv${cap}`;
@@ -3295,7 +3353,7 @@ function renderResearch() {
         <div><span>研究Lv合計</span><strong>${sumValues(state.researchTree)}</strong></div>
       </div>
       <div class="list">
-      ${researchDefs.map((def) => {
+      ${visibleDefs.length ? visibleDefs.map((def) => {
         const level = state.researchTree[def.id] || 0;
         const capped = level >= cap;
         const cost = upgradeCost(def, level);
@@ -3311,7 +3369,7 @@ function renderResearch() {
           disabled: capped || state.research < cost,
           label: capped ? "上限" : "研究"
         });
-      }).join("")}
+      }).join("") : `<div class="row-item"><div><h3>研究候補なし</h3><p>エリア最終ボスを撃破すると、そのボスをもとにした次エリア攻略用の研究が見つかります。</p></div></div>`}
       </div>
     </div>`
   ].join("");
