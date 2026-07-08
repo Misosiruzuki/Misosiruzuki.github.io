@@ -8,6 +8,7 @@ const REWARD_AD_URL = "https://omg10.com/4/11245499";
 const LANGUAGE_STORAGE_KEY = "irf_language_v1";
 const LANGUAGE_MODE = document.documentElement.dataset.languageMode || "auto";
 const ADS_ENABLED = (document.documentElement.dataset.adMode || "reward") !== "none";
+const DEBUG_MODE = document.documentElement.dataset.debugMode === "true";
 const MAX_JUMP_HOLD_SECONDS = 1;
 const MIN_JUMP_HOLD_SECONDS = 0.1;
 const BASE_JUMP_VELOCITY = 380;
@@ -18,6 +19,7 @@ const CHEST_DISTANCE_INTERVAL = 500;
 const HAZARD_MIN_GAP = 190;
 const ITEM_MIN_GAP = 960;
 const FINAL_BOSS_OFFSET = 100;
+const FINAL_BOSS_ATTACK_PATTERNS = 3;
 
 const upgradeDefs = [
   { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${(lv * 1.2).toFixed(1)}%` },
@@ -67,7 +69,7 @@ const permanentDefs = [
 ];
 
 const researchDefs = [
-  { id: "sandBreaker", sourceAreaIndex: 0, name: "粘液コアブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入ります。", effect: (lv) => lv ? `粘液破砕 ${130 + lv * 8}px` : "未解放" },
+  { id: "sandBreaker", sourceAreaIndex: 0, name: "粘液コアブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力が少しずつ上がります。", effect: (lv) => lv ? `範囲 ${130 + lv * 8}px / 対ボス ${sandBreakerBossDamage(lv)} ダメージ` : "未解放" },
   { id: "frostInsulation", sourceAreaIndex: 1, name: "凍結対策", base: 160, growth: 1.58, description: "砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
   { id: "heatPlating", sourceAreaIndex: 2, name: "灼熱対策", base: 220, growth: 1.6, description: "雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
   { id: "shieldPiercer", sourceAreaIndex: 3, name: "シールド解析", base: 300, growth: 1.62, description: "火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
@@ -113,6 +115,72 @@ const bossGimmicks = [
   { id: "infinitePhase", name: "無限位相" }
 ];
 
+const bossGuideDefs = [
+  {
+    title: { ja: "最終ボス: Slime King", en: "Final Boss: Slime King" },
+    text: {
+      ja: "工場排液から生まれた増殖ゲルの王です。攻撃のたびに粘液片を分裂させ、踏める位置へ近づく前にも小さな分裂体で足場を乱します。核が固まりきらないため、体の一部が勝手に走り出します。",
+      en: "A king born from runaway factory gel. It sheds split bodies between attack phases before moving close. Its core never fully stabilizes, so pieces of it keep running on their own."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Sand Wyrm", en: "Final Boss: Sand Wyrm" },
+    text: {
+      ja: "砂漠の地下搬送ドリルが野生化した機械竜です。攻撃中は砂の下へ潜って位置をずらし、砂柱や埋設物を押し出します。熱を逃がすために地中を循環する構造が、そのまま戦闘行動になっています。",
+      en: "A feral transport drill from beneath the dunes. During attacks it burrows, shifts position, and pushes sand spikes and buried debris forward. Its cooling route became its combat pattern."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Frost Core", en: "Final Boss: Frost Core" },
+    text: {
+      ja: "雪山基地の冷却炉心が自律防衛化した存在です。攻撃中は冷気で動きを鈍らせ、氷塊を生成して進路を狭めます。炉心保護用の冷媒が過剰循環し、周囲を監獄のように凍らせます。",
+      en: "An autonomous cooling core from a mountain base. It slows the field and forms ice blocks that narrow the route. Its overcirculating coolant turns defense into a frozen prison."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Lava Golem", en: "Final Boss: Lava Golem" },
+    text: {
+      ja: "火山の精錬炉に残った鉱石が歩き出した巨体です。攻撃中は溶岩弾と焼けた岩を連続で吐き出し、地面近くの圧力も上げます。炉内の余熱が逃げ場を失い、噴石としてあふれます。",
+      en: "A giant mass of ore awakened inside a volcanic smelter. It spits lava shots and heated rock in chains while pressure builds near the ground. Trapped furnace heat erupts as projectiles."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Giant Robot", en: "Final Boss: Giant Robot" },
+    text: {
+      ja: "未来都市を守る旧式警備機です。攻撃中はレーザー格子とシールドを交互に展開し、近づく瞬間だけ装甲姿勢を崩します。都市封鎖用の防犯網が壊れたまま、自分自身を区画の一部として守っています。",
+      en: "An old security machine guarding the future city. It alternates laser grids and shields, dropping its stance only when it advances. The broken lockdown network treats the machine as part of the city wall."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Star Dragon", en: "Final Boss: Star Dragon" },
+    text: {
+      ja: "宇宙航路の重力帆から生まれた竜型AIです。攻撃中は軌道上の敵影と隕石を組み合わせ、重力方向を揺さぶります。星間風を読む帆が乱れ、周囲の上下感覚まで航路補正しようとします。",
+      en: "A dragon-shaped AI grown from orbital gravity sails. It mixes orbital enemies with meteor paths and shakes local gravity. Its star-wind sails try to correct even your sense of up and down."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Void Engine", en: "Final Boss: Void Engine" },
+    text: {
+      ja: "ブラックホール縁辺で稼働し続ける古い推進炉です。攻撃中は特異点の吸引で位置を乱し、引き寄せた破片を弾幕に変えます。失われた航路を探し続けるため、空間そのものを燃料のように吸い込みます。",
+      en: "An ancient engine still running at a black-hole rim. It pulls at your position and turns captured fragments into barrages. Searching for a lost route, it burns space itself like fuel."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Aether Lord", en: "Final Boss: Aether Lord" },
+    text: {
+      ja: "神界の保守プログラムが人格を得た管理者です。攻撃中は光杭と再生処理を重ね、傷ついた自分を神気で巻き戻します。壊れた世界を修復する使命が、自身の損傷も修理対象として扱っています。",
+      en: "A maintenance program from the aether realm that gained a will. It layers light pillars with regeneration, rewinding damage with aether. Its repair mandate treats itself as part of the world to fix."
+    }
+  },
+  {
+    title: { ja: "最終ボス: Infinity Gate", en: "Final Boss: Infinity Gate" },
+    text: {
+      ja: "無限空間を折りたたむ門そのものです。攻撃中は位相を点滅させ、複数の座標から異なる弾幕を重ねます。無限の距離を短く畳む機構が暴走し、同じ瞬間を何度も重ねます。",
+      en: "The gate that folds infinite space. It flickers through phases and stacks barrages from several coordinates. Its mechanism for folding infinite distance has begun layering the same moment repeatedly."
+    }
+  }
+];
+
 const introGuideSteps = [
   {
     target: ".canvas-frame",
@@ -126,8 +194,8 @@ const introGuideSteps = [
     target: ".command-row",
     title: { ja: "操作", en: "Controls" },
     text: {
-      ja: "ジャンプは長押しで飛距離が伸びます。スライドはボタンを離すと早めに解除できます。スキルは研究後にセットできます。",
-      en: "Hold Jump to travel farther. Release Slide to cancel early. Skills become usable after research."
+      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓長押しで、キーやボタンを離すと早めに解除できます。スキルは研究後にセットし、Dキーでも使えます。",
+      en: "Hold Space/↑ to jump farther. Hold ↓ to slide, then release to cancel early. Set a researched skill and trigger it with D."
     }
   },
   {
@@ -192,6 +260,33 @@ const hazardGuideDefs = {
   meteor: {
     title: { ja: "落下物", en: "Falling Hazard" },
     text: { ja: "上から落ちてくる攻撃です。足元だけでなく、上方向の動きも見て避けましょう。", en: "This attack drops from above. Watch vertical motion, not just the ground line." }
+  }
+};
+
+const itemGuideDefs = {
+  dash: {
+    title: { ja: "特殊アイテム: ダッシュ", en: "Special Item: Dash" },
+    text: { ja: "一定時間だけ高速で走り、接触にも強くなります。ボス戦では移動ではなく、短い攻撃チャンスとして働きます。", en: "Temporarily boosts speed and contact strength. In boss battles, it works more like a short attack window than movement." }
+  },
+  shield: {
+    title: { ja: "特殊アイテム: 無敵", en: "Special Item: Invincible" },
+    text: { ja: "短い間ダメージを受けにくくなります。危険な攻撃が重なった時の保険になります。", en: "Briefly protects you from damage. It is useful when several threats overlap." }
+  },
+  giant: {
+    title: { ja: "特殊アイテム: 巨大化", en: "Special Item: Giant" },
+    text: { ja: "ロボットが大きくなり、当たりも強くなります。見た目も判定も大きくなるので、足場感覚が少し変わります。", en: "Your robot grows larger and stronger. Its visual size and collision feel both change for a while." }
+  },
+  magnet: {
+    title: { ja: "特殊アイテム: 磁石", en: "Special Item: Magnet" },
+    text: { ja: "近くのコインや報酬を一気に引き寄せます。取り逃しを減らして強化速度を上げられます。", en: "Pulls nearby coins and rewards toward you, reducing misses and speeding up upgrades." }
+  },
+  time: {
+    title: { ja: "特殊アイテム: 時間停止", en: "Special Item: Time Stop" },
+    text: { ja: "一部の敵や障害物の動きを止めます。止まっている間に位置関係を立て直せます。", en: "Stops some enemies and hazards briefly, giving you time to reset positioning." }
+  },
+  doubleJump: {
+    title: { ja: "特殊アイテム: 2段ジャンプ", en: "Special Item: Double Jump" },
+    text: { ja: "空中で使えるジャンプ回数を少し戻します。連続した障害物やボス攻撃への立て直しに役立ちます。", en: "Restores a bit of jump control in midair, helping you recover from chained hazards or boss attacks." }
   }
 };
 
@@ -325,9 +420,9 @@ const staticI18n = {
   distance: { ja: "距離", en: "Distance" },
   best: { ja: "最高", en: "Best" },
   multiplier: { ja: "倍率", en: "Mult" },
-  jump: { ja: "ジャンプ", en: "Jump" },
-  slide: { ja: "スライド", en: "Slide" },
-  dash: { ja: "スキル", en: "Skill" },
+  jump: { ja: "ジャンプ\nSpace / ↑", en: "Jump\nSpace / ↑" },
+  slide: { ja: "スライド\n↓", en: "Slide\n↓" },
+  dash: { ja: "スキル\nD", en: "Skill\nD" },
   restart: { ja: "再走", en: "Restart" },
   save: { ja: "保存", en: "Save" },
   upgrades: { ja: "強化", en: "Upgrades" },
@@ -369,7 +464,8 @@ const englishTextPairs = [
   ["長距離用の自動ランナーで、ロボット工場より高収入。", "Long-distance auto runners that earn more than the Robot Factory."],
   ["超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", "Build micro robots that follow the player and increase direct coin gains."],
   ["高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", "Build advanced micro robots that further increase direct coin gains."],
-  ["草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入ります。", "A short-range breaking skill made from compressed Grassland boss slime core. It is specialized against the Desert boss sand armor and shocks every enemy in range. Normal enemies take 1 damage; bosses only lose armor or shields until Lv5 adds a small 1-damage follow-up."],
+  ["草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力が少しずつ上がります。", "A short-range breaking skill made from compressed Grassland boss slime core. It is specialized against the Desert boss sand armor and shocks every enemy in range. Normal enemies take 1 damage; bosses only lose armor or shields until Lv5 adds 1 damage, then Lv6+ gradually increases damage."],
+  ["対ボス", "vs Boss"],
   ["砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", "Apply the Desert boss heat organ to slightly shorten the Snow Mountain boss freeze aura."],
   ["雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", "Build heat plating from the Snow Mountain boss cooling core to rarely reduce Volcano boss bonus damage."],
   ["火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", "Analyze the Volcano boss shell to slightly improve pierce chance against Future City energy shields."],
@@ -500,6 +596,8 @@ const englishTextPairs = [
   ["リワード", "Reward"],
   ["放置", "Idle"],
   ["吸収範囲", "Range"],
+  ["範囲", "Range"],
+  ["ダメージ", "Damage"],
   ["持続", "Duration"],
   ["秒ごと", "s interval"],
   ["未開放", "Locked"],
@@ -584,6 +682,20 @@ const guideStep = document.getElementById("guideStep");
 const guideTitle = document.getElementById("guideTitle");
 const guideText = document.getElementById("guideText");
 const guideNext = document.getElementById("guideNext");
+const debugPanel = document.getElementById("debugPanel");
+const debugResetSave = document.getElementById("debugResetSave");
+const debugStatus = document.getElementById("debugStatus");
+const debugHudFields = {
+  coinsStat: "coins",
+  gemsStat: "gems",
+  researchStat: "research",
+  prestigeStat: "prestigePoints",
+  distanceStat: "distance",
+  bestStat: "bestDistance",
+  hpStat: "hp",
+  comboStat: "combo",
+  levelStat: "level"
+};
 
 let state = loadState();
 let activeTab = "upgrades";
@@ -636,6 +748,9 @@ const run = {
   bossAttackTimer: 0,
   bossChargeTimer: 0,
   bossRetreating: false,
+  bossPhase: "attack",
+  bossPatternIndex: 0,
+  bossVolley: 0,
   event: null,
   eventTimer: 0,
   eventCooldown: 50,
@@ -655,7 +770,8 @@ const guideState = {
   index: 0,
   queue: [],
   onComplete: null,
-  targetElement: null
+  targetElement: null,
+  currentTarget: null
 };
 
 const inputState = {
@@ -699,6 +815,7 @@ function init() {
   resizeCanvas();
   renderPanel();
   updateHud();
+  initDebugMode();
   logEvent("RUN START");
   maybeStartIntroGuide();
   requestAnimationFrame(loop);
@@ -772,6 +889,229 @@ function persistStateQuiet() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function initDebugMode() {
+  if (!DEBUG_MODE) return;
+  debugPanel?.classList.remove("hidden");
+  debugResetSave?.addEventListener("click", resetDebugSave);
+  configureDebugHudInputs();
+}
+
+function resetDebugSave() {
+  localStorage.removeItem(STORAGE_KEY);
+  state = defaultState();
+  normalizeTutorialState(state);
+  ensureMissions();
+  resetRun();
+  renderPanel();
+  updateHud();
+  maybeStartIntroGuide({ force: true });
+  debugMessage("セーブを初期化しました");
+  persistStateQuiet();
+}
+
+function debugMessage(message) {
+  if (debugStatus) debugStatus.textContent = message;
+}
+
+function configureDebugHudInputs() {
+  if (!DEBUG_MODE) return;
+  for (const id of Object.keys(debugHudFields)) {
+    const element = document.getElementById(id);
+    if (element) configureDebugHudElement(element, id);
+  }
+}
+
+function configureDebugHudElement(element, id) {
+  element.dataset.debugField = debugHudFields[id];
+  element.contentEditable = "true";
+  element.spellcheck = false;
+  element.inputMode = "decimal";
+  element.classList.add("debug-editable");
+  if (element.dataset.debugBound) return;
+  element.dataset.debugBound = "true";
+  element.addEventListener("focus", () => {
+    element.dataset.debugLastValue = element.textContent || "";
+  });
+  element.addEventListener("input", () => applyDebugHudInput(element));
+  element.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      element.blur();
+    }
+    if (event.key === "Escape") {
+      event.preventDefault();
+      element.textContent = element.dataset.debugLastValue || element.textContent || "";
+      element.blur();
+    }
+  });
+  element.addEventListener("blur", () => applyDebugHudEdit(element));
+}
+
+function setDebugHudText(id, text) {
+  const element = document.getElementById(id);
+  if (!element) return;
+  if (DEBUG_MODE) configureDebugHudElement(element, id);
+  if (DEBUG_MODE && document.activeElement === element) return;
+  element.textContent = text;
+}
+
+function applyDebugHudEdit(element) {
+  if (!DEBUG_MODE) return;
+  const field = element.dataset.debugField;
+  const value = parseDebugNumber(element.textContent);
+  if (!field || !Number.isFinite(value)) {
+    updateHud();
+    return;
+  }
+  applyDebugHudValue(field, value);
+  finishDebugEdit(`HUD ${field}`);
+}
+
+function applyDebugHudInput(element) {
+  if (!DEBUG_MODE) return;
+  const field = element.dataset.debugField;
+  const value = parseDebugNumber(element.textContent);
+  if (!field || !Number.isFinite(value)) return;
+  applyDebugHudValue(field, value);
+  persistStateQuiet();
+  debugMessage(`DEBUG editing: ${field}`);
+}
+
+function applyDebugHudValue(field, value) {
+  if (field === "coins") state.coins = Math.max(0, value);
+  if (field === "gems") state.gems = Math.max(0, value);
+  if (field === "research") state.research = Math.max(0, value);
+  if (field === "prestigePoints") state.prestigePoints = Math.max(0, Math.floor(value));
+  if (field === "distance") setDebugDistance(value);
+  if (field === "bestDistance") state.bestDistance = Math.max(0, value);
+  if (field === "hp") run.hp = Math.max(0, Math.floor(value));
+  if (field === "combo") run.combo = Math.max(0, (value - 1) / 0.012);
+  if (field === "level") state.level = Math.max(1, Math.floor(value));
+}
+
+function setDebugDistance(value) {
+  const distance = Math.max(0, value);
+  run.distance = distance;
+  state.currentPrestigeDistance = distance;
+  state.bestDistance = Math.max(state.bestDistance || 0, distance);
+  run.nextBossMark = nextAreaBossDistance(areaIndexForDistance(distance));
+  run.nextChestMark = Math.floor(distance / CHEST_DISTANCE_INTERVAL) * CHEST_DISTANCE_INTERVAL + CHEST_DISTANCE_INTERVAL;
+  normalizeAreaBossClears(state);
+  normalizeDefeatedAreaBosses(state);
+  maybeExplainAreaTrait(areaIndexForDistance(distance));
+}
+
+function parseDebugNumber(rawValue) {
+  let value = String(rawValue || "").trim().replace(/,/g, "");
+  if (!value) return NaN;
+  value = value.split("/")[0].trim();
+  value = value.replace(/^x/i, "").replace(/m$/i, "").trim();
+  const suffix = value.match(/^(-?\d+(?:\.\d+)?)([kmbt])$/i);
+  if (suffix) {
+    const scale = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 }[suffix[2].toLowerCase()];
+    return Number(suffix[1]) * scale;
+  }
+  return Number(value);
+}
+
+function handleDebugPanelInput(event) {
+  if (!DEBUG_MODE) return;
+  const input = event.target.closest?.(".debug-inline-input");
+  if (!input) return;
+  handleDebugInlineInput(input);
+}
+
+function handleDebugInlineInput(input) {
+  if (!DEBUG_MODE || !input) return;
+  const value = parseDebugNumber(input.value);
+  if (!Number.isFinite(value)) {
+    renderPanel();
+    return;
+  }
+  applyDebugPanelValue(input, value);
+}
+
+function handleDebugInlineTyping(input) {
+  if (!DEBUG_MODE || !input) return;
+  const value = parseDebugNumber(input.value);
+  if (!Number.isFinite(value)) return;
+  applyDebugPanelValue(input, value, { render: false });
+}
+
+function handleDebugInlineKey(event, input) {
+  if (!DEBUG_MODE || !event || !input) return;
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  handleDebugInlineInput(input);
+  input.blur();
+}
+
+function applyDebugPanelValue(input, value, options = {}) {
+  const group = input.dataset.debugGroup;
+  const id = input.dataset.debugId;
+  if (!group || !id) return;
+  if (group === "upgrades") setDebugLevelValue(state.upgrades, id, value);
+  if (group === "factories") setDebugLevelValue(state.factories, id, value);
+  if (group === "permanent") setDebugLevelValue(state.permanent, id, value);
+  if (group === "researchTree") {
+    setDebugLevelValue(state.researchTree, id, value);
+    normalizeDefeatedAreaBosses(state);
+    normalizeActiveSkill(state);
+  }
+  if (group === "chests") {
+    const chest = state.chests.find((entry) => entry.id === id);
+    if (chest) chest.remaining = Math.max(0, value);
+  }
+  if (group === "equipmentValue") {
+    const item = state.equipment.find((entry) => entry.id === id);
+    const scale = Number(input.dataset.debugScale || 1);
+    if (item) item.value = Math.max(0, value / Math.max(1, scale));
+  }
+  if (group === "dailyMission" || group === "weeklyMission") {
+    ensureMissions();
+    const bucket = group === "dailyMission" ? "daily" : "weekly";
+    const mission = state.missions?.[bucket]?.[id];
+    if (mission) mission.progress = Math.max(0, value);
+  }
+  if (group === "achievement") {
+    state.achievements[id] = state.achievements[id] || { unlocked: false, claimed: false };
+    state.achievements[id].unlocked = value > 0;
+    if (!state.achievements[id].unlocked) state.achievements[id].claimed = false;
+  }
+  if (group === "scalar") {
+    setDebugScalarValue(id, value);
+  }
+  if (options.render === false) {
+    persistStateQuiet();
+    debugMessage(`DEBUG editing: ${group}:${id}`);
+    return;
+  }
+  finishDebugEdit(`${group}:${id}`);
+}
+
+function setDebugLevelValue(group, id, value) {
+  group[id] = Math.max(0, Math.floor(value));
+}
+
+function setDebugScalarValue(id, value) {
+  if (id === "prestigeCount") {
+    state.prestigeCount = Math.max(0, Math.floor(value));
+  }
+}
+
+function finishDebugEdit(label) {
+  renderPanel();
+  updateHud();
+  persistStateQuiet();
+  debugMessage(`DEBUG updated: ${label}`);
+}
+
+if (typeof window !== "undefined") {
+  window.handleDebugInlineInput = handleDebugInlineInput;
+  window.handleDebugInlineTyping = handleDebugInlineTyping;
+  window.handleDebugInlineKey = handleDebugInlineKey;
+}
+
 function guideValue(value) {
   if (!value || typeof value !== "object") return value || "";
   return value[currentLanguage] || value.ja || "";
@@ -830,6 +1170,7 @@ function showGuideStep() {
     ? guideState.index >= guideState.steps.length - 1 ? "Close" : "Next"
     : guideState.index >= guideState.steps.length - 1 ? "閉じる" : "次へ";
   guideOverlay.classList.remove("hidden");
+  guideState.currentTarget = step.target;
   updateGuideHighlight(step.target);
 }
 
@@ -851,6 +1192,7 @@ function finishGuide() {
   guideState.steps = [];
   guideState.index = 0;
   guideState.onComplete = null;
+  guideState.currentTarget = null;
   if (onComplete) onComplete();
   const next = guideState.queue.shift();
   if (next) beginGuide(next);
@@ -864,19 +1206,21 @@ function clearGuideHighlight() {
 
 function updateGuideHighlight(target) {
   clearGuideHighlight();
-  const element = typeof target === "string" ? document.querySelector(target) : target;
-  if (!element || !guideSpotlight) {
+  const rect = guideTargetRect(target);
+  if (!rect || !guideSpotlight) {
     guideCard?.classList.remove("guide-card-top");
     return;
   }
-  const rect = element.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) {
     guideCard?.classList.remove("guide-card-top");
     return;
   }
   const pad = 8;
-  guideState.targetElement = element;
-  element.classList?.add("guide-target");
+  const element = typeof target === "string" ? document.querySelector(target) : target;
+  if (element?.classList) {
+    guideState.targetElement = element;
+    element.classList.add("guide-target");
+  }
   guideSpotlight.style.left = `${Math.max(8, rect.left - pad)}px`;
   guideSpotlight.style.top = `${Math.max(8, rect.top - pad)}px`;
   guideSpotlight.style.width = `${Math.min(window.innerWidth - 16, rect.width + pad * 2)}px`;
@@ -885,34 +1229,97 @@ function updateGuideHighlight(target) {
   guideCard?.classList.toggle("guide-card-top", rect.top > window.innerHeight * 0.52);
 }
 
+function guideTargetRect(target) {
+  if (!target) return null;
+  if (typeof target === "string") return document.querySelector(target)?.getBoundingClientRect() || null;
+  if (target.canvasObject) return canvasObjectScreenRect(target.canvasObject);
+  if (typeof target.getBoundingClientRect === "function") return target.getBoundingClientRect();
+  if (Number.isFinite(target.left) && Number.isFinite(target.top)) return target;
+  return null;
+}
+
+function canvasObjectScreenRect(obj) {
+  if (!obj) return null;
+  const canvasRect = canvas.getBoundingClientRect();
+  const scaleX = canvasRect.width / Math.max(1, canvasWidth);
+  const scaleY = canvasRect.height / Math.max(1, canvasHeight);
+  return {
+    left: canvasRect.left + obj.x * scaleX,
+    top: canvasRect.top + obj.y * scaleY,
+    width: Math.max(18, obj.w * scaleX),
+    height: Math.max(18, obj.h * scaleY)
+  };
+}
+
 function markTutorialSeen(group, id) {
   normalizeTutorialState(state);
   state.tutorial[group][id] = true;
   persistStateQuiet();
 }
 
-function maybeExplainHazard(kind) {
+function tagLatestHazardForGuide(kind) {
+  const obj = objects[objects.length - 1];
+  tagHazardForGuide(obj, kind);
+}
+
+function tagHazardForGuide(obj, kind) {
+  if (!obj || obj.finalBoss || !hazardGuideDefs[kind] || state.tutorial?.seenHazards?.[kind]) return;
+  obj.guideKind = kind;
+  obj.guidePending = true;
+}
+
+function tagLatestItemForGuide(kind) {
+  const obj = objects[objects.length - 1];
+  tagItemForGuide(obj, kind);
+}
+
+function tagItemForGuide(obj, kind) {
+  if (!obj || obj.type !== "item" || !itemGuideDefs[kind] || state.tutorial?.seenItems?.[kind]) return;
+  obj.itemGuideKind = kind;
+  obj.itemGuidePending = true;
+}
+
+function checkHazardGuideTrigger(obj) {
+  if (!obj?.guidePending || state.tutorial?.seenHazards?.[obj.guideKind]) return;
+  const centerX = obj.x + obj.w / 2;
+  if (centerX <= canvasWidth * 0.52 && centerX >= 0) {
+    maybeExplainHazard(obj.guideKind, obj);
+    obj.guidePending = false;
+  }
+}
+
+function checkItemGuideTrigger(obj) {
+  if (!obj?.itemGuidePending || state.tutorial?.seenItems?.[obj.itemGuideKind]) return;
+  const centerX = obj.x + obj.w / 2;
+  if (centerX <= canvasWidth * 0.52 && centerX >= 0) {
+    maybeExplainItem(obj.itemGuideKind, obj);
+    obj.itemGuidePending = false;
+  }
+}
+
+function maybeExplainHazard(kind, obj = null) {
   const def = hazardGuideDefs[kind];
   if (!def || state.tutorial?.seenHazards?.[kind]) return;
   markTutorialSeen("seenHazards", kind);
-  queueGuide([{ ...def, target: ".canvas-frame" }]);
+  queueGuide([{ ...def, target: obj ? { canvasObject: obj } : ".canvas-frame" }]);
+}
+
+function maybeExplainItem(kind, obj = null) {
+  const def = itemGuideDefs[kind];
+  if (!def || state.tutorial?.seenItems?.[kind]) return;
+  markTutorialSeen("seenItems", kind);
+  queueGuide([{ ...def, target: obj ? { canvasObject: obj } : ".canvas-frame" }]);
 }
 
 function maybeExplainBoss(index) {
   const id = String(index);
   if (state.tutorial?.seenBosses?.[id]) return;
   markTutorialSeen("seenBosses", id);
-  queueGuide([{
-    target: ".canvas-frame",
-    title: {
-      ja: `ボス出現: ${bossName(index)}`,
-      en: `Boss Appears: ${bossName(index)}`
-    },
-    text: {
-      ja: "エリア終盤では距離が止まり、ボス戦になります。攻撃を避けながら、近づいた瞬間に踏むか、セットしたスキルで少しずつ削りましょう。",
-      en: "Near the end of an area, distance stops and a boss fight begins. Dodge attacks, then stomp when it approaches or chip it down with your equipped skill."
-    }
-  }]);
+  const def = bossGuideDefs[index] || {
+    title: { ja: `最終ボス: ${bossName(index)}`, en: `Final Boss: ${bossName(index)}` },
+    text: { ja: "このエリアの最深部を守る特異な存在です。周囲の環境を取り込んだ専用ギミックでランを乱します。", en: "A strange guardian of this area. It disrupts the run with a gimmick shaped by its environment." }
+  };
+  queueGuide([{ ...def, target: ".canvas-frame" }]);
 }
 
 function maybeExplainAreaTrait(index) {
@@ -967,6 +1374,7 @@ function defaultState() {
     tutorial: {
       introComplete: false,
       seenHazards: {},
+      seenItems: {},
       seenBosses: {},
       seenTraits: {}
     },
@@ -1104,6 +1512,7 @@ function normalizeTutorialState(targetState = state) {
     : {};
   targetState.tutorial.introComplete = Boolean(targetState.tutorial.introComplete);
   targetState.tutorial.seenHazards = targetState.tutorial.seenHazards || {};
+  targetState.tutorial.seenItems = targetState.tutorial.seenItems || {};
   targetState.tutorial.seenBosses = targetState.tutorial.seenBosses || {};
   targetState.tutorial.seenTraits = targetState.tutorial.seenTraits || {};
 }
@@ -1222,6 +1631,9 @@ function bindEvents() {
   window.addEventListener("resize", () => {
     if (guideState.active) showGuideStep();
   });
+  window.addEventListener("scroll", () => {
+    if (guideState.active) updateGuideHighlight(guideState.currentTarget);
+  }, { passive: true });
   document.addEventListener("pointerdown", unlockAudio, { once: true });
   document.addEventListener("keydown", unlockAudio, { once: true });
 
@@ -1348,6 +1760,15 @@ function bindEvents() {
     if (action === "adGacha") freeGacha();
     renderPanel();
     updateHud();
+  });
+  panelContent.addEventListener("change", handleDebugPanelInput);
+  panelContent.addEventListener("blur", handleDebugPanelInput, true);
+  panelContent.addEventListener("keydown", (event) => {
+    if (!DEBUG_MODE || !event.target.matches?.(".debug-inline-input")) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.target.blur();
+    }
   });
 
   window.addEventListener("beforeunload", () => {
@@ -1624,6 +2045,8 @@ function updateObjects(dt, scrollSpeed, stats) {
       if (obj.gravity) obj.vy = (obj.vy || 0) + obj.gravity * dt;
       obj.x -= scrollSpeed * dt;
     }
+    checkHazardGuideTrigger(obj);
+    checkItemGuideTrigger(obj);
     if (obj.hitCooldown > 0) obj.hitCooldown -= dt;
     if (!frozen && (obj.type === "enemy" || obj.type === "boss")) {
       updateEnemyTrait(obj, dt, playerRect);
@@ -1683,7 +2106,14 @@ function updateObjects(dt, scrollSpeed, stats) {
           obj.x -= 85;
         }
       } else if (obj.type === "boss") {
-        if (run.dashTimer > 0) {
+        const finalBossClosed = obj.finalBoss && !obj.vulnerable;
+        if (finalBossClosed) {
+          if (!isInvincible() && run.skillShield <= 0 && player.invulnerable <= 0.05) {
+            damagePlayer({ source: obj });
+          }
+          player.vy = run.gravityFlip ? 300 : -300;
+          obj.x += 70;
+        } else if (run.dashTimer > 0) {
           if (obj.hitCooldown <= 0 && damageEnemy(obj, 1)) {
             defeatBoss(obj);
             removed.add(obj);
@@ -1776,6 +2206,10 @@ function updateEnemyTrait(obj, dt, playerRect) {
 }
 
 function updateBossGimmick(obj, dt, distance) {
+  if (run.bossBattle && obj.finalBoss) {
+    updateFinalBossGimmick(obj, dt);
+    return;
+  }
   obj.bossTimer = (obj.bossTimer || 2) - dt;
   if (obj.bossGimmick === "sandBurrow") {
     obj.y = groundY - obj.h - Math.abs(Math.sin(performance.now() / 620)) * 22;
@@ -1834,6 +2268,93 @@ function updateBossGimmick(obj, dt, distance) {
     }, obj.areaIndex || 0));
     obj.spawnedMinions = (obj.spawnedMinions || 0) + 1;
     obj.bossTimer = 4.2;
+  }
+}
+
+function updateFinalBossGimmick(boss, dt) {
+  const index = boss.areaIndex || 0;
+  const phaseKey = `${run.bossPhase}:${run.bossPatternIndex}`;
+  if (boss.gimmickPhaseKey !== phaseKey) {
+    boss.gimmickPhaseKey = phaseKey;
+    boss.gimmickUsed = false;
+    boss.gimmickTimer = 0.75;
+    if (run.bossPhase === "vulnerable") {
+      boss.phased = false;
+    }
+  }
+
+  if (run.bossPhase === "vulnerable") {
+    boss.phased = false;
+    if (boss.bossGimmick === "sandBurrow") boss.y = groundY - boss.h;
+    return;
+  }
+
+  boss.gimmickTimer = (boss.gimmickTimer || 0.75) - dt;
+
+  if (boss.bossGimmick === "slimeSplit" && boss.gimmickTimer <= 0) {
+    addBossEnemy("slime", boss, { x: boss.x - 18, y: groundY - 30, w: 28, h: 28, vx: bossSpeed(index, 44), color: "#75d05e" });
+    boss.gimmickTimer = 1.35;
+  }
+
+  if (boss.bossGimmick === "sandBurrow") {
+    boss.phased = run.bossChargeTimer > finalBossAttackDuration(index) - 0.75;
+    boss.y = groundY - boss.h + (boss.phased ? 48 : Math.sin(performance.now() / 180) * 8);
+  }
+
+  if (boss.bossGimmick === "frostPrison") {
+    run.chillTimer = Math.max(run.chillTimer, 0.35 * researchReduction("frostInsulation"));
+    if (boss.gimmickTimer <= 0) {
+      addBossObstacle("crate", boss, { x: player.x + 260, y: groundY - 62, w: 42, h: 62, vx: -42, color: "#d9f6ff" });
+      boss.gimmickTimer = 1.55;
+    }
+  }
+
+  if (boss.bossGimmick === "lavaMeteor" && boss.gimmickTimer <= 0) {
+    addBossObstacle("meteor", boss, { x: player.x + random(230, 390), y: groundY - 270, w: 32, h: 32, vx: -52, vy: 188, gravity: 140, color: "#ffb238" });
+    boss.gimmickTimer = 1.25;
+  }
+
+  if (boss.bossGimmick === "laserGrid") {
+    if (!boss.gimmickUsed) {
+      boss.shield = Math.max(boss.shield || 0, 1);
+      boss.gimmickUsed = true;
+    }
+    if (boss.gimmickTimer <= 0) {
+      addBossObstacle("laser", boss, { x: bossSpawnX(boss, 60), y: groundY - 112, w: 20, h: 72, vx: bossSpeed(index, 58), color: "#48bde7" });
+      boss.gimmickTimer = 1.35;
+    }
+  }
+
+  if (boss.bossGimmick === "gravitySurge" && !boss.gimmickUsed) {
+    if (run.gravityGuardTimer <= 0) {
+      run.gravityFlip = !run.gravityFlip;
+      player.vy *= -0.25;
+    }
+    boss.gimmickUsed = true;
+    logEvent("BOSS GRAVITY SURGE");
+  }
+
+  if (boss.bossGimmick === "singularity") {
+    const pullScale = researchReduction("voidTether");
+    player.vy += (run.gravityFlip ? -1 : 1) * 120 * pullScale * dt;
+    if (boss.gimmickTimer <= 0) {
+      addBossObstacle("meteor", boss, { x: bossSpawnX(boss, 92), y: groundY - 220, w: 30, h: 30, vx: bossSpeed(index, 64), vy: 90, gravity: 85, color: "#d7b8ff" });
+      boss.gimmickTimer = 1.45;
+    }
+  }
+
+  if (boss.bossGimmick === "aetherRegen" && boss.gimmickTimer <= 0) {
+    if (boss.hp < boss.maxHp) boss.hp = Math.min(boss.maxHp, boss.hp + 1);
+    burst(boss.x + boss.w / 2, boss.y + boss.h / 2, "#fff1a5", 8);
+    boss.gimmickTimer = Math.max(1.25, 1.9 - researchLevel("aetherSeal") * 0.12);
+  }
+
+  if (boss.bossGimmick === "infinitePhase") {
+    boss.phased = run.phasePinTimer <= 0 && Math.sin(performance.now() / 130) > -0.1;
+    if (boss.gimmickTimer <= 0) {
+      addBossEnemy("bird", boss, { x: bossSpawnX(boss, random(50, 140)), y: groundY - random(116, 184), vx: bossSpeed(index, 62), color: "#8fffc6" });
+      boss.gimmickTimer = 1.45;
+    }
   }
 }
 
@@ -1951,7 +2472,7 @@ function spawnObstacleOrEnemy(x, area) {
       h: airborne ? 28 : 38,
       color: kind === "bird" ? area.accent : kind === "bomb" ? "#30333c" : "#75d05e"
     }, areaIndex()));
-    maybeExplainHazard(kind);
+    tagLatestHazardForGuide(kind);
     return true;
   }
 
@@ -1965,7 +2486,7 @@ function spawnObstacleOrEnemy(x, area) {
       h: 78,
       color: "#ef6b65"
     });
-    maybeExplainHazard(kind);
+    tagLatestHazardForGuide(kind);
     return true;
   }
 
@@ -1979,7 +2500,7 @@ function spawnObstacleOrEnemy(x, area) {
     h: height,
     color: area.obstacle
   });
-  maybeExplainHazard(kind);
+  tagLatestHazardForGuide(kind);
   return true;
 }
 
@@ -2050,6 +2571,7 @@ function spawnItem(x) {
     w: 26,
     h: 26
   });
+  tagLatestItemForGuide(kind);
   return true;
 }
 
@@ -2071,7 +2593,10 @@ function spawnBoss(index = areaIndex(), options = {}) {
     bossTimer: 1.8,
     hitCooldown: 0,
     finalBoss: Boolean(options.finalBoss),
-    chargePhase: "approach"
+    chargePhase: "approach",
+    attackPattern: 0,
+    attackVolley: 0,
+    vulnerable: false
   }, index);
   objects.push(boss);
   logEvent(`BOSS ${bossName(index).toUpperCase()}`);
@@ -2082,9 +2607,12 @@ function startAreaBossBattle(index) {
   if (run.bossBattle || isAreaBossCleared(index)) return;
   run.bossBattle = true;
   run.bossAreaIndex = index;
-  run.bossAttackTimer = 1.1;
-  run.bossChargeTimer = 2.4;
-  run.bossRetreating = false;
+  run.bossAttackTimer = 0.55;
+  run.bossChargeTimer = finalBossAttackDuration(index);
+  run.bossRetreating = true;
+  run.bossPhase = "attack";
+  run.bossPatternIndex = 0;
+  run.bossVolley = 0;
   run.event = null;
   run.eventTimer = 0;
   run.gravityFlip = false;
@@ -2103,95 +2631,253 @@ function updateBossBattle(dt) {
     run.bossBattle = false;
     return;
   }
-  const anchorX = canvasWidth - 172;
-  const attackX = player.x + (boss.areaIndex === 0 ? 8 : 58);
+  const index = boss.areaIndex || 0;
+  const anchorX = canvasWidth - 170;
+  const vulnerableX = player.x + 30;
+  const vulnerable = run.bossPhase === "vulnerable";
+  boss.vulnerable = vulnerable;
+  boss.attackPattern = run.bossPatternIndex % FINAL_BOSS_ATTACK_PATTERNS;
+
   run.bossChargeTimer -= dt;
-  if (run.bossChargeTimer <= 0) {
-    run.bossRetreating = !run.bossRetreating;
-    run.bossChargeTimer = run.bossRetreating ? 1.5 : random(2.3, 3.4);
+  const targetX = vulnerable ? vulnerableX : anchorX;
+  const moveRate = vulnerable ? 3.7 : 2.2;
+  boss.x += (targetX - boss.x) * Math.min(1, dt * moveRate);
+  boss.y = groundY - boss.h - Math.abs(Math.sin(performance.now() / (vulnerable ? 460 : 560))) * (vulnerable ? 5 : 13);
+
+  if (vulnerable) {
+    if (run.bossChargeTimer <= 0) {
+      switchBossPhase(boss, "attack");
+    }
+    return;
   }
-  const targetX = run.bossRetreating ? anchorX : attackX;
-  const approachRate = boss.areaIndex === 0 ? 3.2 : 1.5;
-  boss.x += (targetX - boss.x) * Math.min(1, dt * (run.bossRetreating ? 2.4 : approachRate));
-  boss.y = groundY - boss.h - Math.abs(Math.sin(performance.now() / 520)) * 12;
 
   run.bossAttackTimer -= dt;
   if (run.bossAttackTimer <= 0) {
     spawnBossAttack(boss);
-    run.bossAttackTimer = Math.max(0.85, 1.7 - run.bossAreaIndex * 0.07);
+    run.bossAttackTimer = finalBossAttackInterval(index, boss.attackPattern);
   }
+  if (run.bossChargeTimer <= 0) {
+    switchBossPhase(boss, "vulnerable");
+  }
+}
+
+function switchBossPhase(boss, phase) {
+  const index = boss.areaIndex || 0;
+  run.bossPhase = phase;
+  run.bossRetreating = phase === "attack";
+  run.bossVolley = 0;
+  boss.attackVolley = 0;
+  boss.bossTimer = 0.8;
+  boss.vulnerable = phase === "vulnerable";
+  boss.phased = false;
+  if (phase === "attack") {
+    run.bossPatternIndex = (run.bossPatternIndex + 1) % FINAL_BOSS_ATTACK_PATTERNS;
+    boss.attackPattern = run.bossPatternIndex;
+    run.bossChargeTimer = finalBossAttackDuration(index);
+    run.bossAttackTimer = 0.35;
+    logEvent(`${bossName(index).toUpperCase()} PATTERN ${boss.attackPattern + 1}`);
+  } else {
+    run.bossChargeTimer = finalBossVulnerableDuration(index);
+    run.bossAttackTimer = 99;
+    burst(boss.x + boss.w / 2, boss.y + 12, boss.color, 12);
+    logEvent("BOSS OPEN");
+  }
+}
+
+function finalBossAttackDuration(index) {
+  return Math.max(2.2, 3.05 + index * 0.1);
+}
+
+function finalBossVulnerableDuration(index) {
+  return Math.max(0.9, 1.45 - index * 0.035);
+}
+
+function finalBossAttackInterval(index, pattern) {
+  return Math.max(0.42, 0.78 - index * 0.035 - pattern * 0.04);
 }
 
 function spawnBossAttack(boss) {
   const index = boss.areaIndex || 0;
-  const pattern = index % 5;
+  const pattern = boss.attackPattern || 0;
+  const volley = boss.attackVolley || 0;
+  boss.attackVolley = volley + 1;
+  run.bossVolley = boss.attackVolley;
+  spawnFinalBossPattern(boss, index, pattern, volley);
+}
+
+function spawnFinalBossPattern(boss, index, pattern, volley) {
+  if (index === 0) spawnSlimeKingPattern(boss, pattern, volley);
+  else if (index === 1) spawnSandWyrmPattern(boss, pattern, volley);
+  else if (index === 2) spawnFrostCorePattern(boss, pattern, volley);
+  else if (index === 3) spawnLavaGolemPattern(boss, pattern, volley);
+  else if (index === 4) spawnGiantRobotPattern(boss, pattern, volley);
+  else if (index === 5) spawnStarDragonPattern(boss, pattern, volley);
+  else if (index === 6) spawnVoidEnginePattern(boss, pattern, volley);
+  else if (index === 7) spawnAetherLordPattern(boss, pattern, volley);
+  else spawnInfinityGatePattern(boss, pattern, volley);
+}
+
+function bossSpeed(index, add = 0) {
+  return -(165 + index * 14 + add);
+}
+
+function bossSpawnX(boss, offset = 0) {
+  return Math.min(canvasWidth + 140, boss.x + boss.w / 2 + offset);
+}
+
+function addBossObstacle(kind, boss, options = {}) {
+  const obj = {
+    type: "obstacle",
+    kind,
+    bossAttack: true,
+    x: options.x ?? bossSpawnX(boss),
+    y: options.y ?? groundY - (options.h || 42),
+    w: options.w || 44,
+    h: options.h || 42,
+    vx: options.vx ?? bossSpeed(boss.areaIndex || 0),
+    vy: options.vy || 0,
+    gravity: options.gravity || 0,
+    color: options.color || boss.color
+  };
+  objects.push(obj);
+  tagLatestHazardForGuide(kind);
+  return obj;
+}
+
+function addBossEnemy(kind, boss, options = {}) {
+  const airborne = kind === "bird";
+  const obj = applyEnemyTraits({
+    type: "enemy",
+    kind,
+    bossAttack: true,
+    x: options.x ?? bossSpawnX(boss),
+    y: options.y ?? (airborne ? groundY - 150 : groundY - 38),
+    w: options.w || (airborne ? 42 : 36),
+    h: options.h || (airborne ? 28 : 36),
+    vx: options.vx ?? bossSpeed(boss.areaIndex || 0, 12),
+    vy: options.vy || 0,
+    gravity: options.gravity || 0,
+    color: options.color || (kind === "slime" ? "#75d05e" : boss.color)
+  }, boss.areaIndex || 0);
+  objects.push(obj);
+  tagLatestHazardForGuide(kind);
+  return obj;
+}
+
+function spawnSlimeKingPattern(boss, pattern, volley) {
   if (pattern === 0) {
-    objects.push(applyEnemyTraits({
-      type: "enemy",
-      kind: "slime",
-      bossAttack: true,
-      x: boss.x - 42,
-      y: groundY - 32,
-      w: 32,
-      h: 32,
-      vx: -125 - index * 8,
-      color: "#75d05e"
-    }, index));
-    maybeExplainHazard("slime");
+    addBossEnemy("slime", boss, { x: bossSpawnX(boss, volley % 2 ? 36 : 0), w: 34, h: 34, vx: bossSpeed(0, 8) });
+    if (volley % 2 === 1) addBossEnemy("slime", boss, { x: bossSpawnX(boss, 86), y: groundY - 62, w: 28, h: 28, vx: bossSpeed(0, 26), vy: -70, gravity: 170 });
   } else if (pattern === 1) {
-    objects.push({
-      type: "obstacle",
-      kind: "spike",
-      bossAttack: true,
-      x: boss.x - 38,
-      y: groundY - 42,
-      w: 46,
-      h: 42,
-      vx: -145 - index * 8,
-      color: boss.color
-    });
-    maybeExplainHazard("spike");
-  } else if (pattern === 2) {
-    objects.push(applyEnemyTraits({
-      type: "enemy",
-      kind: "bird",
-      bossAttack: true,
-      x: boss.x - 44,
-      y: groundY - 150,
-      w: 42,
-      h: 28,
-      vx: -155 - index * 8,
-      color: boss.color
-    }, index));
-    maybeExplainHazard("bird");
-  } else if (pattern === 3) {
-    objects.push({
-      type: "obstacle",
-      kind: "meteor",
-      bossAttack: true,
-      x: boss.x - 30,
-      y: groundY - 230,
-      w: 34,
-      h: 34,
-      vx: -110 - index * 6,
-      vy: 115,
-      gravity: 80,
-      color: "#ef6b65"
-    });
-    maybeExplainHazard("meteor");
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 0), w: 46, h: 40, color: "#75d05e", vx: bossSpeed(0, 18) });
+    addBossEnemy("slime", boss, { x: bossSpawnX(boss, 92), w: 30, h: 30, vx: bossSpeed(0, 34) });
   } else {
-    objects.push({
-      type: "obstacle",
-      kind: "laser",
-      bossAttack: true,
-      x: boss.x - 34,
-      y: groundY - 120,
-      w: 24,
-      h: 86,
-      vx: -130 - index * 7,
-      color: "#ef6b65"
-    });
-    maybeExplainHazard("laser");
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss, 20), y: groundY - 132 - (volley % 2) * 28, vx: bossSpeed(0, 22), color: "#a8ee78" });
+    addBossEnemy("slime", boss, { x: bossSpawnX(boss, 112), w: 32, h: 32, vx: bossSpeed(0, 38) });
+  }
+}
+
+function spawnSandWyrmPattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 52, h: 44, vx: bossSpeed(1, 18), color: "#d6a15c" });
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 105), w: 40, h: 34, vx: bossSpeed(1, 4), color: "#d6a15c" });
+  } else if (pattern === 1) {
+    addBossEnemy("bomb", boss, { x: bossSpawnX(boss), y: groundY - 38, vx: bossSpeed(1, 24), color: "#6b5640" });
+    addBossObstacle("crate", boss, { x: bossSpawnX(boss, 120), w: 48, h: 60, vx: bossSpeed(1, 8), color: "#9c6a32" });
+  } else {
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 128, w: 24, h: 92, vx: bossSpeed(1, 20), color: "#f2b84b" });
+    if (volley % 2 === 0) addBossObstacle("spike", boss, { x: bossSpawnX(boss, 108), w: 48, h: 42, vx: bossSpeed(1, 28), color: "#d6a15c" });
+  }
+}
+
+function spawnFrostCorePattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossObstacle("meteor", boss, { x: player.x + 210 + (volley % 2) * 90, y: groundY - 245, w: 30, h: 34, vx: -36, vy: 165, gravity: 110, color: "#9fd9ff" });
+    addBossObstacle("meteor", boss, { x: player.x + 330, y: groundY - 275, w: 30, h: 34, vx: -52, vy: 150, gravity: 120, color: "#d9f6ff" });
+  } else if (pattern === 1) {
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 116, w: 24, h: 78, vx: bossSpeed(2, 14), color: "#9fd9ff" });
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss, 100), y: groundY - 158, vx: bossSpeed(2, 30), color: "#d9f6ff" });
+  } else {
+    addBossObstacle("crate", boss, { x: bossSpawnX(boss), w: 46, h: 70, vx: bossSpeed(2, 20), color: "#60798d" });
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 98), w: 48, h: 42, vx: bossSpeed(2, 34), color: "#d9f6ff" });
+  }
+}
+
+function spawnLavaGolemPattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossObstacle("meteor", boss, { x: bossSpawnX(boss, -20), y: groundY - 255, w: 38, h: 38, vx: bossSpeed(3, 10), vy: 190, gravity: 130, color: "#ef6b65" });
+    addBossObstacle("meteor", boss, { x: bossSpawnX(boss, 105), y: groundY - 225, w: 34, h: 34, vx: bossSpeed(3, 35), vy: 165, gravity: 120, color: "#ffb238" });
+  } else if (pattern === 1) {
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 56, h: 46, vx: bossSpeed(3, 22), color: "#ef6b65" });
+    addBossEnemy("bomb", boss, { x: bossSpawnX(boss, 116), y: groundY - 40, vx: bossSpeed(3, 38), color: "#53312d" });
+  } else {
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 142, w: 26, h: 100, vx: bossSpeed(3, 16), color: "#ff7b44" });
+    addBossObstacle("meteor", boss, { x: player.x + 320, y: groundY - 260, w: 32, h: 32, vx: -70, vy: 180, gravity: 125, color: "#ffb238" });
+  }
+}
+
+function spawnGiantRobotPattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 138, w: 22, h: 96, vx: bossSpeed(4, 24), color: "#7af0d2" });
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss, 86), y: groundY - 92, w: 22, h: 52, vx: bossSpeed(4, 18), color: "#7af0d2" });
+  } else if (pattern === 1) {
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss), y: groundY - 168, vx: bossSpeed(4, 30), color: "#7af0d2" });
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 112), w: 50, h: 42, vx: bossSpeed(4, 36), color: "#5461b9" });
+  } else {
+    addBossObstacle("crate", boss, { x: bossSpawnX(boss), w: 50, h: 74, vx: bossSpeed(4, 20), color: "#5461b9" });
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss, 122), y: groundY - 136, w: 24, h: 90, vx: bossSpeed(4, 40), color: "#48bde7" });
+  }
+}
+
+function spawnStarDragonPattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss), y: groundY - 178, vx: bossSpeed(5, 36), color: "#f1efff" });
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss, 96), y: groundY - 112, vx: bossSpeed(5, 20), color: "#b8c9ff" });
+  } else if (pattern === 1) {
+    addBossObstacle("meteor", boss, { x: player.x + 240, y: groundY - 260, w: 30, h: 30, vx: -62, vy: 170, gravity: 80, color: "#f1efff" });
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss, 90), y: groundY - 122, w: 22, h: 86, vx: bossSpeed(5, 28), color: "#b8c9ff" });
+  } else {
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 48, h: 42, vx: bossSpeed(5, 34), color: "#7a7fa4" });
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss, 118), y: groundY - 150 - (volley % 2) * 35, vx: bossSpeed(5, 44), color: "#f1efff" });
+  }
+}
+
+function spawnVoidEnginePattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossObstacle("meteor", boss, { x: bossSpawnX(boss), y: groundY - 230, w: 36, h: 36, vx: bossSpeed(6, 22), vy: 110, gravity: 70, color: "#b98cff" });
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 112), w: 52, h: 44, vx: bossSpeed(6, 42), color: "#4c3b72" });
+  } else if (pattern === 1) {
+    addBossEnemy("bomb", boss, { x: bossSpawnX(boss), y: groundY - 40, vx: bossSpeed(6, 38), color: "#30214f" });
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss, 108), y: groundY - 162, vx: bossSpeed(6, 24), color: "#b98cff" });
+  } else {
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 140, w: 26, h: 102, vx: bossSpeed(6, 34), color: "#b98cff" });
+    addBossObstacle("meteor", boss, { x: player.x + 300, y: groundY - 250, w: 32, h: 32, vx: -90, vy: 160, gravity: 90, color: "#d7b8ff" });
+  }
+}
+
+function spawnAetherLordPattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 150, w: 24, h: 112, vx: bossSpeed(7, 28), color: "#fff1a5" });
+    addBossEnemy("slime", boss, { x: bossSpawnX(boss, 110), y: groundY - 36, vx: bossSpeed(7, 48), color: "#fff1a5" });
+  } else if (pattern === 1) {
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss), y: groundY - 178, vx: bossSpeed(7, 40), color: "#f4cc5f" });
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 120), w: 48, h: 42, vx: bossSpeed(7, 52), color: "#b99067" });
+  } else {
+    addBossObstacle("meteor", boss, { x: player.x + 230, y: groundY - 270, w: 32, h: 32, vx: -54, vy: 178, gravity: 105, color: "#fff1a5" });
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss, 100), y: groundY - 124, w: 22, h: 84, vx: bossSpeed(7, 42), color: "#f4cc5f" });
+  }
+}
+
+function spawnInfinityGatePattern(boss, pattern, volley) {
+  if (pattern === 0) {
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 142, w: 24, h: 104, vx: bossSpeed(8, 36), color: "#4cc38a" });
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 94), w: 52, h: 44, vx: bossSpeed(8, 52), color: "#394859" });
+  } else if (pattern === 1) {
+    addBossEnemy("bird", boss, { x: bossSpawnX(boss), y: groundY - 184, vx: bossSpeed(8, 52), color: "#4cc38a" });
+    addBossEnemy("bomb", boss, { x: bossSpawnX(boss, 104), y: groundY - 40, vx: bossSpeed(8, 36), color: "#24313a" });
+  } else {
+    addBossObstacle("meteor", boss, { x: player.x + 220 + (volley % 2) * 120, y: groundY - 275, w: 34, h: 34, vx: -80, vy: 190, gravity: 130, color: "#4cc38a" });
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss, 125), y: groundY - 132, w: 24, h: 92, vx: bossSpeed(8, 60), color: "#8fffc6" });
   }
 }
 
@@ -2303,6 +2989,9 @@ function completeAreaBoss(index) {
   run.bossAttackTimer = 0;
   run.bossChargeTimer = 0;
   run.bossRetreating = false;
+  run.bossPhase = "attack";
+  run.bossPatternIndex = 0;
+  run.bossVolley = 0;
   run.nextSpawn = 0.4;
   run.eventCooldown = random(45, 85);
   const nextStart = areas[index + 1]?.start;
@@ -2413,6 +3102,9 @@ function resetRun() {
   run.bossAttackTimer = 0;
   run.bossChargeTimer = 0;
   run.bossRetreating = false;
+  run.bossPhase = "attack";
+  run.bossPatternIndex = 0;
+  run.bossVolley = 0;
   run.event = null;
   run.eventTimer = 0;
   run.eventCooldown = random(45, 85);
@@ -2611,7 +3303,7 @@ function activateSandBreaker(level) {
   for (const target of targets) {
     if (target.armor > 0) target.armor -= 1;
     else if (target.shield > 0) target.shield -= 1;
-    const damage = target.type === "boss" ? (level >= 5 ? 1 : 0) : 1;
+    const damage = target.type === "boss" ? sandBreakerBossDamage(level) : sandBreakerNormalDamage(level);
     if (damage > 0) target.hp = Math.max(0, (target.hp || 1) - damage);
     target.hitCooldown = Math.max(target.hitCooldown || 0, 0.18);
     burst(target.x + target.w / 2, target.y + target.h / 2, "#d7b878", 10);
@@ -2627,6 +3319,14 @@ function activateSandBreaker(level) {
     }
   }
   logEvent(`SLIME CORE BREAK x${targets.length}`);
+}
+
+function sandBreakerBossDamage(level) {
+  return level >= 5 ? Math.max(1, level - 4) : 0;
+}
+
+function sandBreakerNormalDamage(level) {
+  return 1 + Math.max(0, level - 5);
 }
 
 function activateGravityAnchor(level) {
@@ -3482,6 +4182,7 @@ function renderPrestige() {
         <div><span>所持PR</span><strong>${formatNumber(state.prestigePoints)}</strong></div>
         <div><span>獲得予定</span><strong>${formatNumber(gain)}</strong></div>
       </div>
+      ${debugScalarControl("prestigeCount", "Prestige Count", state.prestigeCount, 1)}
       <div class="row-item">
         <div>
           <h3>1000万コインで転生</h3>
@@ -3616,6 +4317,7 @@ function renderEquipmentList(items) {
             <span class="pill">${item.rarity}</span>
             <span class="pill">${equipped ? "装備中" : "未装備"}</span>
           </div>
+          ${debugEquipmentValueControl(item)}
         </div>
         <div class="row-actions">
           <button class="buy-button" data-action="equip" data-id="${item.id}" ${equipped ? "disabled" : ""}>${equipped ? "装備中" : "装備"}</button>
@@ -3725,33 +4427,71 @@ function panelHead(title, meta) {
 
 function rowItem({ title, desc, meta = [], action, id, disabled = false, label = "購入", progress = null }) {
   const progressHtml = progress === null ? "" : `<div class="progress"><i style="width:${Math.max(0, Math.min(1, progress)) * 100}%"></i></div>`;
+  const debugHtml = debugRowControl(action, id);
   return `<div class="row-item">
     <div>
       <h3>${title}</h3>
       <p>${desc}</p>
       ${progressHtml}
       <div class="meta">${meta.map((entry) => `<span class="pill">${entry}</span>`).join("")}</div>
+      ${debugHtml}
     </div>
     ${action ? `<button class="buy-button" data-action="${action}" data-id="${id}" ${disabled ? "disabled" : ""}>${label}</button>` : ""}
   </div>`;
 }
 
+function debugRowControl(action, id) {
+  if (!DEBUG_MODE || !id) return "";
+  const meta = debugControlMeta(action, id);
+  if (!meta) return "";
+  return `<label class="debug-inline">DEBUG ${meta.label}<input class="debug-inline-input" type="number" step="${meta.step}" data-debug-group="${meta.group}" data-debug-id="${id}" value="${meta.value}" oninput="handleDebugInlineTyping(this)" onchange="handleDebugInlineInput(this)" onblur="handleDebugInlineInput(this)" onkeydown="handleDebugInlineKey(event, this)"></label>`;
+}
+
+function debugControlMeta(action, id) {
+  if (action === "buyUpgrade") return { group: "upgrades", label: "Lv", value: state.upgrades[id] || 0, step: 1 };
+  if (action === "buyFactory") return { group: "factories", label: "Lv", value: state.factories[id] || 0, step: 1 };
+  if (action === "buyPermanent") return { group: "permanent", label: "Lv", value: state.permanent[id] || 0, step: 1 };
+  if (action === "buyResearch") return { group: "researchTree", label: "Lv", value: state.researchTree[id] || 0, step: 1 };
+  if (action === "claimDaily") return { group: "dailyMission", label: "Progress", value: state.missions?.daily?.[id]?.progress || 0, step: 1 };
+  if (action === "claimWeekly") return { group: "weeklyMission", label: "Progress", value: state.missions?.weekly?.[id]?.progress || 0, step: 1 };
+  if (action === "claimAchievement") return { group: "achievement", label: "Done", value: state.achievements?.[id]?.unlocked ? 1 : 0, step: 1 };
+  if (action === "openChest") {
+    const chest = state.chests.find((entry) => entry.id === id);
+    if (!chest) return null;
+    return { group: "chests", label: "秒", value: Math.ceil(chest.remaining || 0), step: 1 };
+  }
+  return null;
+}
+
+function debugEquipmentValueControl(item) {
+  if (!DEBUG_MODE || !item) return "";
+  const isHp = item.stat === "hp";
+  const scale = isHp ? 1 : 100;
+  const value = isHp ? item.value : Math.round(item.value * scale);
+  return `<label class="debug-inline">DEBUG Value<input class="debug-inline-input" type="number" step="1" data-debug-group="equipmentValue" data-debug-id="${item.id}" data-debug-scale="${scale}" value="${value}" oninput="handleDebugInlineTyping(this)" onchange="handleDebugInlineInput(this)" onblur="handleDebugInlineInput(this)" onkeydown="handleDebugInlineKey(event, this)"></label>`;
+}
+
+function debugScalarControl(id, label, value, step = 1) {
+  if (!DEBUG_MODE) return "";
+  return `<label class="debug-inline">DEBUG ${label}<input class="debug-inline-input" type="number" step="${step}" data-debug-group="scalar" data-debug-id="${id}" value="${value}" oninput="handleDebugInlineTyping(this)" onchange="handleDebugInlineInput(this)" onblur="handleDebugInlineInput(this)" onkeydown="handleDebugInlineKey(event, this)"></label>`;
+}
+
 function updateHud() {
   const stats = getStats();
   const area = currentArea();
-  document.getElementById("coinsStat").textContent = formatNumber(state.coins);
-  document.getElementById("gemsStat").textContent = formatNumber(state.gems, 1);
-  document.getElementById("researchStat").textContent = formatNumber(state.research, 1);
-  document.getElementById("prestigeStat").textContent = formatNumber(state.prestigePoints);
-  document.getElementById("distanceStat").textContent = `${formatNumber(run.distance)}m`;
-  document.getElementById("bestStat").textContent = `${formatNumber(state.bestDistance)}m`;
-  document.getElementById("hpStat").textContent = `${Math.max(0, run.hp)}/${stats.maxHp}`;
-  document.getElementById("comboStat").textContent = `x${(1 + Math.min(stats.maxCombo - 1, run.combo * 0.012)).toFixed(2)}`;
-  document.getElementById("levelStat").textContent = state.level;
+  setDebugHudText("coinsStat", formatNumber(state.coins));
+  setDebugHudText("gemsStat", formatNumber(state.gems, 1));
+  setDebugHudText("researchStat", formatNumber(state.research, 1));
+  setDebugHudText("prestigeStat", formatNumber(state.prestigePoints));
+  setDebugHudText("distanceStat", `${formatNumber(run.distance)}m`);
+  setDebugHudText("bestStat", `${formatNumber(state.bestDistance)}m`);
+  setDebugHudText("hpStat", `${Math.max(0, run.hp)}/${stats.maxHp}`);
+  setDebugHudText("comboStat", `x${(1 + Math.min(stats.maxCombo - 1, run.combo * 0.012)).toFixed(2)}`);
+  setDebugHudText("levelStat", state.level);
   document.getElementById("areaName").textContent = `${localizedAreaName(area)} / ${area.line}`;
   const dashButton = document.getElementById("dashBtn");
   dashButton.disabled = run.dashCooldown > 0 || run.gameOver || !selectedActiveSkillDef();
-  dashButton.textContent = run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s` : translateText(activeSkillName());
+  dashButton.textContent = run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s\nD` : `${translateText(activeSkillName())}\nD`;
   const bgmButton = document.getElementById("bgmBtn");
   bgmButton.textContent = state.settings.bgmEnabled ? "BGM ON" : "BGM OFF";
 }
@@ -4151,6 +4891,13 @@ function drawBoss(obj) {
   ctx.fillRect(obj.x, obj.y - 12, obj.w, 6);
   ctx.fillStyle = "#ef6b65";
   ctx.fillRect(obj.x, obj.y - 12, obj.w * Math.max(0, obj.hp / obj.maxHp), 6);
+  if (obj.finalBoss && obj.vulnerable) {
+    ctx.strokeStyle = "#f2b84b";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(obj.x + obj.w / 2, obj.y - 20, obj.w * 0.36, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   if (obj.armor > 0 || obj.shield > 0) {
     ctx.strokeStyle = obj.shield > 0 ? "#48bde7" : "#d7b878";
     ctx.lineWidth = 3;

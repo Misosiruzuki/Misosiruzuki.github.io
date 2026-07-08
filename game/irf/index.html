@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-language-mode="auto" data-ad-mode="reward">
+<html lang="ja" data-language-mode="auto" data-ad-mode="reward" data-debug-mode="false">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -27,6 +27,12 @@
       <p id="guideText"></p>
       <button id="guideNext" type="button">次へ</button>
     </div>
+  </div>
+
+  <div id="debugPanel" class="debug-panel hidden" aria-label="Debug tools">
+    <strong>DEBUG</strong>
+    <button id="debugResetSave" type="button">セーブリセット</button>
+    <span id="debugStatus">表示中の数値を直接編集できます</span>
   </div>
 
   <main class="app-shell">

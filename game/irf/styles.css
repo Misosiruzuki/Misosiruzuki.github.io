@@ -171,6 +171,52 @@ button:disabled {
   background: #2b2517;
 }
 
+.debug-panel {
+  position: sticky;
+  top: 0;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(242, 184, 75, 0.5);
+  background: #211b10;
+  color: #ffe3a8;
+}
+
+.debug-panel.hidden {
+  display: none;
+}
+
+.debug-panel strong {
+  color: var(--gold);
+}
+
+.debug-panel button {
+  min-height: 30px;
+  border-color: rgba(242, 184, 75, 0.65);
+  background: #302713;
+  color: #ffe3a8;
+}
+
+.debug-panel span {
+  color: #e8cf9a;
+  font-size: 0.82rem;
+}
+
+.debug-editable {
+  border-radius: 5px;
+  outline: 1px dashed rgba(242, 184, 75, 0.52);
+  outline-offset: 2px;
+  cursor: text;
+}
+
+.debug-editable:focus {
+  background: rgba(242, 184, 75, 0.16);
+  outline: 2px solid var(--gold);
+}
+
 .app-shell {
   width: min(1500px, 100%);
   min-height: 100vh;
@@ -323,6 +369,11 @@ button:disabled {
   gap: 8px;
 }
 
+.command-row button {
+  white-space: pre-line;
+  line-height: 1.15;
+}
+
 .command-row button:nth-child(1) {
   border-color: rgba(72, 189, 231, 0.54);
 }
@@ -439,6 +490,38 @@ button:disabled {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 7px;
+}
+
+.debug-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 8px;
+  border-radius: 6px;
+  border: 1px dashed rgba(242, 184, 75, 0.55);
+  background: rgba(242, 184, 75, 0.08);
+  color: #ffe3a8;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 5px 7px;
+}
+
+.debug-inline-input {
+  width: 82px;
+  min-height: 28px;
+  border: 1px solid rgba(242, 184, 75, 0.58);
+  border-radius: 5px;
+  background: #11161d;
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  padding: 3px 6px;
+}
+
+.debug-inline-input:focus {
+  border-color: var(--gold);
+  outline: 2px solid rgba(242, 184, 75, 0.22);
 }
 
 .pill {
@@ -560,6 +643,11 @@ button:disabled {
 }
 
 @media (max-width: 720px) {
+  .debug-panel {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
   .app-shell {
     padding: 8px;
     gap: 8px;
