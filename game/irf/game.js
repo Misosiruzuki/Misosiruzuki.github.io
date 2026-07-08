@@ -115,68 +115,80 @@ const bossGimmicks = [
   { id: "infinitePhase", name: "無限位相" }
 ];
 
+const bossSoulModes = [
+  { id: "red", name: "Red Core", color: "#ef5f6b", rule: "通常操作と警告攻撃" },
+  { id: "cyan", name: "Patience Field", color: "#65d6ff", rule: "水色攻撃は動かず耐える" },
+  { id: "orange", name: "Bravery Drive", color: "#ff9f3d", rule: "橙攻撃は動いて突破する" },
+  { id: "blue", name: "Integrity Gravity", color: "#4f8cff", rule: "重力方向が切り替わる" },
+  { id: "purple", name: "Perseverance Rails", color: "#b98cff", rule: "上下レーンだけを移動する" },
+  { id: "green", name: "Kindness Shield", color: "#60d878", rule: "方向入力で攻撃を受け止める" },
+  { id: "yellow", name: "Justice Shot", color: "#f2d24b", rule: "Dキーで弾を撃つ" },
+  { id: "dual", name: "Split Core", color: "#65d6ff", rule: "本体と反転残像を同時に守る" },
+  { id: "rainbow", name: "Rainbow Cycle", color: "#ffffff", rule: "攻撃ごとにルールが変わる" }
+];
+
 const bossGuideDefs = [
   {
     title: { ja: "最終ボス: Slime King", en: "Final Boss: Slime King" },
     text: {
-      ja: "工場排液から生まれた増殖ゲルの王です。攻撃のたびに粘液片を分裂させ、踏める位置へ近づく前にも小さな分裂体で足場を乱します。核が固まりきらないため、体の一部が勝手に走り出します。",
-      en: "A king born from runaway factory gel. It sheds split bodies between attack phases before moving close. Its core never fully stabilizes, so pieces of it keep running on their own."
+      ja: "工場排液から生まれた増殖ゲルの王です。攻撃のたびに粘液片を分裂させ、踏める位置へ近づく前にも小さな分裂体で足場を乱します。赤い核は通常操作のまま警告攻撃を読む力を試します。核が固まりきらないため、体の一部が勝手に走り出します。",
+      en: "A king born from runaway factory gel. It sheds split bodies between attack phases before moving close. Its red core keeps normal controls and tests how well you read warning attacks. Its core never fully stabilizes, so pieces of it keep running on their own."
     }
   },
   {
     title: { ja: "最終ボス: Sand Wyrm", en: "Final Boss: Sand Wyrm" },
     text: {
-      ja: "砂漠の地下搬送ドリルが野生化した機械竜です。攻撃中は砂の下へ潜って位置をずらし、砂柱や埋設物を押し出します。熱を逃がすために地中を循環する構造が、そのまま戦闘行動になっています。",
-      en: "A feral transport drill from beneath the dunes. During attacks it burrows, shifts position, and pushes sand spikes and buried debris forward. Its cooling route became its combat pattern."
+      ja: "砂漠の地下搬送ドリルが野生化した機械竜です。攻撃中は砂の下へ潜って位置をずらし、砂柱や埋設物を押し出します。水色の砂紋は、動かず待つ判断を要求します。熱を逃がすために地中を循環する構造が、そのまま戦闘行動になっています。",
+      en: "A feral transport drill from beneath the dunes. During attacks it burrows, shifts position, and pushes sand spikes and buried debris forward. Its cyan sand rings demand moments of patience. Its cooling route became its combat pattern."
     }
   },
   {
     title: { ja: "最終ボス: Frost Core", en: "Final Boss: Frost Core" },
     text: {
-      ja: "雪山基地の冷却炉心が自律防衛化した存在です。攻撃中は冷気で動きを鈍らせ、氷塊を生成して進路を狭めます。炉心保護用の冷媒が過剰循環し、周囲を監獄のように凍らせます。",
-      en: "An autonomous cooling core from a mountain base. It slows the field and forms ice blocks that narrow the route. Its overcirculating coolant turns defense into a frozen prison."
+      ja: "雪山基地の冷却炉心が自律防衛化した存在です。攻撃中は冷気で動きを鈍らせ、氷塊を生成して進路を狭めます。橙の冷却壁は、止まらず動いて突破する勇気を要求します。炉心保護用の冷媒が過剰循環し、周囲を監獄のように凍らせます。",
+      en: "An autonomous cooling core from a mountain base. It slows the field and forms ice blocks that narrow the route. Its orange coolant walls reward active movement through danger. Its overcirculating coolant turns defense into a frozen prison."
     }
   },
   {
     title: { ja: "最終ボス: Lava Golem", en: "Final Boss: Lava Golem" },
     text: {
-      ja: "火山の精錬炉に残った鉱石が歩き出した巨体です。攻撃中は溶岩弾と焼けた岩を連続で吐き出し、地面近くの圧力も上げます。炉内の余熱が逃げ場を失い、噴石としてあふれます。",
-      en: "A giant mass of ore awakened inside a volcanic smelter. It spits lava shots and heated rock in chains while pressure builds near the ground. Trapped furnace heat erupts as projectiles."
+      ja: "火山の精錬炉に残った鉱石が歩き出した巨体です。攻撃中は溶岩弾と焼けた岩を連続で吐き出し、地面近くの圧力も上げます。青い炉心は重力方向を切り替え、足場感覚そのものを崩します。炉内の余熱が逃げ場を失い、噴石としてあふれます。",
+      en: "A giant mass of ore awakened inside a volcanic smelter. It spits lava shots and heated rock in chains while pressure builds near the ground. Its blue furnace core shifts gravity and breaks your footing. Trapped furnace heat erupts as projectiles."
     }
   },
   {
     title: { ja: "最終ボス: Giant Robot", en: "Final Boss: Giant Robot" },
     text: {
-      ja: "未来都市を守る旧式警備機です。攻撃中はレーザー格子とシールドを交互に展開し、近づく瞬間だけ装甲姿勢を崩します。都市封鎖用の防犯網が壊れたまま、自分自身を区画の一部として守っています。",
-      en: "An old security machine guarding the future city. It alternates laser grids and shields, dropping its stance only when it advances. The broken lockdown network treats the machine as part of the city wall."
+      ja: "未来都市を守る旧式警備機です。攻撃中はレーザー格子とシールドを交互に展開し、近づく瞬間だけ装甲姿勢を崩します。紫の保安レールは、自由なジャンプではなく上下レーン移動へ操作を変えます。都市封鎖用の防犯網が壊れたまま、自分自身を区画の一部として守っています。",
+      en: "An old security machine guarding the future city. It alternates laser grids and shields, dropping its stance only when it advances. Its purple security rails replace free jumping with lane switching. The broken lockdown network treats the machine as part of the city wall."
     }
   },
   {
     title: { ja: "最終ボス: Star Dragon", en: "Final Boss: Star Dragon" },
     text: {
-      ja: "宇宙航路の重力帆から生まれた竜型AIです。攻撃中は軌道上の敵影と隕石を組み合わせ、重力方向を揺さぶります。星間風を読む帆が乱れ、周囲の上下感覚まで航路補正しようとします。",
-      en: "A dragon-shaped AI grown from orbital gravity sails. It mixes orbital enemies with meteor paths and shakes local gravity. Its star-wind sails try to correct even your sense of up and down."
+      ja: "宇宙航路の重力帆から生まれた竜型AIです。攻撃中は軌道上の敵影と隕石を組み合わせ、重力方向を揺さぶります。緑の防衛帆は、入力方向で攻撃を受け止める盾操作を要求します。星間風を読む帆が乱れ、周囲の上下感覚まで航路補正しようとします。",
+      en: "A dragon-shaped AI grown from orbital gravity sails. It mixes orbital enemies with meteor paths and shakes local gravity. Its green defense sails demand directional shielding. Its star-wind sails try to correct even your sense of up and down."
     }
   },
   {
     title: { ja: "最終ボス: Void Engine", en: "Final Boss: Void Engine" },
     text: {
-      ja: "ブラックホール縁辺で稼働し続ける古い推進炉です。攻撃中は特異点の吸引で位置を乱し、引き寄せた破片を弾幕に変えます。失われた航路を探し続けるため、空間そのものを燃料のように吸い込みます。",
-      en: "An ancient engine still running at a black-hole rim. It pulls at your position and turns captured fragments into barrages. Searching for a lost route, it burns space itself like fuel."
+      ja: "ブラックホール縁辺で稼働し続ける古い推進炉です。攻撃中は特異点の吸引で位置を乱し、引き寄せた破片を弾幕に変えます。黄色い照準核の間は、Dキーで弾を撃ち、飛来物や本体へ反撃できます。失われた航路を探し続けるため、空間そのものを燃料のように吸い込みます。",
+      en: "An ancient engine still running at a black-hole rim. It pulls at your position and turns captured fragments into barrages. Its yellow targeting core lets D fire shots at debris and the engine. Searching for a lost route, it burns space itself like fuel."
     }
   },
   {
     title: { ja: "最終ボス: Aether Lord", en: "Final Boss: Aether Lord" },
     text: {
-      ja: "神界の保守プログラムが人格を得た管理者です。攻撃中は光杭と再生処理を重ね、傷ついた自分を神気で巻き戻します。壊れた世界を修復する使命が、自身の損傷も修理対象として扱っています。",
-      en: "A maintenance program from the aether realm that gained a will. It layers light pillars with regeneration, rewinding damage with aether. Its repair mandate treats itself as part of the world to fix."
+      ja: "神界の保守プログラムが人格を得た管理者です。攻撃中は光杭と再生処理を重ね、傷ついた自分を神気で巻き戻します。青赤分割核は、プレイヤー本体と上下反転した残像の両方を守る戦いに変えます。壊れた世界を修復する使命が、自身の損傷も修理対象として扱っています。",
+      en: "A maintenance program from the aether realm that gained a will. It layers light pillars with regeneration, rewinding damage with aether. Its split core makes you protect both the player and a vertically mirrored echo. Its repair mandate treats itself as part of the world to fix."
     }
   },
   {
     title: { ja: "最終ボス: Infinity Gate", en: "Final Boss: Infinity Gate" },
     text: {
-      ja: "無限空間を折りたたむ門そのものです。攻撃中は位相を点滅させ、複数の座標から異なる弾幕を重ねます。無限の距離を短く畳む機構が暴走し、同じ瞬間を何度も重ねます。",
-      en: "The gate that folds infinite space. It flickers through phases and stacks barrages from several coordinates. Its mechanism for folding infinite distance has begun layering the same moment repeatedly."
+      ja: "無限空間を折りたたむ門そのものです。攻撃中は位相を点滅させ、複数の座標から異なる弾幕を重ねます。虹色の中核は、攻撃パターンごとに過去のソウルルールを切り替えます。無限の距離を短く畳む機構が暴走し、同じ瞬間を何度も重ねます。",
+      en: "The gate that folds infinite space. It flickers through phases and stacks barrages from several coordinates. Its rainbow core switches between earlier soul rules on each attack pattern. Its mechanism for folding infinite distance has begun layering the same moment repeatedly."
     }
   }
 ];
@@ -751,6 +763,12 @@ const run = {
   bossPhase: "attack",
   bossPatternIndex: 0,
   bossVolley: 0,
+  bossSoulMode: "red",
+  bossModeTimer: 0,
+  bossModePulse: 0,
+  webLane: 1,
+  justiceCooldown: 0,
+  echoActive: false,
   event: null,
   eventTimer: 0,
   eventCooldown: 50,
@@ -785,7 +803,8 @@ const inputState = {
   pointerStartY: 0,
   pointerStartedAt: 0,
   pointerSlideActive: false,
-  pointerJumpActive: false
+  pointerJumpActive: false,
+  blockDirection: "mid"
 };
 
 const robotSprite = {
@@ -1647,6 +1666,16 @@ function bindEvents() {
     if (gameplayKey) event.preventDefault();
     if (event.repeat) return;
     if (event.code === "Space" || event.code === "ArrowUp") {
+      inputState.blockDirection = "high";
+    } else if (event.code === "ArrowDown") {
+      inputState.blockDirection = "low";
+    }
+    if (run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple") {
+      if (event.code === "Space" || event.code === "ArrowUp") shiftWebLane(-1);
+      if (event.code === "ArrowDown") shiftWebLane(1);
+      if (event.code !== "KeyD") return;
+    }
+    if (event.code === "Space" || event.code === "ArrowUp") {
       startJumpHold();
     }
     if (event.code === "ArrowDown") {
@@ -1665,6 +1694,12 @@ function bindEvents() {
       || event.code === "ArrowRight"
       || event.code === "KeyD";
     if (gameplayKey) event.preventDefault();
+    if ((event.code === "Space" || event.code === "ArrowUp") && inputState.blockDirection === "high") {
+      inputState.blockDirection = "mid";
+    }
+    if (event.code === "ArrowDown" && inputState.blockDirection === "low") {
+      inputState.blockDirection = "mid";
+    }
     if (event.code === "Space" || event.code === "ArrowUp") {
       releaseJumpHold();
     }
@@ -2021,6 +2056,10 @@ function maybeSpawnScheduledChest() {
 }
 
 function updatePlayer(dt, stats) {
+  if (run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple") {
+    updateWebLanePlayer(dt);
+    return;
+  }
   const gravity = run.gravityFlip ? -1200 : 1200;
   const ceilingY = 34;
   const targetGround = run.gravityFlip ? ceilingY : groundY - getPlayerHeight();
@@ -2046,6 +2085,28 @@ function updatePlayer(dt, stats) {
   }
 }
 
+function shiftWebLane(direction) {
+  run.webLane = Math.max(0, Math.min(2, (run.webLane ?? 1) + direction));
+  player.slideTimer = 0;
+  inputState.jumpHolding = false;
+  inputState.jumpActive = false;
+  inputState.slideHolding = false;
+  restartPlayerAnimation("running");
+}
+
+function updateWebLanePlayer(dt) {
+  const targetY = webLaneY(run.webLane ?? 1);
+  player.vy = 0;
+  player.jumpsUsed = 0;
+  player.slideTimer = 0;
+  player.y += (targetY - player.y) * Math.min(1, dt * 16);
+}
+
+function webLaneY(lane) {
+  const heights = [150, 98, 46];
+  return groundY - heights[Math.max(0, Math.min(2, lane))];
+}
+
 function updateObjects(dt, scrollSpeed, stats) {
   const magnetRadius = stats.magnetRadius * (run.event === "coinRain" ? 1.35 : 1);
   const playerRect = getPlayerRect();
@@ -2064,6 +2125,24 @@ function updateObjects(dt, scrollSpeed, stats) {
     if (obj.hitCooldown > 0) obj.hitCooldown -= dt;
     if (!frozen && (obj.type === "enemy" || obj.type === "boss")) {
       updateEnemyTrait(obj, dt, playerRect);
+    }
+    if (obj.life !== undefined) {
+      obj.life -= dt;
+      if (obj.life <= 0) {
+        removed.add(obj);
+        continue;
+      }
+    }
+    if (obj.type === "playerShot") {
+      handlePlayerShotCollision(obj, removed);
+      continue;
+    }
+    if (run.echoActive && obj.dualHazard && (obj.type === "obstacle" || obj.type === "enemy")) {
+      const echoRect = getPlayerEchoRect();
+      if (echoRect && rectsOverlap(echoRect, obj)) {
+        damagePlayer({ source: obj });
+        obj.x += 90;
+      }
     }
 
     if (obj.type === "boss" && obj.x + obj.w < 0) {
@@ -2101,7 +2180,9 @@ function updateObjects(dt, scrollSpeed, stats) {
         activateItem(obj.kind);
         removed.add(obj);
       } else if (obj.type === "obstacle") {
-        if (isInvincible() || run.event === "clearPath") {
+        if (handleSoulObstacleCollision(obj, removed)) {
+          // Soul-mode rule handled this collision.
+        } else if (isInvincible() || run.event === "clearPath") {
           burst(obj.x, obj.y, "#f2b84b", 9);
           removed.add(obj);
           gainCombo(1);
@@ -2110,7 +2191,9 @@ function updateObjects(dt, scrollSpeed, stats) {
           obj.x -= 80;
         }
       } else if (obj.type === "enemy") {
-        if (canStomp(obj) || isInvincible()) {
+        if (handleSoulEnemyCollision(obj, removed)) {
+          // Soul-mode rule handled this collision.
+        } else if (canStomp(obj) || isInvincible()) {
           if (damageEnemy(obj, isInvincible() ? 2 : 1)) {
             defeatEnemy(obj);
             removed.add(obj);
@@ -2152,6 +2235,104 @@ function updateObjects(dt, scrollSpeed, stats) {
   }
 
   objects = objects.filter((obj) => obj.x > -220 && !removed.has(obj));
+}
+
+function handlePlayerShotCollision(shot, removed) {
+  const target = objects.find((obj) => {
+    if (obj === shot || removed.has(obj)) return false;
+    if (obj.type !== "obstacle" && obj.type !== "enemy" && obj.type !== "boss") return false;
+    return rectsOverlap(shot, obj);
+  });
+  if (!target) return;
+  removed.add(shot);
+  burst(shot.x + shot.w, shot.y + shot.h / 2, shot.color, 6);
+  if (target.type === "obstacle") {
+    removed.add(target);
+    gainCombo(1);
+    return;
+  }
+  const canDamageBoss = target.type !== "boss" || activeBossSoulMode() === "yellow" || target.vulnerable;
+  if (!canDamageBoss) return;
+  if (damageEnemy(target, 1)) {
+    if (target.type === "boss") defeatBoss(target);
+    else defeatEnemy(target);
+    removed.add(target);
+  }
+}
+
+function handleSoulObstacleCollision(obj, removed) {
+  if (obj.soulRule === "patience") {
+    if (isPlayerStillForPatience()) {
+      removed.add(obj);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#65d6ff", 7);
+      gainCombo(1);
+    } else {
+      damagePlayer();
+      obj.x -= 80;
+    }
+    return true;
+  }
+  if (obj.soulRule === "bravery") {
+    if (isPlayerActingForBravery()) {
+      removed.add(obj);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#ff9f3d", 8);
+      gainCombo(1);
+    } else {
+      damagePlayer();
+      obj.x -= 80;
+    }
+    return true;
+  }
+  if (obj.soulRule === "shield") {
+    if (shieldDirection() === obj.shieldLane) {
+      removed.add(obj);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#60d878", 8);
+      if (run.hp < getStats().maxHp && Math.random() < 0.18) run.hp += 1;
+      gainCombo(1);
+    } else {
+      damagePlayer();
+      obj.x -= 80;
+    }
+    return true;
+  }
+  return false;
+}
+
+function handleSoulEnemyCollision(obj, removed) {
+  if (obj.soulRule === "patience") {
+    if (isPlayerStillForPatience()) {
+      removed.add(obj);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#65d6ff", 7);
+      gainCombo(1);
+    } else {
+      damagePlayer({ source: obj });
+      obj.x -= 85;
+    }
+    return true;
+  }
+  if (obj.soulRule === "bravery") {
+    if (isPlayerActingForBravery()) {
+      defeatEnemy(obj);
+      removed.add(obj);
+    } else {
+      damagePlayer({ source: obj });
+      obj.x -= 85;
+    }
+    return true;
+  }
+  return false;
+}
+
+function isPlayerStillForPatience() {
+  return Math.abs(player.vy) < 12 && player.slideTimer <= 0 && !inputState.jumpHolding && player.jumpsUsed === 0;
+}
+
+function isPlayerActingForBravery() {
+  return Math.abs(player.vy) > 35 || player.slideTimer > 0 || run.dashTimer > 0 || inputState.jumpHolding;
+}
+
+function shieldDirection() {
+  return inputState.blockDirection || "mid";
 }
 
 function damageEnemy(obj, amount = 1) {
@@ -2607,6 +2788,7 @@ function spawnBoss(index = areaIndex(), options = {}) {
     bossTimer: 1.8,
     hitCooldown: 0,
     finalBoss: Boolean(options.finalBoss),
+    soulMode: bossSoulModeForArea(index),
     chargePhase: "approach",
     attackPattern: 0,
     attackVolley: 0,
@@ -2627,6 +2809,12 @@ function startAreaBossBattle(index) {
   run.bossPhase = "attack";
   run.bossPatternIndex = 0;
   run.bossVolley = 0;
+  run.bossSoulMode = bossSoulModeForArea(index);
+  run.bossModeTimer = 0;
+  run.bossModePulse = 0.85;
+  run.webLane = 1;
+  run.justiceCooldown = 0;
+  run.echoActive = false;
   run.event = null;
   run.eventTimer = 0;
   run.gravityFlip = false;
@@ -2651,6 +2839,7 @@ function updateBossBattle(dt) {
   const vulnerable = run.bossPhase === "vulnerable";
   boss.vulnerable = vulnerable;
   boss.attackPattern = run.bossPatternIndex % FINAL_BOSS_ATTACK_PATTERNS;
+  updateBossSoulMode(boss, dt);
 
   run.bossChargeTimer -= dt;
   const targetX = vulnerable ? vulnerableX : anchorX;
@@ -2689,14 +2878,42 @@ function switchBossPhase(boss, phase) {
   if (phase === "attack") {
     run.bossPatternIndex = (run.bossPatternIndex + 1) % FINAL_BOSS_ATTACK_PATTERNS;
     boss.attackPattern = run.bossPatternIndex;
+    run.bossModePulse = 0.6;
     run.bossChargeTimer = finalBossAttackDuration(index);
     run.bossAttackTimer = 0.35;
     logEvent(`${bossName(index).toUpperCase()} PATTERN ${boss.attackPattern + 1}`);
   } else {
+    run.bossModePulse = 0.4;
     run.bossChargeTimer = finalBossVulnerableDuration(index);
     run.bossAttackTimer = 99;
     burst(boss.x + boss.w / 2, boss.y + 12, boss.color, 12);
     logEvent("BOSS OPEN");
+  }
+}
+
+function updateBossSoulMode(boss, dt) {
+  const mode = activeBossSoulMode();
+  run.bossSoulMode = mode;
+  run.bossModeTimer += dt;
+  run.echoActive = mode === "dual";
+  if (run.justiceCooldown > 0) run.justiceCooldown -= dt;
+
+  if (mode !== "purple") {
+    run.webLane = 1;
+  }
+
+  if (mode === "blue" && run.bossPhase === "attack") {
+    run.bossModePulse -= dt;
+    if (run.bossModePulse <= 0) {
+      run.gravityFlip = !run.gravityFlip;
+      player.vy *= -0.25;
+      run.bossModePulse = 1.45;
+      logEvent("BLUE GRAVITY SHIFT");
+    }
+  }
+
+  if (mode === "purple" && run.bossPhase === "attack") {
+    boss.phased = false;
   }
 }
 
@@ -2763,6 +2980,7 @@ function addBossObstacle(kind, boss, options = {}) {
     gravity: options.gravity || 0,
     color: options.color || boss.color
   };
+  applyBossSoulRule(obj, boss, options);
   objects.push(obj);
   tagLatestHazardForGuide(kind);
   return obj;
@@ -2783,9 +3001,33 @@ function addBossEnemy(kind, boss, options = {}) {
     gravity: options.gravity || 0,
     color: options.color || (kind === "slime" ? "#75d05e" : boss.color)
   }, boss.areaIndex || 0);
+  applyBossSoulRule(obj, boss, options);
   objects.push(obj);
   tagLatestHazardForGuide(kind);
   return obj;
+}
+
+function applyBossSoulRule(obj, boss, options = {}) {
+  const mode = activeBossSoulMode();
+  obj.soulMode = mode;
+  if (mode === "cyan") obj.soulRule = "patience";
+  if (mode === "orange") obj.soulRule = "bravery";
+  if (mode === "green" && obj.type === "obstacle") {
+    obj.soulRule = "shield";
+    obj.shieldLane = options.shieldLane || inferShieldLane(obj);
+  }
+  if (mode === "yellow") obj.shootable = true;
+  if (mode === "dual") obj.dualHazard = true;
+  if ((boss?.soulMode || run.bossSoulMode) === "rainbow") {
+    obj.rainbowRule = mode;
+  }
+}
+
+function inferShieldLane(obj) {
+  const centerY = obj.y + obj.h / 2;
+  if (centerY < groundY - 125) return "high";
+  if (centerY > groundY - 58) return "low";
+  return "mid";
 }
 
 function spawnSlimeKingPattern(boss, pattern, volley) {
@@ -3016,6 +3258,12 @@ function completeAreaBoss(index) {
   run.bossPhase = "attack";
   run.bossPatternIndex = 0;
   run.bossVolley = 0;
+  run.bossSoulMode = "red";
+  run.bossModeTimer = 0;
+  run.bossModePulse = 0;
+  run.webLane = 1;
+  run.justiceCooldown = 0;
+  run.echoActive = false;
   run.nextSpawn = 0.4;
   run.eventCooldown = random(45, 85);
   state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
@@ -3060,6 +3308,7 @@ function clearTemporaryEffects() {
   run.phasePinTimer = 0;
   run.chillTimer = 0;
   run.gravityFlip = false;
+  run.echoActive = false;
   player.jumpsUsed = 0;
   player.slideTimer = 0;
   inputState.jumpHolding = false;
@@ -3069,6 +3318,7 @@ function clearTemporaryEffects() {
   inputState.slideHolding = false;
   inputState.pointerSlideActive = false;
   inputState.pointerJumpActive = false;
+  inputState.blockDirection = "mid";
 }
 
 function endRun() {
@@ -3123,6 +3373,12 @@ function resetRun() {
   run.bossPhase = "attack";
   run.bossPatternIndex = 0;
   run.bossVolley = 0;
+  run.bossSoulMode = "red";
+  run.bossModeTimer = 0;
+  run.bossModePulse = 0;
+  run.webLane = 1;
+  run.justiceCooldown = 0;
+  run.echoActive = false;
   run.event = null;
   run.eventTimer = 0;
   run.eventCooldown = random(45, 85);
@@ -3282,6 +3538,10 @@ function activateActiveSkill() {
   if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
+  if (run.bossBattle && activeBossSoulMode() === "yellow") {
+    fireJusticeShot();
+    return;
+  }
   if (run.gameOver || run.dashCooldown > 0) return;
   const def = selectedActiveSkillDef();
   if (!def) {
@@ -3298,6 +3558,24 @@ function activateActiveSkill() {
 
 function dash() {
   activateActiveSkill();
+}
+
+function fireJusticeShot() {
+  if (run.justiceCooldown > 0 || run.gameOver) return;
+  const rect = getPlayerRect();
+  objects.push({
+    type: "playerShot",
+    x: rect.x + rect.w,
+    y: rect.y + rect.h * 0.35,
+    w: 18,
+    h: 8,
+    vx: 620,
+    color: "#f2d24b",
+    life: 1.2
+  });
+  run.justiceCooldown = 0.28;
+  burst(rect.x + rect.w, rect.y + rect.h / 2, "#f2d24b", 5);
+  logEvent("JUSTICE SHOT");
 }
 
 function activateSandBreaker(level) {
@@ -3426,6 +3704,19 @@ function getPlayerRect() {
     };
   }
   return insetRect(visualRect, Math.min(7, visualRect.w * 0.14), Math.min(9, visualRect.h * 0.1));
+}
+
+function getPlayerEchoRect() {
+  if (!run.echoActive) return null;
+  const rect = getPlayerRect();
+  const top = 34;
+  const bottom = groundY;
+  return {
+    x: rect.x,
+    y: top + bottom - rect.y - rect.h,
+    w: rect.w,
+    h: rect.h
+  };
 }
 
 function getPlayerAnchorRect() {
@@ -4091,6 +4382,22 @@ function bossName(index) {
   return ["Slime King", "Sand Wyrm", "Frost Core", "Lava Golem", "Giant Robot", "Star Dragon", "Void Engine", "Aether Lord", "Infinity Gate"][index] || "Infinity Gate";
 }
 
+function bossSoulModeForArea(index) {
+  return bossSoulModes[index]?.id || "rainbow";
+}
+
+function bossSoulModeDef(id = activeBossSoulMode()) {
+  return bossSoulModes.find((entry) => entry.id === id) || bossSoulModes[0];
+}
+
+function activeBossSoulMode() {
+  const boss = objects.find((obj) => obj.type === "boss" && obj.finalBoss);
+  const baseMode = boss?.soulMode || run.bossSoulMode || "red";
+  if (baseMode !== "rainbow") return baseMode;
+  const cycle = ["cyan", "orange", "blue", "purple", "green", "yellow", "dual"];
+  return cycle[run.bossPatternIndex % cycle.length] || "red";
+}
+
 function renderPanel() {
   if (activeTab === "upgrades") renderUpgrades();
   if (activeTab === "factory") renderFactory();
@@ -4513,8 +4820,11 @@ function updateHud() {
   setDebugHudText("levelStat", state.level);
   document.getElementById("areaName").textContent = `${localizedAreaName(area)} / ${area.line}`;
   const dashButton = document.getElementById("dashBtn");
-  dashButton.disabled = run.dashCooldown > 0 || run.gameOver || !selectedActiveSkillDef();
-  dashButton.textContent = run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s\nD` : `${translateText(activeSkillName())}\nD`;
+  const justiceMode = run.bossBattle && activeBossSoulMode() === "yellow";
+  dashButton.disabled = run.gameOver || (justiceMode ? run.justiceCooldown > 0 : (run.dashCooldown > 0 || !selectedActiveSkillDef()));
+  dashButton.textContent = justiceMode
+    ? `${currentLanguage === "en" ? "Shot" : "ショット"}\nD`
+    : run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s\nD` : `${translateText(activeSkillName())}\nD`;
   const bgmButton = document.getElementById("bgmBtn");
   bgmButton.textContent = state.settings.bgmEnabled ? "BGM ON" : "BGM OFF";
 }
@@ -4542,11 +4852,30 @@ function flashButton(id) {
 function draw() {
   const area = currentArea();
   drawBackground(area);
+  drawBossModeGuides();
   drawObjects();
   drawMiniRobots();
   drawPlayer();
   drawParticles();
   drawForeground(area);
+}
+
+function drawBossModeGuides() {
+  if (!run.bossBattle) return;
+  const mode = activeBossSoulMode();
+  if (mode === "purple" && run.bossPhase === "attack") {
+    ctx.save();
+    ctx.strokeStyle = "rgba(185,140,255,0.52)";
+    ctx.lineWidth = 2;
+    for (let lane = 0; lane < 3; lane += 1) {
+      const y = webLaneY(lane) + getPlayerHeight() / 2;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvasWidth, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
 }
 
 function drawBackground(area) {
@@ -4591,7 +4920,8 @@ function drawForeground(area) {
     ctx.fillText(`${eventName(run.event)} ${Math.ceil(run.eventTimer)}s`, canvasWidth - 190, 14);
   } else if (run.bossBattle) {
     ctx.fillStyle = area.accent;
-    ctx.fillText(`FINAL BOSS ${bossName(run.bossAreaIndex)}`, canvasWidth - 260, 14);
+    const mode = bossSoulModeDef();
+    ctx.fillText(`FINAL BOSS ${bossName(run.bossAreaIndex)} / ${mode.name}`, Math.max(130, canvasWidth - 360), 14);
   }
 }
 
@@ -4602,6 +4932,7 @@ function drawPlayer() {
   const accent = run.dashTimer > 0 ? "#f2b84b" : run.skillShield > 0 ? "#48bde7" : "#e8edf5";
 
   if (drawPlayerSprite(rect, accent)) {
+    drawPlayerEcho();
     ctx.globalAlpha = 1;
     return;
   }
@@ -4630,6 +4961,21 @@ function drawPlayer() {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  drawPlayerEcho();
+}
+
+function drawPlayerEcho() {
+  const echo = getPlayerEchoRect();
+  if (!echo) return;
+  ctx.save();
+  ctx.globalAlpha = 0.46;
+  ctx.fillStyle = "rgba(239,95,107,0.22)";
+  ctx.strokeStyle = "#65d6ff";
+  roundRect(echo.x, echo.y, echo.w, echo.h, 7);
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawMiniRobots() {
@@ -4787,10 +5133,17 @@ function drawObjects() {
     else if (obj.type === "rare") drawRare(obj);
     else if (obj.type === "chest") drawChest(obj);
     else if (obj.type === "item") drawItem(obj);
+    else if (obj.type === "playerShot") drawPlayerShot(obj);
     else if (obj.type === "enemy") drawEnemy(obj);
     else if (obj.type === "boss") drawBoss(obj);
     else drawObstacle(obj);
   }
+}
+
+function drawPlayerShot(obj) {
+  ctx.fillStyle = obj.color || "#f2d24b";
+  roundRect(obj.x, obj.y, obj.w, obj.h, 4);
+  ctx.fill();
 }
 
 function drawCoin(obj) {
@@ -4850,6 +5203,10 @@ function drawItem(obj) {
 }
 
 function drawObstacle(obj) {
+  if (obj.soulRule === "patience") obj.color = "#65d6ff";
+  if (obj.soulRule === "bravery") obj.color = "#ff9f3d";
+  if (obj.soulRule === "shield") obj.color = "#60d878";
+  if (obj.shootable) obj.color = "#f2d24b";
   if (obj.kind === "spike") {
     ctx.fillStyle = obj.color;
     ctx.beginPath();
