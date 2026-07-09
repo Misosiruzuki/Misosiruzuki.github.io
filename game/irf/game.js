@@ -2146,8 +2146,16 @@ function updateObjects(dt, scrollSpeed, stats) {
     }
 
     if (obj.type === "boss" && obj.x + obj.w < 0) {
-      damagePlayer({ force: true });
+      damagePlayer({ force: true, source: obj });
       if (run.gameOver) continue;
+      if (obj.finalBoss && run.bossBattle) {
+        switchBossPhase(obj, "attack");
+        obj.x = canvasWidth + 120;
+        obj.y = groundY - obj.h;
+        player.invulnerable = Math.max(player.invulnerable, 0.8);
+        logEvent("BOSS ESCAPED");
+        continue;
+      }
       obj.x = canvasWidth + 120;
       obj.y = groundY - obj.h;
       player.invulnerable = Math.max(player.invulnerable, 0.8);
@@ -2204,12 +2212,29 @@ function updateObjects(dt, scrollSpeed, stats) {
         }
       } else if (obj.type === "boss") {
         const finalBossClosed = obj.finalBoss && !obj.vulnerable;
+        const finalBossOpen = obj.finalBoss && obj.vulnerable;
         if (finalBossClosed) {
           if (!isInvincible() && run.skillShield <= 0 && player.invulnerable <= 0.05) {
             damagePlayer({ source: obj });
           }
           player.vy = run.gravityFlip ? 300 : -300;
           obj.x += 70;
+        } else if (finalBossOpen) {
+          if (canStomp(obj)) {
+            if (damageEnemy(obj, 1)) {
+              defeatBoss(obj);
+              removed.add(obj);
+            }
+            player.vy = run.gravityFlip ? 480 : -480;
+            burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#ef6b65", 14);
+            gainCombo(3);
+          } else {
+            const hpBefore = run.hp;
+            damagePlayer({ source: obj });
+            if (!run.gameOver && run.hp < hpBefore) {
+              switchBossPhase(obj, "attack");
+            }
+          }
         } else if (run.dashTimer > 0) {
           if (obj.hitCooldown <= 0 && damageEnemy(obj, 1)) {
             defeatBoss(obj);
@@ -2850,26 +2875,26 @@ function updateBossBattle(dt) {
   }
   const index = boss.areaIndex || 0;
   const anchorX = canvasWidth - 170;
-  const vulnerableX = finalBossVulnerableX(boss);
   const vulnerable = run.bossPhase === "vulnerable";
   boss.vulnerable = vulnerable;
   boss.attackPattern = run.bossPatternIndex % FINAL_BOSS_ATTACK_PATTERNS;
   updateBossSoulMode(boss, dt);
 
   run.bossChargeTimer -= dt;
-  const targetX = vulnerable ? vulnerableX : anchorX;
-  const moveRate = vulnerable ? 8.5 : 2.2;
-  boss.x += (targetX - boss.x) * Math.min(1, dt * moveRate);
-  boss.y = vulnerable
-    ? finalBossVulnerableY(boss) - Math.abs(Math.sin(performance.now() / 460)) * 3
-    : groundY - boss.h - Math.abs(Math.sin(performance.now() / 560)) * 13;
-
   if (vulnerable) {
-    if (run.bossChargeTimer <= 0) {
+    if (!boss.vx) boss.vx = finalBossApproachVelocity(boss, index);
+    boss.y = finalBossVulnerableY(boss) - Math.abs(Math.sin(performance.now() / 460)) * 3;
+    const playerRect = getPlayerRect();
+    const passedPlayer = boss.x + boss.w < playerRect.x - 16;
+    if (run.bossChargeTimer <= 0 || passedPlayer) {
       switchBossPhase(boss, "attack");
     }
     return;
   }
+
+  boss.vx = 0;
+  boss.x += (anchorX - boss.x) * Math.min(1, dt * 2.2);
+  boss.y = groundY - boss.h - Math.abs(Math.sin(performance.now() / 560)) * 13;
 
   run.bossAttackTimer -= dt;
   if (run.bossChargeTimer > 0 && run.bossAttackTimer <= 0) {
@@ -2891,6 +2916,9 @@ function switchBossPhase(boss, phase) {
   boss.bossTimer = 0.8;
   boss.vulnerable = phase === "vulnerable";
   boss.phased = false;
+  boss.vx = 0;
+  boss.vy = 0;
+  boss.gravity = 0;
   if (phase === "attack") {
     clearBossAttackObjects();
     run.bossPatternIndex = (run.bossPatternIndex + 1) % FINAL_BOSS_ATTACK_PATTERNS;
@@ -2905,6 +2933,9 @@ function switchBossPhase(boss, phase) {
     run.bossModePulse = 0.4;
     run.bossChargeTimer = finalBossVulnerableDuration(index);
     run.bossAttackTimer = 99;
+    boss.x = finalBossApproachStartX(boss);
+    boss.y = finalBossVulnerableY(boss);
+    boss.vx = finalBossApproachVelocity(boss, index);
     burst(boss.x + boss.w / 2, boss.y + 12, boss.color, 12);
     logEvent("BOSS OPEN");
   }
@@ -2948,6 +2979,20 @@ function finalBossAttackInterval(index, pattern) {
   return Math.max(0.58, 1.02 - index * 0.025 - pattern * 0.03);
 }
 
+function finalBossApproachStartX(boss) {
+  return Math.max(boss.x, canvasWidth - 170, player.x + 260);
+}
+
+function finalBossApproachEndX(boss) {
+  return player.x - boss.w - 62;
+}
+
+function finalBossApproachVelocity(boss, index) {
+  const duration = Math.max(1.1, finalBossVulnerableDuration(index));
+  const distance = Math.max(220, finalBossApproachStartX(boss) - finalBossApproachEndX(boss));
+  return -distance / duration;
+}
+
 function bossAttackTailPassedPlayer() {
   const passX = getPlayerRect().x - 8;
   return !objects.some((obj) => {
@@ -2975,10 +3020,6 @@ function resetBossSoulModeMovement(mode) {
     inputState.jumpActive = false;
     inputState.slideHolding = false;
   }
-}
-
-function finalBossVulnerableX(boss) {
-  return player.x + player.w - Math.min(18, boss.w * 0.2);
 }
 
 function finalBossVulnerableY(boss) {
@@ -3806,11 +3847,24 @@ function isInvincible() {
 }
 
 function canStomp(obj) {
+  if (obj.finalBoss && obj.vulnerable) {
+    const rect = getPlayerRect();
+    const sideInset = Math.min(14, obj.w * 0.18);
+    const horizontalOverlap = rect.x + rect.w > obj.x + sideInset && rect.x < obj.x + obj.w - sideInset;
+    if (!horizontalOverlap) return false;
+    const contactBand = 16;
+    if (run.gravityFlip) {
+      const playerTop = rect.y;
+      const bossBottom = obj.y + obj.h;
+      return player.vy < -80 && playerTop <= bossBottom + 3 && playerTop >= bossBottom - contactBand;
+    }
+    const playerBottom = rect.y + rect.h;
+    return player.vy > 80 && playerBottom >= obj.y - 3 && playerBottom <= obj.y + contactBand;
+  }
   if (run.gravityFlip) {
     return player.vy < -80 && player.y + 12 < obj.y + obj.h;
   }
-  const stompDepth = obj.finalBoss && obj.vulnerable ? Math.min(56, obj.h * 0.6) : 18;
-  return player.vy > 80 && player.y + getPlayerHeight() - 8 < obj.y + stompDepth;
+  return player.vy > 80 && player.y + getPlayerHeight() - 8 < obj.y + 18;
 }
 
 function gainCombo(amount) {
