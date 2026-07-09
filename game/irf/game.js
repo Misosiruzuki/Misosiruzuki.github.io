@@ -2545,7 +2545,7 @@ function updateFinalBossGimmick(boss, dt) {
   }
 
   if (boss.bossGimmick === "lavaMeteor" && boss.gimmickTimer <= 0) {
-    addBossObstacle("meteor", boss, { x: player.x + random(230, 390), y: groundY - 270, w: 32, h: 32, vx: -52, vy: 188, gravity: 140, color: "#ffb238" });
+    addBossMeteor(boss, { w: 32, h: 32, color: "#ffb238" });
     boss.gimmickTimer = 1.25;
   }
 
@@ -2573,7 +2573,7 @@ function updateFinalBossGimmick(boss, dt) {
     const pullScale = researchReduction("voidTether");
     player.vy += (run.gravityFlip ? -1 : 1) * 120 * pullScale * dt;
     if (boss.gimmickTimer <= 0) {
-      addBossObstacle("meteor", boss, { x: bossSpawnX(boss, 92), y: groundY - 220, w: 30, h: 30, vx: bossSpeed(index, 64), vy: 90, gravity: 85, color: "#d7b8ff" });
+      addBossMeteor(boss, { w: 30, h: 30, color: "#d7b8ff", travelTime: 1.05 });
       boss.gimmickTimer = 1.45;
     }
   }
@@ -3055,6 +3055,31 @@ function bossSpawnX(boss, offset = 0) {
   return Math.min(canvasWidth + 140, boss.x + boss.w / 2 + offset);
 }
 
+function addBossMeteor(boss, options = {}) {
+  return addBossObstacle("meteor", boss, aimedBossMeteorOptions(boss, options));
+}
+
+function aimedBossMeteorOptions(boss, options = {}) {
+  const index = boss.areaIndex || 0;
+  const w = options.w || 34;
+  const h = options.h || 34;
+  const playerRect = getPlayerRect();
+  const startOffset = options.startOffset || 0;
+  const startX = options.x ?? playerRect.x + playerRect.w + random(230, 410) + startOffset;
+  const startY = options.y ?? Math.max(30, groundY - random(245, 315));
+  const targetX = options.targetX ?? playerRect.x - random(26, 96);
+  const minTargetY = Math.max(46, playerRect.y - 58);
+  const maxTargetY = Math.min(groundY - h * 0.5, playerRect.y + playerRect.h + 46);
+  const targetY = options.targetY ?? random(minTargetY, Math.max(minTargetY + 1, maxTargetY));
+  const travelTime = options.travelTime ?? Math.max(0.82, 1.16 - index * 0.025 + random(-0.1, 0.12));
+  const gravity = options.gravity ?? (112 + index * 7);
+  const startCenterX = startX + w / 2;
+  const startCenterY = startY + h / 2;
+  const vx = (targetX - startCenterX) / travelTime;
+  const vy = (targetY - startCenterY - 0.5 * gravity * travelTime * travelTime) / travelTime;
+  return { ...options, x: startX, y: startY, w, h, vx, vy, gravity };
+}
+
 function addBossObstacle(kind, boss, options = {}) {
   const obj = {
     type: "obstacle",
@@ -3147,8 +3172,8 @@ function spawnSandWyrmPattern(boss, pattern, volley) {
 
 function spawnFrostCorePattern(boss, pattern, volley) {
   if (pattern === 0) {
-    addBossObstacle("meteor", boss, { x: player.x + 210 + (volley % 2) * 90, y: groundY - 245, w: 30, h: 34, vx: -36, vy: 165, gravity: 110, color: "#9fd9ff" });
-    addBossObstacle("meteor", boss, { x: player.x + 330, y: groundY - 275, w: 30, h: 34, vx: -52, vy: 150, gravity: 120, color: "#d9f6ff" });
+    addBossMeteor(boss, { w: 30, h: 34, color: "#9fd9ff", startOffset: volley % 2 ? 70 : 0 });
+    addBossMeteor(boss, { w: 30, h: 34, color: "#d9f6ff", startOffset: 110, travelTime: 1.28 });
   } else if (pattern === 1) {
     addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 116, w: 24, h: 78, vx: bossSpeed(2, 14), color: "#9fd9ff" });
     addBossEnemy("bird", boss, { x: bossSpawnX(boss, 100), y: groundY - 158, vx: bossSpeed(2, 30), color: "#d9f6ff" });
@@ -3160,14 +3185,14 @@ function spawnFrostCorePattern(boss, pattern, volley) {
 
 function spawnLavaGolemPattern(boss, pattern, volley) {
   if (pattern === 0) {
-    addBossObstacle("meteor", boss, { x: bossSpawnX(boss, -20), y: groundY - 255, w: 38, h: 38, vx: bossSpeed(3, 10), vy: 190, gravity: 130, color: "#ef6b65" });
-    addBossObstacle("meteor", boss, { x: bossSpawnX(boss, 105), y: groundY - 225, w: 34, h: 34, vx: bossSpeed(3, 35), vy: 165, gravity: 120, color: "#ffb238" });
+    addBossMeteor(boss, { w: 38, h: 38, color: "#ef6b65", startOffset: -20, travelTime: 1.02 });
+    addBossMeteor(boss, { w: 34, h: 34, color: "#ffb238", startOffset: 105, travelTime: 1.2 });
   } else if (pattern === 1) {
     addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 56, h: 46, vx: bossSpeed(3, 22), color: "#ef6b65" });
     addBossEnemy("bomb", boss, { x: bossSpawnX(boss, 116), y: groundY - 40, vx: bossSpeed(3, 38), color: "#53312d" });
   } else {
     addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 142, w: 26, h: 100, vx: bossSpeed(3, 16), color: "#ff7b44" });
-    addBossObstacle("meteor", boss, { x: player.x + 320, y: groundY - 260, w: 32, h: 32, vx: -70, vy: 180, gravity: 125, color: "#ffb238" });
+    addBossMeteor(boss, { w: 32, h: 32, color: "#ffb238", startOffset: 70 });
   }
 }
 
@@ -3189,7 +3214,7 @@ function spawnStarDragonPattern(boss, pattern, volley) {
     addBossEnemy("bird", boss, { x: bossSpawnX(boss), y: groundY - 178, vx: bossSpeed(5, 36), color: "#f1efff" });
     addBossEnemy("bird", boss, { x: bossSpawnX(boss, 96), y: groundY - 112, vx: bossSpeed(5, 20), color: "#b8c9ff" });
   } else if (pattern === 1) {
-    addBossObstacle("meteor", boss, { x: player.x + 240, y: groundY - 260, w: 30, h: 30, vx: -62, vy: 170, gravity: 80, color: "#f1efff" });
+    addBossMeteor(boss, { w: 30, h: 30, color: "#f1efff", gravity: 88, travelTime: 1.18 });
     addBossObstacle("laser", boss, { x: bossSpawnX(boss, 90), y: groundY - 122, w: 22, h: 86, vx: bossSpeed(5, 28), color: "#b8c9ff" });
   } else {
     addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 48, h: 42, vx: bossSpeed(5, 34), color: "#7a7fa4" });
@@ -3199,14 +3224,14 @@ function spawnStarDragonPattern(boss, pattern, volley) {
 
 function spawnVoidEnginePattern(boss, pattern, volley) {
   if (pattern === 0) {
-    addBossObstacle("meteor", boss, { x: bossSpawnX(boss), y: groundY - 230, w: 36, h: 36, vx: bossSpeed(6, 22), vy: 110, gravity: 70, color: "#b98cff" });
+    addBossMeteor(boss, { w: 36, h: 36, color: "#b98cff", gravity: 90, travelTime: 1.12 });
     addBossObstacle("spike", boss, { x: bossSpawnX(boss, 112), w: 52, h: 44, vx: bossSpeed(6, 42), color: "#4c3b72" });
   } else if (pattern === 1) {
     addBossEnemy("bomb", boss, { x: bossSpawnX(boss), y: groundY - 40, vx: bossSpeed(6, 38), color: "#30214f" });
     addBossEnemy("bird", boss, { x: bossSpawnX(boss, 108), y: groundY - 162, vx: bossSpeed(6, 24), color: "#b98cff" });
   } else {
     addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 140, w: 26, h: 102, vx: bossSpeed(6, 34), color: "#b98cff" });
-    addBossObstacle("meteor", boss, { x: player.x + 300, y: groundY - 250, w: 32, h: 32, vx: -90, vy: 160, gravity: 90, color: "#d7b8ff" });
+    addBossMeteor(boss, { w: 32, h: 32, color: "#d7b8ff", gravity: 92, travelTime: 1.0 });
   }
 }
 
@@ -3218,7 +3243,7 @@ function spawnAetherLordPattern(boss, pattern, volley) {
     addBossEnemy("bird", boss, { x: bossSpawnX(boss), y: groundY - 178, vx: bossSpeed(7, 40), color: "#f4cc5f" });
     addBossObstacle("spike", boss, { x: bossSpawnX(boss, 120), w: 48, h: 42, vx: bossSpeed(7, 52), color: "#b99067" });
   } else {
-    addBossObstacle("meteor", boss, { x: player.x + 230, y: groundY - 270, w: 32, h: 32, vx: -54, vy: 178, gravity: 105, color: "#fff1a5" });
+    addBossMeteor(boss, { w: 32, h: 32, color: "#fff1a5", travelTime: 1.2 });
     addBossObstacle("laser", boss, { x: bossSpawnX(boss, 100), y: groundY - 124, w: 22, h: 84, vx: bossSpeed(7, 42), color: "#f4cc5f" });
   }
 }
@@ -3231,7 +3256,7 @@ function spawnInfinityGatePattern(boss, pattern, volley) {
     addBossEnemy("bird", boss, { x: bossSpawnX(boss), y: groundY - 184, vx: bossSpeed(8, 52), color: "#4cc38a" });
     addBossEnemy("bomb", boss, { x: bossSpawnX(boss, 104), y: groundY - 40, vx: bossSpeed(8, 36), color: "#24313a" });
   } else {
-    addBossObstacle("meteor", boss, { x: player.x + 220 + (volley % 2) * 120, y: groundY - 275, w: 34, h: 34, vx: -80, vy: 190, gravity: 130, color: "#4cc38a" });
+    addBossMeteor(boss, { w: 34, h: 34, color: "#4cc38a", startOffset: (volley % 2) * 120, travelTime: 1.0 });
     addBossObstacle("laser", boss, { x: bossSpawnX(boss, 125), y: groundY - 132, w: 24, h: 92, vx: bossSpeed(8, 60), color: "#8fffc6" });
   }
 }
