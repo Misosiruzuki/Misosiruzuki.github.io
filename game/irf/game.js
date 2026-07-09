@@ -696,6 +696,7 @@ const guideText = document.getElementById("guideText");
 const guideNext = document.getElementById("guideNext");
 const debugPanel = document.getElementById("debugPanel");
 const debugResetSave = document.getElementById("debugResetSave");
+const debugMaxUpgrades = document.getElementById("debugMaxUpgrades");
 const debugStatus = document.getElementById("debugStatus");
 const debugHudFields = {
   coinsStat: "coins",
@@ -912,6 +913,7 @@ function initDebugMode() {
   if (!DEBUG_MODE) return;
   debugPanel?.classList.remove("hidden");
   debugResetSave?.addEventListener("click", resetDebugSave);
+  debugMaxUpgrades?.addEventListener("click", setDebugUpgradesToCap);
   configureDebugHudInputs();
 }
 
@@ -925,6 +927,18 @@ function resetDebugSave() {
   updateHud();
   maybeStartIntroGuide({ force: true });
   debugMessage("セーブを初期化しました");
+  persistStateQuiet();
+}
+
+function setDebugUpgradesToCap() {
+  if (!DEBUG_MODE) return;
+  const cap = normalUpgradeCap();
+  for (const def of upgradeDefs) {
+    state.upgrades[def.id] = cap;
+  }
+  renderPanel();
+  updateHud();
+  debugMessage(`通常強化を上限 Lv${cap} にしました`);
   persistStateQuiet();
 }
 
