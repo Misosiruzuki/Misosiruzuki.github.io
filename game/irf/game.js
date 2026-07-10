@@ -2835,21 +2835,88 @@ const AREA_PATTERN_HAZARDS = [
   { ground: ["spike"], block: ["crate"], heavy: ["bomb"], air: ["bird"], tall: ["laser"], fall: ["meteor"] }
 ];
 
+const RUN_EVENT_PATTERN_TEMPLATES = {
+  coinRain: [
+    { id: "arc_gate", entries: [{ type: "coins", offset: 120, count: 10, arc: true, lane: "high", rareChance: 0.035 }, { type: "coins", offset: 760, count: 8, lane: "low" }] },
+    { id: "step_low", entries: [{ type: "coins", offset: 120, count: 8, lane: "low" }, { type: "coins", offset: 560, count: 9, arc: true, lane: "mid" }] },
+    { id: "air_over", entries: [{ type: "coins", offset: 160, count: 10, arc: true, lane: "high" }, { type: "coins", offset: 860, count: 6, lane: "mid" }] },
+    { id: "laser_gap", entries: [{ type: "coins", offset: 80, count: 7, lane: "high" }, { type: "coins", offset: 640, count: 10, arc: true, lane: "low", rareChance: 0.03 }] },
+    { id: "double_ground", entries: [{ type: "coins", offset: 110, count: 8, arc: true, lane: "mid" }, { type: "coins", offset: 860, count: 8, lane: "high" }] },
+    { id: "fall_lane", entries: [{ type: "coins", offset: 100, count: 9, lane: "low" }, { type: "coins", offset: 700, count: 7, arc: true, lane: "high" }] },
+    { id: "reward_thread", entries: [{ type: "coins", offset: 90, count: 12, lane: "mid", rareChance: 0.05 }, { type: "item", offset: 1040, chance: 0.08 }] },
+    { id: "stagger_wall", entries: [{ type: "coins", offset: 120, count: 8, arc: true, lane: "high" }, { type: "coins", offset: 840, count: 7, lane: "low" }] },
+    { id: "high_low", entries: [{ type: "coins", offset: 80, count: 8, lane: "high" }, { type: "coins", offset: 520, count: 8, arc: true, lane: "low" }] },
+    { id: "mixed_end", entries: [{ type: "coins", offset: 120, count: 9, lane: "mid" }, { type: "coins", offset: 820, count: 7, arc: true, lane: "high", rareChance: 0.035 }] }
+  ],
+  meteor: [
+    { id: "arc_gate", entries: [{ type: "hazard", kind: "meteor", offset: 310, lane: "high" }, { type: "hazard", kind: "meteor", offset: 910, lane: "mid" }] },
+    { id: "step_low", entries: [{ type: "hazard", kind: "meteor", offset: 170, lane: "mid" }, { type: "hazard", kind: "meteor", offset: 760, lane: "high" }, { type: "coins", offset: 980, count: 4, lane: "low" }] },
+    { id: "air_over", entries: [{ type: "hazard", kind: "meteor", offset: 360, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1080, lane: "low" }] },
+    { id: "laser_gap", entries: [{ type: "hazard", kind: "meteor", offset: 230, lane: "low" }, { type: "hazard", kind: "meteor", offset: 620, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1120, lane: "mid" }] },
+    { id: "double_ground", entries: [{ type: "hazard", kind: "meteor", offset: 380, lane: "mid" }, { type: "hazard", kind: "meteor", offset: 980, lane: "high" }] },
+    { id: "fall_lane", entries: [{ type: "hazard", kind: "meteor", offset: 220, lane: "high" }, { type: "hazard", kind: "meteor", offset: 620, lane: "mid" }, { type: "hazard", kind: "meteor", offset: 1060, lane: "low" }] },
+    { id: "reward_thread", entries: [{ type: "coins", offset: 140, count: 5, lane: "low" }, { type: "hazard", kind: "meteor", offset: 520, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1040, lane: "mid" }] },
+    { id: "stagger_wall", entries: [{ type: "hazard", kind: "meteor", offset: 330, lane: "low" }, { type: "hazard", kind: "meteor", offset: 780, lane: "high" }, { type: "coins", offset: 1040, count: 4, lane: "mid" }] },
+    { id: "high_low", entries: [{ type: "hazard", kind: "meteor", offset: 260, lane: "high" }, { type: "hazard", kind: "meteor", offset: 860, lane: "low" }] },
+    { id: "mixed_end", entries: [{ type: "hazard", kind: "meteor", offset: 320, lane: "mid" }, { type: "hazard", kind: "meteor", offset: 720, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1180, lane: "low" }] }
+  ],
+  fever: [
+    { id: "arc_gate", entries: [{ type: "coins", offset: 120, count: 7, value: 5, arc: true, lane: "mid" }, { type: "item", offset: 980, chance: 0.12 }] },
+    { id: "step_low", entries: [{ type: "coins", offset: 110, count: 6, value: 5, lane: "low" }, { type: "hazard", role: "air", offset: 980, lane: "high" }] },
+    { id: "air_over", entries: [{ type: "coins", offset: 190, count: 8, value: 5, arc: true, lane: "high" }, { type: "item", offset: 1080, chance: 0.1 }] },
+    { id: "laser_gap", entries: [{ type: "coins", offset: 150, count: 6, value: 10, lane: "high" }, { type: "hazard", role: "ground", offset: 1060 }] },
+    { id: "double_ground", entries: [{ type: "coins", offset: 130, count: 8, value: 5, lane: "mid" }, { type: "hazard", role: "air", offset: 1020, lane: "mid" }] },
+    { id: "fall_lane", entries: [{ type: "coins", offset: 90, count: 7, value: 5, lane: "low" }, { type: "hazard", role: "fall", offset: 980, lane: "high" }] },
+    { id: "reward_thread", entries: [{ type: "coins", offset: 100, count: 10, value: 5, lane: "mid", rareChance: 0.045 }, { type: "item", offset: 1180, chance: 0.16 }] },
+    { id: "stagger_wall", entries: [{ type: "coins", offset: 160, count: 7, value: 5, arc: true, lane: "high" }, { type: "hazard", role: "ground", offset: 1080 }] },
+    { id: "high_low", entries: [{ type: "coins", offset: 120, count: 8, value: 5, lane: "high" }, { type: "hazard", role: "air", offset: 1040, lane: "low" }] },
+    { id: "mixed_end", entries: [{ type: "coins", offset: 160, count: 8, value: 10, arc: true, lane: "mid" }, { type: "item", offset: 1220, chance: 0.12 }] }
+  ],
+  gravity: [
+    { id: "arc_gate", entries: [{ type: "coins", offset: 130, count: 8, arc: true, lane: "high" }, { type: "hazard", role: "air", offset: 960, lane: "mid" }] },
+    { id: "step_low", entries: [{ type: "coins", offset: 160, count: 7, lane: "high" }, { type: "hazard", role: "tall", offset: 900, lane: "high" }] },
+    { id: "air_over", entries: [{ type: "hazard", role: "air", offset: 280, lane: "low" }, { type: "coins", offset: 560, count: 8, arc: true, lane: "high" }] },
+    { id: "laser_gap", entries: [{ type: "coins", offset: 140, count: 6, lane: "high" }, { type: "hazard", role: "fall", offset: 840, lane: "high" }] },
+    { id: "double_ground", entries: [{ type: "coins", offset: 130, count: 7, arc: true, lane: "high" }, { type: "hazard", role: "air", offset: 1020, lane: "high" }] },
+    { id: "fall_lane", entries: [{ type: "hazard", role: "fall", offset: 360, lane: "high" }, { type: "coins", offset: 700, count: 7, lane: "high" }] },
+    { id: "reward_thread", entries: [{ type: "coins", offset: 120, count: 9, lane: "high", rareChance: 0.035 }, { type: "item", offset: 1080, chance: 0.12 }] },
+    { id: "stagger_wall", entries: [{ type: "hazard", role: "tall", offset: 330, lane: "high" }, { type: "coins", offset: 760, count: 8, arc: true, lane: "high" }] },
+    { id: "high_low", entries: [{ type: "coins", offset: 120, count: 7, lane: "high" }, { type: "hazard", role: "air", offset: 920, lane: "mid" }] },
+    { id: "mixed_end", entries: [{ type: "hazard", role: "fall", offset: 290, lane: "mid" }, { type: "coins", offset: 760, count: 8, arc: true, lane: "high" }] }
+  ],
+  clearPath: [
+    { id: "arc_gate", entries: [{ type: "coins", offset: 100, count: 10, arc: true, lane: "mid" }, { type: "item", offset: 1040, chance: 0.1 }] },
+    { id: "step_low", entries: [{ type: "coins", offset: 110, count: 9, lane: "low" }, { type: "coins", offset: 620, count: 7, arc: true, lane: "mid" }] },
+    { id: "air_over", entries: [{ type: "coins", offset: 140, count: 9, arc: true, lane: "high" }, { type: "item", offset: 1100, chance: 0.12 }] },
+    { id: "laser_gap", entries: [{ type: "coins", offset: 120, count: 8, lane: "high" }, { type: "coins", offset: 700, count: 8, lane: "low" }] },
+    { id: "double_ground", entries: [{ type: "coins", offset: 100, count: 10, lane: "mid" }, { type: "item", offset: 1160, chance: 0.1 }] },
+    { id: "fall_lane", entries: [{ type: "coins", offset: 120, count: 8, lane: "low" }, { type: "coins", offset: 650, count: 8, arc: true, lane: "high" }] },
+    { id: "reward_thread", entries: [{ type: "coins", offset: 90, count: 12, lane: "mid", rareChance: 0.045 }, { type: "item", offset: 980, chance: 0.16 }] },
+    { id: "stagger_wall", entries: [{ type: "coins", offset: 130, count: 8, arc: true, lane: "mid" }, { type: "coins", offset: 820, count: 7, lane: "high" }] },
+    { id: "high_low", entries: [{ type: "coins", offset: 100, count: 8, lane: "high" }, { type: "coins", offset: 560, count: 8, lane: "low" }] },
+    { id: "mixed_end", entries: [{ type: "coins", offset: 120, count: 10, arc: true, lane: "mid" }, { type: "item", offset: 1240, chance: 0.12 }] }
+  ],
+  coin3: [
+    { id: "arc_gate", entries: [{ type: "coins", offset: 120, count: 7, value: 5, arc: true, lane: "mid" }, { type: "coins", offset: 820, count: 5, value: 10, lane: "high" }] },
+    { id: "step_low", entries: [{ type: "coins", offset: 110, count: 6, value: 5, lane: "low" }, { type: "coins", offset: 620, count: 6, value: 10, arc: true, lane: "mid" }] },
+    { id: "air_over", entries: [{ type: "coins", offset: 160, count: 7, value: 5, arc: true, lane: "high" }, { type: "coins", offset: 900, count: 5, value: 10, lane: "mid" }] },
+    { id: "laser_gap", entries: [{ type: "coins", offset: 90, count: 5, value: 10, lane: "high" }, { type: "coins", offset: 760, count: 6, value: 5, lane: "low" }] },
+    { id: "double_ground", entries: [{ type: "coins", offset: 130, count: 7, value: 5, lane: "mid" }, { type: "coins", offset: 890, count: 5, value: 10, arc: true, lane: "high" }] },
+    { id: "fall_lane", entries: [{ type: "coins", offset: 100, count: 6, value: 5, lane: "low" }, { type: "coins", offset: 780, count: 6, value: 10, arc: true, lane: "high" }] },
+    { id: "reward_thread", entries: [{ type: "coins", offset: 90, count: 9, value: 10, lane: "mid", rareChance: 0.04 }, { type: "item", offset: 1160, chance: 0.08 }] },
+    { id: "stagger_wall", entries: [{ type: "coins", offset: 140, count: 6, value: 5, arc: true, lane: "high" }, { type: "coins", offset: 860, count: 6, value: 10, lane: "low" }] },
+    { id: "high_low", entries: [{ type: "coins", offset: 110, count: 6, value: 10, lane: "high" }, { type: "coins", offset: 580, count: 7, value: 5, arc: true, lane: "low" }] },
+    { id: "mixed_end", entries: [{ type: "coins", offset: 140, count: 7, value: 5, lane: "mid" }, { type: "coins", offset: 920, count: 5, value: 10, arc: true, lane: "high" }] }
+  ]
+};
+
 function spawnSegment(stats) {
   const index = areaIndex();
   const area = areas[index] || currentArea();
   const baseX = canvasWidth + random(40, 100);
   const pattern = pickRunPattern(index);
   spawnRunPattern(pattern, baseX, area, index);
-
-  if (run.event === "coinRain" || run.event === "coin3") {
-    spawnPatternCoinLine(baseX + random(140, 620), {
-      count: 10,
-      arc: true,
-      lane: Math.random() < 0.5 ? "mid" : "high",
-      rareChance: 0.04
-    });
-  }
+  spawnEventPattern(run.event, pattern, baseX, area, index);
 }
 
 function runPatternSpawnDelay(speedMeters) {
@@ -2880,15 +2947,41 @@ function spawnRunPattern(pattern, baseX, area, index) {
   for (const entry of pattern.entries) {
     const jitter = entry.jitter || 0;
     const x = baseX + entry.offset + random(-jitter, jitter);
-    if (entry.type === "coins") {
-      spawnPatternCoinLine(x, entry);
-    } else if (entry.type === "hazard" && !clearPath) {
-      const kind = resolvePatternHazardKind(entry.role, index, pattern.templateIndex + Math.floor(entry.offset / 100));
-      spawnPatternHazard(kind, x, area, index, entry);
-    } else if (entry.type === "item") {
-      const itemChance = Math.min(0.45, (entry.chance || 0.08) + state.upgrades.item * 0.004);
-      if (Math.random() < itemChance) spawnItem(x);
-    }
+    spawnPatternEntry(entry, x, area, index, pattern.templateIndex + Math.floor(entry.offset / 100), { clearPath });
+  }
+}
+
+function spawnEventPattern(event, pattern, baseX, area, index) {
+  const eventPatterns = areaEventPatterns(event, index);
+  if (!eventPatterns.length) return;
+  const eventPattern = eventPatterns[pattern.templateIndex % eventPatterns.length];
+  for (const entry of eventPattern.entries) {
+    const jitter = entry.jitter || 0;
+    const x = baseX + entry.offset + random(-jitter, jitter);
+    spawnPatternEntry(entry, x, area, index, pattern.templateIndex + Math.floor(entry.offset / 100), { clearPath: false });
+  }
+}
+
+function areaEventPatterns(event, index) {
+  const templates = RUN_EVENT_PATTERN_TEMPLATES[event] || [];
+  return templates.map((template, templateIndex) => ({
+    ...template,
+    areaIndex: index,
+    event,
+    templateIndex,
+    key: `${index}:${event}:${template.id}`
+  }));
+}
+
+function spawnPatternEntry(entry, x, area, index, seed, options = {}) {
+  if (entry.type === "coins") {
+    spawnPatternCoinLine(x, entry);
+  } else if (entry.type === "hazard" && !options.clearPath) {
+    const kind = entry.kind || resolvePatternHazardKind(entry.role, index, seed);
+    spawnPatternHazard(kind, x, area, index, entry);
+  } else if (entry.type === "item") {
+    const itemChance = Math.min(0.45, (entry.chance || 0.08) + state.upgrades.item * 0.004);
+    if (Math.random() < itemChance) spawnItem(x);
   }
 }
 
@@ -2899,7 +2992,7 @@ function resolvePatternHazardKind(role, index, seed = 0) {
 }
 
 function spawnPatternCoinLine(startX, entry = {}) {
-  const value = weightedPick([
+  const value = entry.value !== undefined ? entry.value : weightedPick([
     { value: 1, weight: 58 },
     { value: 5, weight: 25 },
     { value: 10, weight: 12 },
@@ -2999,10 +3092,10 @@ function spawnPatternHazard(kind, x, area, index, entry = {}) {
       y: hazardAirY(entry.lane) - random(35, 85),
       w: 34,
       h: 34,
-      vx: -random(25, 55),
-      vy: random(90, 130),
-      gravity: random(65, 95),
-      color: area.accent
+      vx: entry.vx ?? -random(25, 55),
+      vy: entry.vy ?? random(90, 130),
+      gravity: entry.gravity ?? random(65, 95),
+      color: entry.color || area.accent
     });
     tagLatestHazardForGuide(kind);
     return true;
@@ -4924,22 +5017,8 @@ function startRandomEvent() {
   run.event = event;
   run.eventTimer = event === "gravity" ? 12 : 14;
   if (event === "gravity") run.gravityFlip = true;
-  if (event === "meteor") spawnMeteorWave();
+  run.nextSpawn = Math.min(run.nextSpawn, 0.15);
   logEvent(`${eventName(event)} START`);
-}
-
-function spawnMeteorWave() {
-  for (let i = 0; i < 5; i++) {
-    objects.push({
-      type: "obstacle",
-      kind: "meteor",
-      x: canvasWidth + 150 + i * HAZARD_MIN_GAP,
-      y: groundY - random(120, 250),
-      w: 34,
-      h: 34,
-      color: "#ef6b65"
-    });
-  }
 }
 
 function eventName(event) {
