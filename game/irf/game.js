@@ -3158,6 +3158,11 @@ function addBossEnemy(kind, boss, options = {}) {
 }
 
 function applyBossSoulRule(obj, boss, options = {}) {
+  if (options.ignoreSoulRule) {
+    obj.soulMode = "normal";
+    obj.soulRule = null;
+    return;
+  }
   const mode = activeBossSoulMode();
   obj.soulMode = mode;
   if (mode === "cyan") obj.soulRule = "patience";
@@ -3211,13 +3216,28 @@ function spawnSandWyrmPattern(boss, pattern, volley) {
   if (pattern === 0) {
     addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 52, h: 44, vx: bossSpeed(1, 18), color: "#d6a15c" });
     addBossObstacle("spike", boss, { x: bossSpawnX(boss, 105), w: 40, h: 34, vx: bossSpeed(1, 4), color: "#d6a15c" });
+    addSandWyrmNormalHazard(boss, 196 + (volley % 2) * 26);
   } else if (pattern === 1) {
     addBossEnemy("bomb", boss, { x: bossSpawnX(boss), y: groundY - 38, vx: bossSpeed(1, 24), color: "#6b5640" });
     addBossObstacle("crate", boss, { x: bossSpawnX(boss, 120), w: 48, h: 60, vx: bossSpeed(1, 8), color: "#9c6a32" });
+    addSandWyrmNormalHazard(boss, 218);
   } else {
     addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 128, w: 24, h: 92, vx: bossSpeed(1, 20), color: "#f2b84b" });
     if (volley % 2 === 0) addBossObstacle("spike", boss, { x: bossSpawnX(boss, 108), w: 48, h: 42, vx: bossSpeed(1, 28), color: "#d6a15c" });
+    addSandWyrmNormalHazard(boss, volley % 2 === 0 ? 188 : 104);
   }
+}
+
+function addSandWyrmNormalHazard(boss, offset) {
+  addBossObstacle("spike", boss, {
+    x: bossSpawnX(boss, offset),
+    y: groundY - 36,
+    w: 44,
+    h: 36,
+    vx: bossSpeed(1, 56),
+    color: "#5f3c24",
+    ignoreSoulRule: true
+  });
 }
 
 function spawnFrostCorePattern(boss, pattern, volley) {
