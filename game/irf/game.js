@@ -733,6 +733,8 @@ const RANDOM_EVENT_DEFS = [
 const TAS_STEP_SECONDS = 1 / 60;
 const TAS_SPEEDS = [4, 2, 1, 0.5, 0.25, 0.1];
 const TAS_DEFAULT_SPEED_INDEX = 2;
+const GAMEPLAY_KEY_CODES = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyD", "KeyQ", "KeyE"]);
+const TAS_ALLOWED_GAMEPLAY_KEY_CODES = new Set(["ArrowUp", "ArrowDown", "KeyD", "KeyQ"]);
 
 let state = loadState();
 let activeTab = "upgrades";
@@ -1221,8 +1223,7 @@ function currentTasInputFrame() {
     slide: Boolean(inputState.slideHolding),
     block: inputState.blockDirection || "mid",
     skill: Boolean(tasState.pendingActions.skill),
-    cycle: Boolean(tasState.pendingActions.cycle),
-    item: Boolean(tasState.pendingActions.item)
+    cycle: Boolean(tasState.pendingActions.cycle)
   };
 }
 
@@ -1235,6 +1236,7 @@ function recordTasInputFrame() {
 
 function markTasAction(action) {
   if (!isTasEnabled() || !tasState.recording || tasState.playing) return;
+  if (action === "item") return;
   tasState.pendingActions[action] = true;
 }
 
@@ -1279,7 +1281,6 @@ function applyTasPlaybackFrame() {
   if (!frame.slide && inputState.slideHolding) cancelSlideHold();
   inputState.blockDirection = frame.block || "mid";
   if (frame.cycle) cycleActiveSkill();
-  if (frame.item) useStockedItem();
   if (frame.skill) activateActiveSkill();
   tasState.playbackFrame += 1;
 }
@@ -1294,8 +1295,7 @@ function editTasInputFrame() {
     slide: false,
     block: "mid",
     skill: false,
-    cycle: false,
-    item: false
+    cycle: false
   };
   const edited = window.prompt("Edit TAS input JSON", JSON.stringify(current));
   if (!edited) return;
@@ -1307,8 +1307,7 @@ function editTasInputFrame() {
       slide: Boolean(parsed.slide),
       block: ["high", "mid", "low"].includes(parsed.block) ? parsed.block : "mid",
       skill: Boolean(parsed.skill),
-      cycle: Boolean(parsed.cycle),
-      item: Boolean(parsed.item)
+      cycle: Boolean(parsed.cycle)
     };
     renderDebugTasControls();
     debugMessage(`TAS EDIT F${frameNumber}`);
@@ -1324,7 +1323,14 @@ function exportTasFile() {
     format: "irf-tas-v1",
     exportedAt: new Date().toISOString(),
     frame: tasState.frame,
-    inputs: tasState.inputFrames.filter(Boolean),
+    inputs: tasState.inputFrames.filter(Boolean).map((frame, index) => ({
+      frame: Number.isFinite(Number(frame.frame)) ? Number(frame.frame) : index,
+      jump: Boolean(frame.jump),
+      slide: Boolean(frame.slide),
+      block: ["high", "mid", "low"].includes(frame.block) ? frame.block : "mid",
+      skill: Boolean(frame.skill),
+      cycle: Boolean(frame.cycle)
+    })),
     rngState: tasState.rngState,
     rngCalls: tasState.rngCalls
   };
@@ -1355,7 +1361,16 @@ function importTasFile() {
         tasState.inputFrames = [];
         for (const frame of frames) {
           const index = Number(frame.frame);
-          if (Number.isFinite(index) && index >= 0) tasState.inputFrames[index] = frame;
+          if (Number.isFinite(index) && index >= 0) {
+            tasState.inputFrames[index] = {
+              frame: index,
+              jump: Boolean(frame.jump),
+              slide: Boolean(frame.slide),
+              block: ["high", "mid", "low"].includes(frame.block) ? frame.block : "mid",
+              skill: Boolean(frame.skill),
+              cycle: Boolean(frame.cycle)
+            };
+          }
         }
         if (Number.isFinite(parsed.rngState)) tasState.rngState = Number(parsed.rngState) >>> 0;
         if (Number.isFinite(parsed.rngCalls)) tasState.rngCalls = Number(parsed.rngCalls);
@@ -1405,6 +1420,14 @@ function handleDebugTasShortcut(event) {
 
 function isTasEnabled() {
   return DEBUG_MODE && Boolean(debugSettings.tasEnabled);
+}
+
+function isGameplayKeyCode(code) {
+  return GAMEPLAY_KEY_CODES.has(code);
+}
+
+function isTasAllowedGameplayKeyCode(code) {
+  return !isTasEnabled() || TAS_ALLOWED_GAMEPLAY_KEY_CODES.has(code);
 }
 
 function tasSpeedMultiplier() {
@@ -2231,31 +2254,26 @@ function bindEvents() {
 
   document.addEventListener("keydown", (event) => {
     if (handleDebugTasShortcut(event)) return;
-    const jumpKey = event.code === "Space" || event.code === "ArrowUp";
+    const jumpKey = isTasEnabled() ? event.code === "ArrowUp" : (event.code === "Space" || event.code === "ArrowUp");
     if (isGuideActive() && jumpKey) {
       event.preventDefault();
       if (!event.repeat) advanceGuide();
       return;
     }
-    const gameplayKey = event.code === "Space"
-      || event.code === "ArrowUp"
-      || event.code === "ArrowDown"
-      || event.code === "ArrowLeft"
-      || event.code === "ArrowRight"
-      || event.code === "KeyD"
-      || event.code === "KeyQ"
-      || event.code === "KeyE";
+    const gameplayKey = isGameplayKeyCode(event.code);
     if (gameplayKey) event.preventDefault();
+    if (gameplayKey && !isTasAllowedGameplayKeyCode(event.code)) return;
     if (event.repeat) return;
-    if (event.code === "Space" || event.code === "ArrowUp") {
+    if ((!isTasEnabled() && event.code === "Space") || event.code === "ArrowUp") {
       inputState.blockDirection = "high";
     } else if (event.code === "ArrowDown") {
       inputState.blockDirection = "low";
     }
     if (run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple") {
-      if (event.code === "Space" || event.code === "ArrowUp") shiftWebLane(-1);
+      if ((!isTasEnabled() && event.code === "Space") || event.code === "ArrowUp") shiftWebLane(-1);
       if (event.code === "ArrowDown") shiftWebLane(1);
-      if (event.code !== "KeyD" && event.code !== "KeyQ" && event.code !== "KeyE") return;
+      const allowedPurpleAction = event.code === "KeyD" || event.code === "KeyQ" || (!isTasEnabled() && event.code === "KeyE");
+      if (!allowedPurpleAction) return;
     }
     if (event.code === "KeyQ") {
       markTasAction("cycle");
@@ -2267,7 +2285,7 @@ function bindEvents() {
       useStockedItem();
       return;
     }
-    if (event.code === "Space" || event.code === "ArrowUp") {
+    if ((!isTasEnabled() && event.code === "Space") || event.code === "ArrowUp") {
       startJumpHold();
     }
     if (event.code === "ArrowDown") {
@@ -2280,22 +2298,16 @@ function bindEvents() {
   });
 
   document.addEventListener("keyup", (event) => {
-    const gameplayKey = event.code === "Space"
-      || event.code === "ArrowUp"
-      || event.code === "ArrowDown"
-      || event.code === "ArrowLeft"
-      || event.code === "ArrowRight"
-      || event.code === "KeyD"
-      || event.code === "KeyQ"
-      || event.code === "KeyE";
+    const gameplayKey = isGameplayKeyCode(event.code);
     if (gameplayKey) event.preventDefault();
-    if ((event.code === "Space" || event.code === "ArrowUp") && inputState.blockDirection === "high") {
+    if (gameplayKey && !isTasAllowedGameplayKeyCode(event.code)) return;
+    if (((!isTasEnabled() && event.code === "Space") || event.code === "ArrowUp") && inputState.blockDirection === "high") {
       inputState.blockDirection = "mid";
     }
     if (event.code === "ArrowDown" && inputState.blockDirection === "low") {
       inputState.blockDirection = "mid";
     }
-    if (event.code === "Space" || event.code === "ArrowUp") {
+    if ((!isTasEnabled() && event.code === "Space") || event.code === "ArrowUp") {
       releaseJumpHold();
     }
     if (event.code === "ArrowDown") {
@@ -2314,6 +2326,10 @@ function bindEvents() {
     cycleActiveSkill();
   });
   document.getElementById("stockItemBtn").addEventListener("click", () => {
+    if (isTasEnabled()) {
+      debugMessage("TAS ITEM INPUT DISABLED");
+      return;
+    }
     markTasAction("item");
     useStockedItem();
   });
@@ -6294,7 +6310,7 @@ function updateHud() {
   }
   const stockItemButton = document.getElementById("stockItemBtn");
   if (stockItemButton) {
-    stockItemButton.disabled = run.gameOver || !run.stockedItem;
+    stockItemButton.disabled = run.gameOver || !run.stockedItem || isTasEnabled();
     stockItemButton.textContent = `${run.stockedItem ? itemName(run.stockedItem) : (currentLanguage === "en" ? "Item" : "アイテム")}\nE`;
   }
   const bgmButton = document.getElementById("bgmBtn");
