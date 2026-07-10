@@ -213,7 +213,16 @@ button:disabled {
   gap: 6px;
 }
 
-.debug-event-buttons button {
+.debug-tas-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-inline: 8px;
+  border-inline: 1px solid rgba(242, 184, 75, 0.28);
+}
+
+.debug-event-buttons button,
+.debug-tas-controls button {
   min-height: 28px;
   padding: 5px 8px;
   font-size: 0.76rem;

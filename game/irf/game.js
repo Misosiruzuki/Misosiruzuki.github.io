@@ -706,6 +706,7 @@ const debugPanel = document.getElementById("debugPanel");
 const debugResetSave = document.getElementById("debugResetSave");
 const debugMaxUpgrades = document.getElementById("debugMaxUpgrades");
 const debugSkipGuides = document.getElementById("debugSkipGuides");
+const debugTasControls = document.getElementById("debugTasControls");
 const debugEventButtons = document.getElementById("debugEventButtons");
 const debugStatus = document.getElementById("debugStatus");
 const debugHudFields = {
@@ -729,6 +730,9 @@ const RANDOM_EVENT_DEFS = [
   { value: "coin3", weight: 16 }
 ];
 
+const TAS_STEP_SECONDS = 1 / 60;
+const TAS_SPEEDS = [1, 0.5, 0.25, 0.1];
+
 let state = loadState();
 let activeTab = "upgrades";
 let factoryView = "coins";
@@ -737,12 +741,17 @@ let canvasWidth = 960;
 let canvasHeight = 420;
 let groundY = 340;
 let lastFrame = performance.now();
+let gameClockMs = lastFrame;
 let autosaveTimer = 0;
 let uiTimer = 0;
 let messageTimer = 0;
 let musicScene = "run";
 let languageSelectionActive = false;
 let debugSettings = loadDebugSettings();
+const tasState = {
+  paused: false,
+  queuedSteps: 0
+};
 
 const player = {
   x: 112,
@@ -756,7 +765,7 @@ const player = {
   regenTimer: 0,
   damageTimer: 0,
   animationKey: "running",
-  animationStartedAt: performance.now()
+  animationStartedAt: gameClockMs
 };
 
 const run = {
@@ -936,9 +945,12 @@ function persistStateQuiet() {
 function initDebugMode() {
   if (!DEBUG_MODE) return;
   debugPanel?.classList.remove("hidden");
+  tasState.paused = isTasEnabled();
+  tasState.queuedSteps = 0;
   debugResetSave?.addEventListener("click", resetDebugSave);
   debugMaxUpgrades?.addEventListener("click", setDebugUpgradesToCap);
   debugSkipGuides?.addEventListener("click", toggleDebugSkipGuides);
+  renderDebugTasControls();
   renderDebugEventButtons();
   updateDebugSkipGuidesButton();
   configureDebugHudInputs();
@@ -988,12 +1000,98 @@ function forceDebugEvent(event) {
   debugMessage(`EVENT: ${eventName(event)}`);
 }
 
+function renderDebugTasControls() {
+  if (!DEBUG_MODE || !debugTasControls) return;
+  const enabled = isTasEnabled();
+  const speed = tasSpeedMultiplier();
+  debugTasControls.innerHTML = `
+    <button type="button" data-debug-tas="toggle" aria-pressed="${String(enabled)}">TAS ${enabled ? "ON" : "OFF"}</button>
+    <button type="button" data-debug-tas="pause" aria-pressed="${String(tasState.paused)}" ${enabled ? "" : "disabled"}>${tasState.paused ? "PAUSED" : "RUN"}</button>
+    <button type="button" data-debug-tas="step" ${enabled ? "" : "disabled"}>1F</button>
+    <button type="button" data-debug-tas="speed" ${enabled ? "" : "disabled"}>x${speed}</button>
+  `;
+  debugTasControls.querySelectorAll("button[data-debug-tas]").forEach((button) => {
+    button.addEventListener("click", () => handleDebugTasAction(button.dataset.debugTas));
+  });
+}
+
+function handleDebugTasAction(action) {
+  if (!DEBUG_MODE) return;
+  if (action === "toggle") toggleDebugTas();
+  if (action === "pause") toggleTasPause();
+  if (action === "step") stepTasFrame();
+  if (action === "speed") cycleTasSpeed();
+}
+
+function toggleDebugTas() {
+  debugSettings.tasEnabled = !debugSettings.tasEnabled;
+  tasState.paused = debugSettings.tasEnabled;
+  tasState.queuedSteps = 0;
+  persistDebugSettings();
+  renderDebugTasControls();
+  debugMessage(`TAS ${debugSettings.tasEnabled ? "ON" : "OFF"}`);
+}
+
+function toggleTasPause() {
+  if (!isTasEnabled()) return;
+  tasState.paused = !tasState.paused;
+  renderDebugTasControls();
+  debugMessage(`TAS ${tasState.paused ? "PAUSE" : `RUN x${tasSpeedMultiplier()}`}`);
+}
+
+function stepTasFrame() {
+  if (!isTasEnabled()) return;
+  tasState.paused = true;
+  tasState.queuedSteps += 1;
+  renderDebugTasControls();
+  debugMessage("TAS STEP 1F");
+}
+
+function cycleTasSpeed() {
+  if (!isTasEnabled()) return;
+  debugSettings.tasSpeedIndex = normalizeTasSpeedIndex(debugSettings.tasSpeedIndex + 1);
+  persistDebugSettings();
+  renderDebugTasControls();
+  debugMessage(`TAS SPEED x${tasSpeedMultiplier()}`);
+}
+
+function isTasEnabled() {
+  return DEBUG_MODE && Boolean(debugSettings.tasEnabled);
+}
+
+function tasSpeedMultiplier() {
+  return TAS_SPEEDS[normalizeTasSpeedIndex(debugSettings.tasSpeedIndex)] || 1;
+}
+
+function normalizeTasSpeedIndex(value) {
+  const index = Number(value);
+  if (!Number.isFinite(index)) return 0;
+  return Math.max(0, Math.min(TAS_SPEEDS.length - 1, Math.floor(index)));
+}
+
+function resolveTasDelta(rawDt) {
+  if (!isTasEnabled()) return rawDt;
+  if (tasState.paused) {
+    if (tasState.queuedSteps > 0) {
+      tasState.queuedSteps -= 1;
+      return TAS_STEP_SECONDS;
+    }
+    return 0;
+  }
+  return Math.min(0.05, rawDt * tasSpeedMultiplier());
+}
+
 function loadDebugSettings() {
-  const defaults = { skipGuides: false };
+  const defaults = { skipGuides: false, tasEnabled: false, tasSpeedIndex: 0 };
   if (!DEBUG_MODE) return defaults;
   try {
     const parsed = JSON.parse(localStorage.getItem(DEBUG_SETTINGS_KEY) || "{}");
-    return { ...defaults, skipGuides: Boolean(parsed.skipGuides) };
+    return {
+      ...defaults,
+      skipGuides: Boolean(parsed.skipGuides),
+      tasEnabled: Boolean(parsed.tasEnabled),
+      tasSpeedIndex: normalizeTasSpeedIndex(parsed.tasSpeedIndex)
+    };
   } catch (error) {
     console.warn(error);
     return defaults;
@@ -1856,7 +1954,7 @@ function bindEvents() {
   canvas.addEventListener("pointerdown", (event) => {
     inputState.pointerStartX = event.clientX;
     inputState.pointerStartY = event.clientY;
-    inputState.pointerStartedAt = performance.now();
+    inputState.pointerStartedAt = gameNow();
     inputState.pointerSlideActive = false;
     inputState.pointerJumpActive = false;
     canvas.setPointerCapture(event.pointerId);
@@ -1876,7 +1974,7 @@ function bindEvents() {
   canvas.addEventListener("pointerup", (event) => {
     const dx = event.clientX - inputState.pointerStartX;
     const dy = event.clientY - inputState.pointerStartY;
-    const holdSeconds = (performance.now() - inputState.pointerStartedAt) / 1000;
+    const holdSeconds = (gameNow() - inputState.pointerStartedAt) / 1000;
     if (inputState.pointerSlideActive) {
       cancelSlideHold();
       inputState.pointerSlideActive = false;
@@ -2051,13 +2149,19 @@ function resizeCanvas() {
 }
 
 function loop(now) {
-  const dt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  const rawDt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
   lastFrame = now;
+  const dt = resolveTasDelta(rawDt);
+  gameClockMs += dt * 1000;
 
   update(dt);
   draw();
 
   requestAnimationFrame(loop);
+}
+
+function gameNow() {
+  return gameClockMs;
 }
 
 function update(dt) {
@@ -2098,7 +2202,7 @@ function update(dt) {
 
 function updateInputHolds() {
   if (!inputState.jumpHolding) return;
-  const heldSeconds = (performance.now() - inputState.jumpStartedAt) / 1000;
+  const heldSeconds = (gameNow() - inputState.jumpStartedAt) / 1000;
   if (heldSeconds >= MAX_JUMP_HOLD_SECONDS) {
     releaseJumpHold();
   }
@@ -2587,7 +2691,7 @@ function updateBossGimmick(obj, dt, distance) {
   }
   obj.bossTimer = (obj.bossTimer || 2) - dt;
   if (obj.bossGimmick === "sandBurrow") {
-    obj.y = groundY - obj.h - Math.abs(Math.sin(performance.now() / 620)) * 22;
+    obj.y = groundY - obj.h - Math.abs(Math.sin(gameNow() / 620)) * 22;
     if (obj.bossTimer <= 0) {
       obj.phased = true;
       obj.hitCooldown = Math.max(obj.hitCooldown, 0.75);
@@ -2677,7 +2781,7 @@ function updateFinalBossGimmick(boss, dt) {
 
   if (boss.bossGimmick === "sandBurrow") {
     boss.phased = run.bossChargeTimer > finalBossAttackDuration(index) - 0.75;
-    const bob = boss.phased ? 0 : Math.abs(Math.sin(performance.now() / 180)) * 8;
+    const bob = boss.phased ? 0 : Math.abs(Math.sin(gameNow() / 180)) * 8;
     boss.y = groundY - boss.h - bob;
   }
 
@@ -2730,7 +2834,7 @@ function updateFinalBossGimmick(boss, dt) {
   }
 
   if (boss.bossGimmick === "infinitePhase") {
-    boss.phased = run.phasePinTimer <= 0 && Math.sin(performance.now() / 130) > -0.1;
+    boss.phased = run.phasePinTimer <= 0 && Math.sin(gameNow() / 130) > -0.1;
     if (boss.gimmickTimer <= 0) {
       const birdPattern = nextFinalBossGimmickPattern(boss, "infinitePhaseBird");
       addBossEnemy("bird", boss, {
@@ -3517,7 +3621,7 @@ function updateBossBattle(dt) {
   run.bossChargeTimer -= dt;
   if (vulnerable) {
     if (!boss.vx) boss.vx = finalBossApproachVelocity(boss, index);
-    boss.y = finalBossVulnerableY(boss) - Math.abs(Math.sin(performance.now() / 460)) * 3;
+    boss.y = finalBossVulnerableY(boss) - Math.abs(Math.sin(gameNow() / 460)) * 3;
     const playerRect = getPlayerRect();
     const passedPlayer = boss.x + boss.w < playerRect.x - 16;
     if (run.bossChargeTimer <= 0 || passedPlayer) {
@@ -3528,7 +3632,7 @@ function updateBossBattle(dt) {
 
   boss.vx = 0;
   boss.x += (anchorX - boss.x) * Math.min(1, dt * 2.2);
-  boss.y = groundY - boss.h - Math.abs(Math.sin(performance.now() / 560)) * 13;
+  boss.y = groundY - boss.h - Math.abs(Math.sin(gameNow() / 560)) * 13;
 
   run.bossAttackTimer -= dt;
   if (run.bossChargeTimer > 0 && run.bossAttackTimer <= 0) {
@@ -4300,7 +4404,7 @@ function resetRun() {
   }
 }
 
-function startJumpHold(startedAt = performance.now()) {
+function startJumpHold(startedAt = gameNow()) {
   if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
@@ -4317,7 +4421,7 @@ function startJumpHold(startedAt = performance.now()) {
 function releaseJumpHold() {
   if (isGameplayPaused()) return;
   if (!inputState.jumpHolding) return;
-  const heldSeconds = (performance.now() - inputState.jumpStartedAt) / 1000;
+  const heldSeconds = (gameNow() - inputState.jumpStartedAt) / 1000;
   finishHeldJump(heldSeconds);
   inputState.jumpHolding = false;
 }
@@ -4568,7 +4672,7 @@ function magnetBurst() {
 
 function restartPlayerAnimation(key) {
   player.animationKey = key;
-  player.animationStartedAt = performance.now();
+  player.animationStartedAt = gameNow();
 }
 
 function getStats() {
@@ -5866,7 +5970,7 @@ function drawForeground(area) {
 
 function drawPlayer() {
   const rect = getPlayerAnchorRect();
-  const blink = player.invulnerable > 0 && Math.floor(performance.now() / 80) % 2 === 0;
+  const blink = player.invulnerable > 0 && Math.floor(gameNow() / 80) % 2 === 0;
   if (blink) ctx.globalAlpha = 0.55;
   const accent = run.dashTimer > 0 ? "#f2b84b" : run.skillShield > 0 ? "#48bde7" : "#e8edf5";
 
@@ -5924,7 +6028,7 @@ function drawMiniRobots() {
   if (activeRunnerFactories.length === 0) return;
 
   const rect = getPlayerAnchorRect();
-  const bobTime = performance.now() / 220;
+  const bobTime = gameNow() / 220;
   activeRunnerFactories.slice(0, 24).forEach((def, index) => {
     const row = Math.floor(index / 8);
     const col = index % 8;
@@ -6052,7 +6156,7 @@ function currentPlayerFrame(animation, frames) {
     return frames[0] || frames[frames.length - 1];
   }
   const def = playerAnimationDefs[animation] || playerAnimationDefs.running;
-  const elapsed = Math.max(0, (performance.now() - player.animationStartedAt) / 1000);
+  const elapsed = Math.max(0, (gameNow() - player.animationStartedAt) / 1000);
   const rawIndex = Math.floor(elapsed * def.fps);
   const index = def.loop ? rawIndex % frames.length : Math.min(frames.length - 1, rawIndex);
   return frames[index] || frames[frames.length - 1];
@@ -6088,7 +6192,7 @@ function drawPlayerShot(obj) {
 function drawCoin(obj) {
   ctx.fillStyle = obj.value >= 50 ? "#ffd96a" : "#f2b84b";
   ctx.beginPath();
-  ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2, obj.h / 2, Math.sin(performance.now() / 160) * 0.4, 0, Math.PI * 2);
+  ctx.ellipse(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.w / 2, obj.h / 2, Math.sin(gameNow() / 160) * 0.4, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.font = "700 9px Segoe UI, sans-serif";
