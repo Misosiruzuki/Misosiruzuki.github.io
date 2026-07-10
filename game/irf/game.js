@@ -21,6 +21,8 @@ const HAZARD_MIN_GAP = 190;
 const ITEM_MIN_GAP = 960;
 const FINAL_BOSS_OFFSET = 100;
 const FINAL_BOSS_ATTACK_PATTERNS = 3;
+const RUN_PATTERN_LENGTH_METERS = 30;
+const RUN_PATTERN_WIDTH = RUN_PATTERN_LENGTH_METERS * 48;
 
 const upgradeDefs = [
   { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${(lv * 1.2).toFixed(1)}%` },
@@ -780,6 +782,7 @@ const run = {
   eventCooldown: 50,
   gravityFlip: false,
   stockedItem: null,
+  lastPatternKey: "",
   sessionCoins: 0,
   sessionEnemies: 0,
   sessionBosses: 0,
@@ -2084,7 +2087,7 @@ function updateRun(dt) {
     run.nextSpawn -= dt;
     if (run.nextSpawn <= 0 && !stopped) {
       spawnSegment(stats);
-      run.nextSpawn = random(0.6, Math.max(1.05, 1.48 - Math.min(0.45, stats.speed / 48)));
+      run.nextSpawn = runPatternSpawnDelay(speedMeters);
     }
   }
 
@@ -2729,26 +2732,294 @@ function updateEvent(dt) {
   }
 }
 
+const RUN_PATTERN_TEMPLATES = [
+  {
+    id: "arc_gate",
+    entries: [
+      { type: "coins", offset: 40, count: 7, arc: true, lane: "mid" },
+      { type: "hazard", role: "ground", offset: 430 },
+      { type: "coins", offset: 740, count: 5, lane: "low" }
+    ]
+  },
+  {
+    id: "step_low",
+    entries: [
+      { type: "hazard", role: "block", offset: 220 },
+      { type: "coins", offset: 340, count: 6, arc: true, lane: "mid" },
+      { type: "hazard", role: "ground", offset: 740 },
+      { type: "item", offset: 1100, chance: 0.1 }
+    ]
+  },
+  {
+    id: "air_over",
+    entries: [
+      { type: "coins", offset: 80, count: 6, lane: "low" },
+      { type: "hazard", role: "air", offset: 390, lane: "high" },
+      { type: "hazard", role: "ground", offset: 790 },
+      { type: "coins", offset: 940, count: 5, arc: true, lane: "mid" }
+    ]
+  },
+  {
+    id: "laser_gap",
+    entries: [
+      { type: "coins", offset: 90, count: 5, lane: "high" },
+      { type: "hazard", role: "tall", offset: 500 },
+      { type: "coins", offset: 730, count: 6, lane: "low" },
+      { type: "item", offset: 1180, chance: 0.12 }
+    ]
+  },
+  {
+    id: "double_ground",
+    entries: [
+      { type: "hazard", role: "ground", offset: 260 },
+      { type: "coins", offset: 450, count: 5, lane: "mid" },
+      { type: "hazard", role: "heavy", offset: 720 },
+      { type: "coins", offset: 890, count: 6, arc: true, lane: "mid" }
+    ]
+  },
+  {
+    id: "fall_lane",
+    entries: [
+      { type: "coins", offset: 70, count: 7, lane: "low" },
+      { type: "hazard", role: "fall", offset: 450, lane: "high" },
+      { type: "hazard", role: "air", offset: 820, lane: "mid" },
+      { type: "coins", offset: 1030, count: 4, lane: "high" }
+    ]
+  },
+  {
+    id: "reward_thread",
+    entries: [
+      { type: "coins", offset: 60, count: 9, lane: "mid", rareChance: 0.04 },
+      { type: "item", offset: 720, chance: 0.15 },
+      { type: "hazard", role: "ground", offset: 1000 }
+    ]
+  },
+  {
+    id: "stagger_wall",
+    entries: [
+      { type: "hazard", role: "block", offset: 230 },
+      { type: "hazard", role: "tall", offset: 620 },
+      { type: "coins", offset: 800, count: 6, arc: true, lane: "mid" },
+      { type: "item", offset: 1220, chance: 0.1 }
+    ]
+  },
+  {
+    id: "high_low",
+    entries: [
+      { type: "hazard", role: "air", offset: 280, lane: "high" },
+      { type: "coins", offset: 410, count: 7, arc: true, lane: "high" },
+      { type: "hazard", role: "ground", offset: 910 }
+    ]
+  },
+  {
+    id: "mixed_end",
+    entries: [
+      { type: "hazard", role: "heavy", offset: 230 },
+      { type: "coins", offset: 430, count: 6, lane: "low" },
+      { type: "hazard", role: "fall", offset: 790, lane: "mid" },
+      { type: "coins", offset: 1010, count: 5, arc: true, lane: "mid" },
+      { type: "item", offset: 1280, chance: 0.08 }
+    ]
+  }
+];
+
+const AREA_PATTERN_HAZARDS = [
+  { ground: ["spike", "crate"], block: ["crate"], heavy: ["slime"], air: ["bird"], tall: ["laser"], fall: ["spike"] },
+  { ground: ["spike"], block: ["crate"], heavy: ["bomb"], air: ["bird"], tall: ["laser"], fall: ["meteor"] },
+  { ground: ["crate", "spike"], block: ["crate"], heavy: ["slime"], air: ["bird"], tall: ["laser"], fall: ["meteor"] },
+  { ground: ["spike"], block: ["crate"], heavy: ["bomb"], air: ["bird"], tall: ["laser"], fall: ["meteor"] },
+  { ground: ["spike"], block: ["crate"], heavy: ["bomb"], air: ["bird"], tall: ["laser"], fall: ["laser"] },
+  { ground: ["spike"], block: ["crate"], heavy: ["bomb"], air: ["bird"], tall: ["laser"], fall: ["meteor"] },
+  { ground: ["spike"], block: ["crate"], heavy: ["bomb"], air: ["bird"], tall: ["laser"], fall: ["meteor"] },
+  { ground: ["spike"], block: ["crate"], heavy: ["slime"], air: ["bird"], tall: ["laser"], fall: ["meteor"] },
+  { ground: ["spike"], block: ["crate"], heavy: ["bomb"], air: ["bird"], tall: ["laser"], fall: ["meteor"] }
+];
+
 function spawnSegment(stats) {
-  const area = currentArea();
-  const roll = Math.random();
-  const baseX = canvasWidth + random(30, 90);
-  const coinRain = run.event === "coinRain" || run.event === "coin3";
+  const index = areaIndex();
+  const area = areas[index] || currentArea();
+  const baseX = canvasWidth + random(40, 100);
+  const pattern = pickRunPattern(index);
+  spawnRunPattern(pattern, baseX, area, index);
 
-  if (coinRain || roll < 0.42) {
-    spawnCoinLine(baseX, Math.random() < 0.35);
+  if (run.event === "coinRain" || run.event === "coin3") {
+    spawnPatternCoinLine(baseX + random(140, 620), {
+      count: 10,
+      arc: true,
+      lane: Math.random() < 0.5 ? "mid" : "high",
+      rareChance: 0.04
+    });
+  }
+}
+
+function runPatternSpawnDelay(speedMeters) {
+  return Math.max(0.25, RUN_PATTERN_LENGTH_METERS / Math.max(1, speedMeters || 1));
+}
+
+function areaRunPatterns(index) {
+  return RUN_PATTERN_TEMPLATES.map((template, templateIndex) => ({
+    ...template,
+    areaIndex: index,
+    templateIndex,
+    key: `${index}:${template.id}`
+  }));
+}
+
+function pickRunPattern(index) {
+  const patterns = areaRunPatterns(index);
+  const candidates = patterns.length > 1
+    ? patterns.filter((pattern) => pattern.key !== run.lastPatternKey)
+    : patterns;
+  const pattern = candidates[randomInt(0, candidates.length - 1)] || patterns[0];
+  run.lastPatternKey = pattern.key;
+  return pattern;
+}
+
+function spawnRunPattern(pattern, baseX, area, index) {
+  const clearPath = run.event === "clearPath";
+  for (const entry of pattern.entries) {
+    const jitter = entry.jitter || 0;
+    const x = baseX + entry.offset + random(-jitter, jitter);
+    if (entry.type === "coins") {
+      spawnPatternCoinLine(x, entry);
+    } else if (entry.type === "hazard" && !clearPath) {
+      const kind = resolvePatternHazardKind(entry.role, index, pattern.templateIndex + Math.floor(entry.offset / 100));
+      spawnPatternHazard(kind, x, area, index, entry);
+    } else if (entry.type === "item") {
+      const itemChance = Math.min(0.45, (entry.chance || 0.08) + state.upgrades.item * 0.004);
+      if (Math.random() < itemChance) spawnItem(x);
+    }
+  }
+}
+
+function resolvePatternHazardKind(role, index, seed = 0) {
+  const theme = AREA_PATTERN_HAZARDS[index] || AREA_PATTERN_HAZARDS[AREA_PATTERN_HAZARDS.length - 1];
+  const choices = theme[role] || theme.ground || ["crate"];
+  return choices[Math.abs(seed) % choices.length];
+}
+
+function spawnPatternCoinLine(startX, entry = {}) {
+  const value = weightedPick([
+    { value: 1, weight: 58 },
+    { value: 5, weight: 25 },
+    { value: 10, weight: 12 },
+    { value: 50, weight: 4 },
+    { value: 100, weight: 1 }
+  ]);
+  const count = entry.count || randomInt(4, 7);
+  const spacing = entry.spacing || 38;
+  for (let i = 0; i < count; i++) {
+    const y = entry.arc
+      ? coinArcY(i, count, entry.lane, entry.arcHeight)
+      : coinLaneY(entry.lane) + random(-10, 10);
+    objects.push({
+      type: "coin",
+      x: startX + i * spacing,
+      y,
+      w: 20,
+      h: 20,
+      value,
+      spin: Math.random() * Math.PI
+    });
   }
 
-  if (run.event === "clearPath") return;
+  const rareChance = (entry.rareChance ?? 0.015) + state.permanent.rarity * 0.008;
+  if (Math.random() < rareChance) {
+    objects.push({
+      type: "rare",
+      kind: weightedPick([
+        { value: "rainbow", weight: 72 },
+        { value: "diamond", weight: 21 },
+        { value: "gem", weight: 7 }
+      ]),
+      x: startX + count * spacing + 18,
+      y: coinLaneY("high") + random(-12, 20),
+      w: 24,
+      h: 24
+    });
+  }
+}
 
-  if (roll > 0.23 && roll < 0.68) {
-    spawnObstacleOrEnemy(baseX + random(120, 220), area);
+function coinLaneY(lane = "mid") {
+  if (lane === "high") return groundY - 175;
+  if (lane === "low") return groundY - 78;
+  return groundY - 125;
+}
+
+function coinArcY(i, count, lane = "mid", arcHeight = 72) {
+  const progress = count <= 1 ? 0 : i / (count - 1);
+  return coinLaneY(lane) - Math.sin(progress * Math.PI) * arcHeight;
+}
+
+function hazardAirY(lane = "mid") {
+  if (lane === "high") return groundY - 178;
+  if (lane === "low") return groundY - 98;
+  return groundY - 138;
+}
+
+function spawnPatternHazard(kind, x, area, index, entry = {}) {
+  if (!canSpawnHazardAt(x, entry.gap || HAZARD_MIN_GAP)) return false;
+
+  if (kind === "slime" || kind === "bird" || kind === "bomb") {
+    const airborne = kind === "bird";
+    const sizeBoost = Math.min(10, index * 1.2);
+    objects.push(applyEnemyTraits({
+      type: "enemy",
+      kind,
+      x,
+      y: airborne ? hazardAirY(entry.lane) : groundY - (kind === "bomb" ? 40 : 38) - sizeBoost * 0.35,
+      w: airborne ? 42 + sizeBoost * 0.4 : 40 + sizeBoost * 0.35,
+      h: airborne ? 28 + sizeBoost * 0.25 : (kind === "bomb" ? 40 : 38) + sizeBoost * 0.35,
+      color: kind === "bird" ? area.accent : kind === "bomb" ? "#30333c" : "#75d05e"
+    }, index));
+    tagLatestHazardForGuide(kind);
+    return true;
   }
 
-  const itemChance = 0.025 + state.upgrades.item * 0.002;
-  if (Math.random() < itemChance) {
-    spawnItem(baseX + random(180, 320));
+  if (kind === "laser") {
+    const height = entry.lane === "high" ? 92 : 78;
+    objects.push({
+      type: "obstacle",
+      kind,
+      x,
+      y: groundY - height - (entry.lane === "high" ? 18 : 40),
+      w: 24,
+      h: height,
+      color: "#ef6b65"
+    });
+    tagLatestHazardForGuide(kind);
+    return true;
   }
+
+  if (kind === "meteor") {
+    objects.push({
+      type: "obstacle",
+      kind,
+      x,
+      y: hazardAirY(entry.lane) - random(35, 85),
+      w: 34,
+      h: 34,
+      vx: -random(25, 55),
+      vy: random(90, 130),
+      gravity: random(65, 95),
+      color: area.accent
+    });
+    tagLatestHazardForGuide(kind);
+    return true;
+  }
+
+  const height = kind === "spike" ? 42 : randomInt(46, 70);
+  objects.push({
+    type: "obstacle",
+    kind,
+    x,
+    y: groundY - height,
+    w: kind === "spike" ? 48 : 44,
+    h: height,
+    color: area.obstacle
+  });
+  tagLatestHazardForGuide(kind);
+  return true;
 }
 
 function spawnCoinLine(startX, arc) {
@@ -3560,6 +3831,7 @@ function completeAreaBoss(index) {
   run.echoActive = false;
   run.gravityFlip = false;
   run.nextSpawn = 0.4;
+  run.lastPatternKey = "";
   run.eventCooldown = random(45, 85);
   state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
   run.nextBossMark = nextAreaBossDistance(index + 1);
@@ -3659,6 +3931,7 @@ function resetRun() {
   run.phasePinTimer = 0;
   run.chillTimer = 0;
   run.nextSpawn = 0.4;
+  run.lastPatternKey = "";
   run.nextBossMark = nextAreaBossDistance(areaIndexForDistance(startDistance));
   run.nextChestMark = Math.floor(startDistance / CHEST_DISTANCE_INTERVAL) * CHEST_DISTANCE_INTERVAL + CHEST_DISTANCE_INTERVAL;
   run.bossBattle = false;
