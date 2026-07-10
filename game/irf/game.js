@@ -731,7 +731,8 @@ const RANDOM_EVENT_DEFS = [
 ];
 
 const TAS_STEP_SECONDS = 1 / 60;
-const TAS_SPEEDS = [1, 0.5, 0.25, 0.1];
+const TAS_SPEEDS = [4, 2, 1, 0.5, 0.25, 0.1];
+const TAS_DEFAULT_SPEED_INDEX = 2;
 
 let state = loadState();
 let activeTab = "upgrades";
@@ -750,7 +751,19 @@ let languageSelectionActive = false;
 let debugSettings = loadDebugSettings();
 const tasState = {
   paused: false,
-  queuedSteps: 0
+  queuedSteps: 0,
+  frame: 0,
+  saveSlot: null,
+  rewind: [],
+  recording: false,
+  recordingStartFrame: 0,
+  playing: false,
+  playbackFrame: 0,
+  inputFrames: [],
+  pendingActions: {},
+  rngCalls: 0,
+  rngLast: 0,
+  rngState: ((Date.now() ^ 0x9e3779b9) >>> 0) || 0x12345678
 };
 
 const player = {
@@ -1004,11 +1017,28 @@ function renderDebugTasControls() {
   if (!DEBUG_MODE || !debugTasControls) return;
   const enabled = isTasEnabled();
   const speed = tasSpeedMultiplier();
+  const recording = tasState.recording;
+  const playing = tasState.playing;
   debugTasControls.innerHTML = `
-    <button type="button" data-debug-tas="toggle" aria-pressed="${String(enabled)}">TAS ${enabled ? "ON" : "OFF"}</button>
-    <button type="button" data-debug-tas="pause" aria-pressed="${String(tasState.paused)}" ${enabled ? "" : "disabled"}>${tasState.paused ? "PAUSED" : "RUN"}</button>
-    <button type="button" data-debug-tas="step" ${enabled ? "" : "disabled"}>1F</button>
-    <button type="button" data-debug-tas="speed" ${enabled ? "" : "disabled"}>x${speed}</button>
+    <button type="button" data-debug-tas="toggle" aria-pressed="${String(enabled)}">TAS ${enabled ? "ON" : "OFF"} F1</button>
+    <button type="button" data-debug-tas="pause" aria-pressed="${String(tasState.paused)}" ${enabled ? "" : "disabled"}>${tasState.paused ? "PAUSED" : "RUN"} F2</button>
+    <button type="button" data-debug-tas="step" ${enabled ? "" : "disabled"}>1F F3</button>
+    <button type="button" data-debug-tas="saveState" ${enabled ? "" : "disabled"}>SAVE F5</button>
+    <button type="button" data-debug-tas="loadState" ${enabled ? "" : "disabled"}>LOAD F8</button>
+    <button type="button" data-debug-tas="record" aria-pressed="${String(recording)}" ${enabled ? "" : "disabled"}>REC F9</button>
+    <button type="button" data-debug-tas="play" aria-pressed="${String(playing)}" ${enabled ? "" : "disabled"}>PLAY F10</button>
+    <button type="button" data-debug-tas="edit" ${enabled ? "" : "disabled"}>EDIT F6</button>
+    <button type="button" data-debug-tas="rewind" ${enabled ? "" : "disabled"}>REW F7</button>
+    <button type="button" data-debug-tas="fast" ${enabled ? "" : "disabled"}>FAST F11</button>
+    <button type="button" data-debug-tas="slow" ${enabled ? "" : "disabled"}>SLOW F12</button>
+    <button type="button" data-debug-tas="frame" aria-pressed="${String(Boolean(debugSettings.tasShowFrame))}" ${enabled ? "" : "disabled"}>FRAME A+F</button>
+    <button type="button" data-debug-tas="kinematics" aria-pressed="${String(Boolean(debugSettings.tasShowKinematics))}" ${enabled ? "" : "disabled"}>XY A+C</button>
+    <button type="button" data-debug-tas="hitbox" aria-pressed="${String(Boolean(debugSettings.tasShowHitboxes))}" ${enabled ? "" : "disabled"}>HIT F4</button>
+    <button type="button" data-debug-tas="rng" aria-pressed="${String(Boolean(debugSettings.tasShowRng))}" ${enabled ? "" : "disabled"}>RNG A+R</button>
+    <button type="button" data-debug-tas="watch" aria-pressed="${String(Boolean(debugSettings.tasShowWatch))}" ${enabled ? "" : "disabled"}>WATCH A+V</button>
+    <button type="button" data-debug-tas="export" ${enabled ? "" : "disabled"}>EXPORT A+S</button>
+    <button type="button" data-debug-tas="import" ${enabled ? "" : "disabled"}>IMPORT A+O</button>
+    <span class="debug-tas-readout">F${tasState.frame} x${speed} IN ${tasState.inputFrames.length}</span>
   `;
   debugTasControls.querySelectorAll("button[data-debug-tas]").forEach((button) => {
     button.addEventListener("click", () => handleDebugTasAction(button.dataset.debugTas));
@@ -1020,7 +1050,21 @@ function handleDebugTasAction(action) {
   if (action === "toggle") toggleDebugTas();
   if (action === "pause") toggleTasPause();
   if (action === "step") stepTasFrame();
-  if (action === "speed") cycleTasSpeed();
+  if (action === "fast") changeTasSpeed(-1);
+  if (action === "slow") changeTasSpeed(1);
+  if (action === "saveState") saveTasState();
+  if (action === "loadState") loadTasState();
+  if (action === "record") toggleTasRecording();
+  if (action === "play") toggleTasPlayback();
+  if (action === "edit") editTasInputFrame();
+  if (action === "rewind") rewindTasFrame();
+  if (action === "frame") toggleTasDisplay("tasShowFrame", "FRAME");
+  if (action === "kinematics") toggleTasDisplay("tasShowKinematics", "XY");
+  if (action === "hitbox") toggleTasDisplay("tasShowHitboxes", "HITBOX");
+  if (action === "rng") toggleTasDisplay("tasShowRng", "RNG");
+  if (action === "watch") toggleTasDisplay("tasShowWatch", "WATCH");
+  if (action === "export") exportTasFile();
+  if (action === "import") importTasFile();
 }
 
 function toggleDebugTas() {
@@ -1055,6 +1099,307 @@ function cycleTasSpeed() {
   debugMessage(`TAS SPEED x${tasSpeedMultiplier()}`);
 }
 
+function changeTasSpeed(direction) {
+  if (!isTasEnabled()) return;
+  debugSettings.tasSpeedIndex = normalizeTasSpeedIndex(debugSettings.tasSpeedIndex + direction);
+  persistDebugSettings();
+  renderDebugTasControls();
+  debugMessage(`TAS SPEED x${tasSpeedMultiplier()}`);
+}
+
+function toggleTasDisplay(key, label) {
+  if (!isTasEnabled()) return;
+  debugSettings[key] = !debugSettings[key];
+  persistDebugSettings();
+  renderDebugTasControls();
+  debugMessage(`${label} ${debugSettings[key] ? "ON" : "OFF"}`);
+}
+
+function clonePlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function captureTasSnapshot() {
+  return {
+    version: 1,
+    frame: tasState.frame,
+    gameClockMs,
+    state: clonePlain(state),
+    run: clonePlain(run),
+    player: clonePlain(player),
+    objects: clonePlain(objects),
+    particles: clonePlain(particles),
+    inputState: clonePlain(inputState),
+    activeTab,
+    factoryView,
+    equipmentView,
+    musicScene,
+    autosaveTimer,
+    uiTimer,
+    messageTimer,
+    rngState: tasState.rngState,
+    rngCalls: tasState.rngCalls,
+    rngLast: tasState.rngLast
+  };
+}
+
+function restoreTasSnapshot(snapshot) {
+  if (!snapshot) return false;
+  state = clonePlain(snapshot.state);
+  Object.assign(run, clonePlain(snapshot.run));
+  Object.assign(player, clonePlain(snapshot.player));
+  Object.assign(inputState, clonePlain(snapshot.inputState));
+  objects = clonePlain(snapshot.objects || []);
+  particles = clonePlain(snapshot.particles || []);
+  activeTab = snapshot.activeTab || activeTab;
+  factoryView = snapshot.factoryView || factoryView;
+  equipmentView = snapshot.equipmentView || equipmentView;
+  musicScene = snapshot.musicScene || musicScene;
+  autosaveTimer = Number(snapshot.autosaveTimer || 0);
+  uiTimer = Number(snapshot.uiTimer || 0);
+  messageTimer = Number(snapshot.messageTimer || 0);
+  gameClockMs = Number(snapshot.gameClockMs || gameClockMs);
+  tasState.frame = Number(snapshot.frame || 0);
+  tasState.rngState = Number(snapshot.rngState || tasState.rngState) >>> 0;
+  tasState.rngCalls = Number(snapshot.rngCalls || 0);
+  tasState.rngLast = Number(snapshot.rngLast || 0);
+  runOverlay.classList.toggle("hidden", !run.gameOver);
+  renderPanel();
+  updateHud();
+  syncBgm();
+  return true;
+}
+
+function saveTasState() {
+  if (!isTasEnabled()) return;
+  tasState.saveSlot = captureTasSnapshot();
+  renderDebugTasControls();
+  debugMessage(`TAS SAVE F${tasState.frame}`);
+}
+
+function loadTasState() {
+  if (!isTasEnabled()) return;
+  if (!tasState.saveSlot) {
+    debugMessage("TAS SAVE STATE EMPTY");
+    return;
+  }
+  restoreTasSnapshot(tasState.saveSlot);
+  tasState.paused = true;
+  tasState.playing = false;
+  renderDebugTasControls();
+  debugMessage(`TAS LOAD F${tasState.frame}`);
+}
+
+function captureTasRewindSnapshot() {
+  if (!isTasEnabled()) return;
+  tasState.rewind.push(captureTasSnapshot());
+  if (tasState.rewind.length > 600) tasState.rewind.shift();
+}
+
+function rewindTasFrame() {
+  if (!isTasEnabled()) return;
+  const snapshot = tasState.rewind.pop();
+  if (!snapshot) {
+    debugMessage("TAS REWIND EMPTY");
+    return;
+  }
+  restoreTasSnapshot(snapshot);
+  tasState.paused = true;
+  tasState.playing = false;
+  renderDebugTasControls();
+  debugMessage(`TAS REWIND F${tasState.frame}`);
+}
+
+function currentTasInputFrame() {
+  const frame = Math.max(0, tasState.frame - tasState.recordingStartFrame);
+  return {
+    frame,
+    jump: Boolean(inputState.jumpHolding),
+    slide: Boolean(inputState.slideHolding),
+    block: inputState.blockDirection || "mid",
+    skill: Boolean(tasState.pendingActions.skill),
+    cycle: Boolean(tasState.pendingActions.cycle),
+    item: Boolean(tasState.pendingActions.item)
+  };
+}
+
+function recordTasInputFrame() {
+  if (!isTasEnabled() || !tasState.recording || tasState.playing) return;
+  const inputFrame = currentTasInputFrame();
+  tasState.inputFrames[inputFrame.frame] = inputFrame;
+  tasState.pendingActions = {};
+}
+
+function markTasAction(action) {
+  if (!isTasEnabled() || !tasState.recording || tasState.playing) return;
+  tasState.pendingActions[action] = true;
+}
+
+function toggleTasRecording() {
+  if (!isTasEnabled()) return;
+  tasState.recording = !tasState.recording;
+  if (tasState.recording) {
+    tasState.playing = false;
+    tasState.recordingStartFrame = tasState.frame;
+    tasState.playbackFrame = 0;
+    tasState.inputFrames = [];
+  }
+  renderDebugTasControls();
+  debugMessage(`TAS REC ${tasState.recording ? "ON" : "OFF"}`);
+}
+
+function toggleTasPlayback() {
+  if (!isTasEnabled()) return;
+  tasState.playing = !tasState.playing;
+  if (tasState.playing) {
+    tasState.recording = false;
+    tasState.playbackFrame = 0;
+    tasState.paused = false;
+  }
+  renderDebugTasControls();
+  debugMessage(`TAS PLAY ${tasState.playing ? "ON" : "OFF"}`);
+}
+
+function applyTasPlaybackFrame() {
+  if (!isTasEnabled() || !tasState.playing) return;
+  const frame = tasState.inputFrames[tasState.playbackFrame];
+  if (!frame) {
+    tasState.playing = false;
+    tasState.paused = true;
+    renderDebugTasControls();
+    debugMessage("TAS PLAY END");
+    return;
+  }
+  if (frame.jump && !inputState.jumpHolding) startJumpHold(gameNow());
+  if (!frame.jump && inputState.jumpHolding) releaseJumpHold();
+  if (frame.slide && !inputState.slideHolding) startSlideHold();
+  if (!frame.slide && inputState.slideHolding) cancelSlideHold();
+  inputState.blockDirection = frame.block || "mid";
+  if (frame.cycle) cycleActiveSkill();
+  if (frame.item) useStockedItem();
+  if (frame.skill) activateActiveSkill();
+  tasState.playbackFrame += 1;
+}
+
+function editTasInputFrame() {
+  if (!isTasEnabled()) return;
+  const frameNumber = Number(window.prompt("Edit TAS frame number", String(tasState.frame)));
+  if (!Number.isFinite(frameNumber) || frameNumber < 0) return;
+  const current = tasState.inputFrames[frameNumber] || {
+    frame: frameNumber,
+    jump: false,
+    slide: false,
+    block: "mid",
+    skill: false,
+    cycle: false,
+    item: false
+  };
+  const edited = window.prompt("Edit TAS input JSON", JSON.stringify(current));
+  if (!edited) return;
+  try {
+    const parsed = JSON.parse(edited);
+    tasState.inputFrames[frameNumber] = {
+      frame: frameNumber,
+      jump: Boolean(parsed.jump),
+      slide: Boolean(parsed.slide),
+      block: ["high", "mid", "low"].includes(parsed.block) ? parsed.block : "mid",
+      skill: Boolean(parsed.skill),
+      cycle: Boolean(parsed.cycle),
+      item: Boolean(parsed.item)
+    };
+    renderDebugTasControls();
+    debugMessage(`TAS EDIT F${frameNumber}`);
+  } catch (error) {
+    console.warn(error);
+    debugMessage("TAS EDIT JSON ERROR");
+  }
+}
+
+function exportTasFile() {
+  if (!isTasEnabled()) return;
+  const payload = {
+    format: "irf-tas-v1",
+    exportedAt: new Date().toISOString(),
+    frame: tasState.frame,
+    inputs: tasState.inputFrames.filter(Boolean),
+    rngState: tasState.rngState,
+    rngCalls: tasState.rngCalls
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `irf_tas_${Date.now()}.json`;
+  document.body.appendChild(link);
+  link.click();
+  URL.revokeObjectURL(link.href);
+  link.remove();
+  debugMessage("TAS FILE EXPORTED");
+}
+
+function importTasFile() {
+  if (!isTasEnabled()) return;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json,.json";
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || "{}"));
+        const frames = Array.isArray(parsed.inputs) ? parsed.inputs : [];
+        tasState.inputFrames = [];
+        for (const frame of frames) {
+          const index = Number(frame.frame);
+          if (Number.isFinite(index) && index >= 0) tasState.inputFrames[index] = frame;
+        }
+        if (Number.isFinite(parsed.rngState)) tasState.rngState = Number(parsed.rngState) >>> 0;
+        if (Number.isFinite(parsed.rngCalls)) tasState.rngCalls = Number(parsed.rngCalls);
+        renderDebugTasControls();
+        debugMessage(`TAS FILE IMPORTED ${frames.length}F`);
+      } catch (error) {
+        console.warn(error);
+        debugMessage("TAS FILE IMPORT ERROR");
+      }
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+function handleDebugTasShortcut(event) {
+  if (!DEBUG_MODE) return false;
+  const altActions = {
+    KeyF: () => toggleTasDisplay("tasShowFrame", "FRAME"),
+    KeyC: () => toggleTasDisplay("tasShowKinematics", "XY"),
+    KeyR: () => toggleTasDisplay("tasShowRng", "RNG"),
+    KeyV: () => toggleTasDisplay("tasShowWatch", "WATCH"),
+    KeyS: exportTasFile,
+    KeyO: importTasFile
+  };
+  const plainActions = {
+    F1: toggleDebugTas,
+    F2: toggleTasPause,
+    F3: stepTasFrame,
+    F4: () => toggleTasDisplay("tasShowHitboxes", "HITBOX"),
+    F5: saveTasState,
+    F6: editTasInputFrame,
+    F7: rewindTasFrame,
+    F8: loadTasState,
+    F9: toggleTasRecording,
+    F10: toggleTasPlayback,
+    F11: () => changeTasSpeed(-1),
+    F12: () => changeTasSpeed(1)
+  };
+  const action = event.altKey ? altActions[event.code] : plainActions[event.code];
+  if (!action) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  action();
+  return true;
+}
+
 function isTasEnabled() {
   return DEBUG_MODE && Boolean(debugSettings.tasEnabled);
 }
@@ -1065,7 +1410,7 @@ function tasSpeedMultiplier() {
 
 function normalizeTasSpeedIndex(value) {
   const index = Number(value);
-  if (!Number.isFinite(index)) return 0;
+  if (!Number.isFinite(index)) return TAS_DEFAULT_SPEED_INDEX;
   return Math.max(0, Math.min(TAS_SPEEDS.length - 1, Math.floor(index)));
 }
 
@@ -1082,7 +1427,16 @@ function resolveTasDelta(rawDt) {
 }
 
 function loadDebugSettings() {
-  const defaults = { skipGuides: false, tasEnabled: false, tasSpeedIndex: 0 };
+  const defaults = {
+    skipGuides: false,
+    tasEnabled: false,
+    tasSpeedIndex: TAS_DEFAULT_SPEED_INDEX,
+    tasShowFrame: true,
+    tasShowKinematics: true,
+    tasShowHitboxes: false,
+    tasShowRng: true,
+    tasShowWatch: true
+  };
   if (!DEBUG_MODE) return defaults;
   try {
     const parsed = JSON.parse(localStorage.getItem(DEBUG_SETTINGS_KEY) || "{}");
@@ -1090,7 +1444,12 @@ function loadDebugSettings() {
       ...defaults,
       skipGuides: Boolean(parsed.skipGuides),
       tasEnabled: Boolean(parsed.tasEnabled),
-      tasSpeedIndex: normalizeTasSpeedIndex(parsed.tasSpeedIndex)
+      tasSpeedIndex: normalizeTasSpeedIndex(parsed.tasSpeedIndex),
+      tasShowFrame: parsed.tasShowFrame !== undefined ? Boolean(parsed.tasShowFrame) : defaults.tasShowFrame,
+      tasShowKinematics: parsed.tasShowKinematics !== undefined ? Boolean(parsed.tasShowKinematics) : defaults.tasShowKinematics,
+      tasShowHitboxes: Boolean(parsed.tasShowHitboxes),
+      tasShowRng: parsed.tasShowRng !== undefined ? Boolean(parsed.tasShowRng) : defaults.tasShowRng,
+      tasShowWatch: parsed.tasShowWatch !== undefined ? Boolean(parsed.tasShowWatch) : defaults.tasShowWatch
     };
   } catch (error) {
     console.warn(error);
@@ -1868,6 +2227,7 @@ function bindEvents() {
   document.addEventListener("keydown", unlockAudio, { once: true });
 
   document.addEventListener("keydown", (event) => {
+    if (handleDebugTasShortcut(event)) return;
     const jumpKey = event.code === "Space" || event.code === "ArrowUp";
     if (isGuideActive() && jumpKey) {
       event.preventDefault();
@@ -1895,10 +2255,12 @@ function bindEvents() {
       if (event.code !== "KeyD" && event.code !== "KeyQ" && event.code !== "KeyE") return;
     }
     if (event.code === "KeyQ") {
+      markTasAction("cycle");
       cycleActiveSkill();
       return;
     }
     if (event.code === "KeyE") {
+      markTasAction("item");
       useStockedItem();
       return;
     }
@@ -1909,6 +2271,7 @@ function bindEvents() {
       startSlideHold();
     }
     if (event.code === "KeyD") {
+      markTasAction("skill");
       dash();
     }
   });
@@ -1939,9 +2302,18 @@ function bindEvents() {
 
   bindHoldButton(document.getElementById("jumpBtn"), startJumpHold, releaseJumpHold);
   bindHoldButton(document.getElementById("slideBtn"), startSlideHold, cancelSlideHold);
-  document.getElementById("dashBtn").addEventListener("click", activateActiveSkill);
-  document.getElementById("cycleSkillBtn").addEventListener("click", cycleActiveSkill);
-  document.getElementById("stockItemBtn").addEventListener("click", useStockedItem);
+  document.getElementById("dashBtn").addEventListener("click", () => {
+    markTasAction("skill");
+    activateActiveSkill();
+  });
+  document.getElementById("cycleSkillBtn").addEventListener("click", () => {
+    markTasAction("cycle");
+    cycleActiveSkill();
+  });
+  document.getElementById("stockItemBtn").addEventListener("click", () => {
+    markTasAction("item");
+    useStockedItem();
+  });
   document.getElementById("restartBtn").addEventListener("click", restartFromButton);
   document.getElementById("overlayRestart").addEventListener("click", restartFromButton);
   document.getElementById("saveBtn").addEventListener("click", saveState);
@@ -2170,6 +2542,12 @@ function update(dt) {
     syncBgm();
     return;
   }
+  const tasAdvancing = isTasEnabled() && dt > 0;
+  if (tasAdvancing) {
+    captureTasRewindSnapshot();
+    applyTasPlaybackFrame();
+    recordTasInputFrame();
+  }
   ensureMissions();
   updateInputHolds();
   tickIdle(dt);
@@ -2197,6 +2575,11 @@ function update(dt) {
     if (activeTab === "equipment" || activeTab === "missions" || activeTab === "prestige") {
       renderPanel();
     }
+    if (DEBUG_MODE) renderDebugTasControls();
+  }
+  if (tasAdvancing) {
+    tasState.frame += 1;
+    renderDebugTasControls();
   }
 }
 
@@ -3130,7 +3513,7 @@ function spawnPatternEntry(entry, x, area, index, seed, options = {}) {
     spawnPatternHazard(kind, x, area, index, entry);
   } else if (entry.type === "item") {
     const itemChance = Math.min(0.45, (entry.chance || 0.08) + state.upgrades.item * 0.004);
-    if (Math.random() < itemChance) spawnItem(x);
+    if (rng() < itemChance) spawnItem(x);
   }
 }
 
@@ -3161,12 +3544,12 @@ function spawnPatternCoinLine(startX, entry = {}) {
       w: 20,
       h: 20,
       value,
-      spin: Math.random() * Math.PI
+      spin: rng() * Math.PI
     });
   }
 
   const rareChance = (entry.rareChance ?? 0.015) + state.permanent.rarity * 0.008;
-  if (Math.random() < rareChance) {
+  if (rng() < rareChance) {
     objects.push({
       type: "rare",
       kind: weightedPick([
@@ -3309,11 +3692,11 @@ function spawnCoinLine(startX, arc) {
       w: 20,
       h: 20,
       value: values.includes(value) ? value : 1,
-      spin: Math.random() * Math.PI
+      spin: rng() * Math.PI
     });
   }
 
-  if (Math.random() < 0.025 + state.permanent.rarity * 0.01) {
+  if (rng() < 0.025 + state.permanent.rarity * 0.01) {
     objects.push({
       type: "rare",
       kind: weightedPick([
@@ -3487,7 +3870,7 @@ function applyEnemyTraits(obj, index) {
   if (trait === "phase") {
     obj.phaseTimer = deterministicBossTrait
       ? deterministicTraitRange(obj, index, 0, Math.PI * 2)
-      : Math.random() * Math.PI * 2;
+      : rng() * Math.PI * 2;
     obj.phased = false;
   }
   return obj;
@@ -4133,7 +4516,7 @@ function addChest(chestType) {
   const def = chestDefs[chestType] || chestDefs.wood;
   const speed = 1 + state.permanent.chest * 0.05;
   state.chests.push({
-    id: `chest_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    id: `chest_${Date.now()}_${rng().toString(16).slice(2)}`,
     type: chestType,
     remaining: Math.ceil(def.seconds / speed)
   });
@@ -4889,7 +5272,7 @@ function passiveResearchLevel(id) {
 function researchChance(id, perLevel = 0.02) {
   const chance = passiveResearchLevel(id) * perLevel;
   if (chance <= 0) return false;
-  if (!run.bossBattle) return Math.random() < chance;
+  if (!run.bossBattle) return rng() < chance;
   return deterministicBossChance(`research:${id}`, chance);
 }
 
@@ -4898,7 +5281,7 @@ function researchReduction(id, perLevel = 0.02) {
 }
 
 function shouldShieldBlockHeal() {
-  if (!run.bossBattle) return Math.random() < 0.18;
+  if (!run.bossBattle) return rng() < 0.18;
   return deterministicBossChance("shieldBlockHeal", 0.18);
 }
 
@@ -5152,9 +5535,9 @@ function generateEquipment(chestType) {
   ]);
   const value = stat === "hp"
     ? rarity.rank
-    : Number((0.02 * rarity.rank + Math.random() * 0.015 * rarity.rank).toFixed(3));
+    : Number((0.02 * rarity.rank + rng() * 0.015 * rarity.rank).toFixed(3));
   return {
-    id: `eq_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    id: `eq_${Date.now()}_${rng().toString(16).slice(2)}`,
     name: equipmentName(slot, rarity.id),
     slot,
     rarity: rarity.id,
@@ -5900,7 +6283,9 @@ function draw() {
   drawMiniRobots();
   drawPlayer();
   drawParticles();
+  drawTasHitboxes();
   drawForeground(area);
+  drawTasOverlay();
 }
 
 function drawBossModeGuides() {
@@ -5919,6 +6304,60 @@ function drawBossModeGuides() {
     }
     ctx.restore();
   }
+}
+
+function drawTasOverlay() {
+  if (!isTasEnabled()) return;
+  const lines = [];
+  if (debugSettings.tasShowFrame) {
+    lines.push(`F ${tasState.frame} ${tasState.paused ? "PAUSE" : `x${tasSpeedMultiplier()}`}`);
+    if (tasState.recording) lines.push("REC");
+    if (tasState.playing) lines.push(`PLAY ${tasState.playbackFrame}/${tasState.inputFrames.length}`);
+  }
+  if (debugSettings.tasShowKinematics) {
+    lines.push(`P x:${player.x.toFixed(1)} y:${player.y.toFixed(1)} vy:${player.vy.toFixed(1)}`);
+    lines.push(`D ${run.distance.toFixed(2)} HP ${run.hp}/${getStats().maxHp}`);
+  }
+  if (debugSettings.tasShowRng) {
+    lines.push(`RNG ${tasState.rngState >>> 0} #${tasState.rngCalls} last:${tasState.rngLast.toFixed(6)}`);
+  }
+  if (debugSettings.tasShowWatch) {
+    lines.push(`OBJ ${objects.length} EVT ${run.event || "none"} ${Math.max(0, run.eventTimer || 0).toFixed(2)}`);
+    lines.push(`BOSS ${run.bossBattle ? `${run.bossPhase} p${run.bossPatternIndex} v${run.bossVolley}` : "none"}`);
+    lines.push(`INPUT J:${Number(inputState.jumpHolding)} S:${Number(inputState.slideHolding)} B:${inputState.blockDirection}`);
+  }
+  if (!lines.length) return;
+  ctx.save();
+  ctx.font = "12px Consolas, monospace";
+  ctx.textBaseline = "top";
+  const width = Math.max(...lines.map((line) => ctx.measureText(line).width)) + 16;
+  const height = lines.length * 16 + 12;
+  ctx.fillStyle = "rgba(10, 14, 18, 0.78)";
+  roundRect(10, 10, width, height, 6);
+  ctx.fill();
+  ctx.fillStyle = "#d8f6ff";
+  lines.forEach((line, index) => ctx.fillText(line, 18, 18 + index * 16));
+  ctx.restore();
+}
+
+function drawTasHitboxes() {
+  if (!isTasEnabled() || !debugSettings.tasShowHitboxes) return;
+  ctx.save();
+  ctx.lineWidth = 1;
+  drawTasRect(getPlayerRect(), "#48bde7");
+  for (const obj of objects) {
+    if (obj.type === "coin" || obj.type === "rare") drawTasRect(obj, "#f2d24b");
+    else if (obj.type === "item" || obj.type === "chest") drawTasRect(obj, "#4cc38a");
+    else if (obj.type === "playerShot") drawTasRect(obj, "#ffffff");
+    else if (isHazardObject(obj)) drawTasRect(obj, obj.bossAttack ? "#ef6b65" : "#ff9f3d");
+  }
+  ctx.restore();
+}
+
+function drawTasRect(rect, color) {
+  if (!rect) return;
+  ctx.strokeStyle = color;
+  ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 }
 
 function drawBackground(area) {
@@ -6372,7 +6811,7 @@ function rectsOverlap(a, b) {
 
 function weightedPick(entries) {
   const total = entries.reduce((sum, entry) => sum + entry.weight, 0);
-  let roll = Math.random() * total;
+  let roll = rng() * total;
   for (const entry of entries) {
     roll -= entry.weight;
     if (roll <= 0) return entry.value;
@@ -6380,8 +6819,15 @@ function weightedPick(entries) {
   return entries[entries.length - 1].value;
 }
 
+function rng() {
+  tasState.rngState = (Math.imul(1664525, tasState.rngState >>> 0) + 1013904223) >>> 0;
+  tasState.rngCalls += 1;
+  tasState.rngLast = tasState.rngState / 4294967296;
+  return tasState.rngLast;
+}
+
 function random(min, max) {
-  return Math.random() * (max - min) + min;
+  return rng() * (max - min) + min;
 }
 
 function randomInt(min, max) {

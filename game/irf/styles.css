@@ -228,6 +228,14 @@ button:disabled {
   font-size: 0.76rem;
 }
 
+.debug-tas-readout {
+  align-self: center;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.22);
+  font-family: Consolas, "Courier New", monospace;
+}
+
 .debug-panel span {
   color: #e8cf9a;
   font-size: 0.82rem;
