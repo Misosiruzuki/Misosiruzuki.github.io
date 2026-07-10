@@ -1071,8 +1071,11 @@ function toggleDebugTas() {
   debugSettings.tasEnabled = !debugSettings.tasEnabled;
   tasState.paused = debugSettings.tasEnabled;
   tasState.queuedSteps = 0;
+  if (debugSettings.tasEnabled) applyTasBalanceOverrides();
   persistDebugSettings();
   renderDebugTasControls();
+  renderPanel();
+  updateHud();
   debugMessage(`TAS ${debugSettings.tasEnabled ? "ON" : "OFF"}`);
 }
 
@@ -2554,6 +2557,7 @@ function update(dt) {
   tickChestTimers(dt);
   tickBoosts(dt);
   checkAchievements();
+  if (isTasEnabled()) applyTasBalanceOverrides();
 
   if (messageTimer > 0) messageTimer -= dt;
 
@@ -3512,7 +3516,7 @@ function spawnPatternEntry(entry, x, area, index, seed, options = {}) {
     const kind = entry.kind || resolvePatternHazardKind(entry.role, index, seed);
     spawnPatternHazard(kind, x, area, index, entry);
   } else if (entry.type === "item") {
-    const itemChance = Math.min(0.45, (entry.chance || 0.08) + state.upgrades.item * 0.004);
+    const itemChance = Math.min(0.45, (entry.chance || 0.08) + effectiveUpgradeLevel("item") * 0.004);
     if (rng() < itemChance) spawnItem(x);
   }
 }
@@ -3981,7 +3985,7 @@ function startAreaBossBattle(index) {
   run.gravityLandingGuard = false;
   run.nextSpawn = 999;
   objects = [];
-  const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor((state.prestigeCount || 0) / 4);
+  const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor(effectivePrestigeCount() / 4);
   spawnBoss(index, { finalBoss: true, x: canvasWidth + 90, hp });
   restartPlayerAnimation("running");
   logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
@@ -4527,7 +4531,7 @@ function addChest(chestType) {
 
 function activateItem(kind) {
   if (kind === "dash") {
-    run.dashTimer = Math.max(run.dashTimer, 2.5 + state.upgrades.dash * 0.18);
+    run.dashTimer = Math.max(run.dashTimer, 2.5 + effectiveUpgradeLevel("dash") * 0.18);
     run.dashCooldown = Math.max(run.dashCooldown, 3);
     logEvent("DASH ITEM");
   } else if (kind === "shield") {
@@ -4823,7 +4827,7 @@ function performJump(heldSeconds = MAX_JUMP_HOLD_SECONDS) {
 
 function beginJump() {
   const stats = getStats();
-  const maxJumps = 1 + (state.upgrades.jump >= 8 ? 1 : 0);
+  const maxJumps = 1 + (effectiveUpgradeLevel("jump") >= 8 ? 1 : 0);
   if (player.jumpsUsed >= maxJumps) return false;
   const jumpVelocity = jumpVelocityCap(stats);
   if (jumpVelocity <= 0) return false;
@@ -4841,7 +4845,7 @@ function beginJump() {
 }
 
 function jumpVelocityCap(stats) {
-  const upgradeVelocity = state.upgrades.jump * JUMP_UPGRADE_VELOCITY + (stats.equipmentJump || 0);
+  const upgradeVelocity = effectiveUpgradeLevel("jump") * JUMP_UPGRADE_VELOCITY + (stats.equipmentJump || 0);
   return BASE_JUMP_VELOCITY + upgradeVelocity;
 }
 
@@ -5062,20 +5066,21 @@ function getStats() {
   const eq = equipmentBonuses();
   const idleMultiplier = 1 + (eq.idle || 0);
   return {
-    speed: (5 * (1 + state.upgrades.speed * 0.012) * (1 + state.permanent.speed * 0.02) * (1 + (eq.speed || 0))),
-    jumpPower: (1 + state.upgrades.jump * 0.03 + (eq.jump || 0)),
+    speed: (5 * (1 + effectiveUpgradeLevel("speed") * 0.012) * (1 + state.permanent.speed * 0.02) * (1 + (eq.speed || 0))),
+    jumpPower: (1 + effectiveUpgradeLevel("jump") * 0.03 + (eq.jump || 0)),
     equipmentJump: (eq.jump || 0) * BASE_JUMP_VELOCITY,
-    maxHp: 1 + state.upgrades.hp + Math.floor(eq.hp || 0),
-    coinMultiplier: (1 + state.upgrades.coin * 0.08) * (1 + state.permanent.coin * 0.05) * (1 + (eq.coin || 0)),
+    maxHp: 1 + effectiveUpgradeLevel("hp") + Math.floor(eq.hp || 0),
+    coinMultiplier: (1 + effectiveUpgradeLevel("coin") * 0.08) * (1 + state.permanent.coin * 0.05) * (1 + (eq.coin || 0)),
     directCoinMultiplier: 1 + runnerDirectCoinBonus(),
-    magnetRadius: 44 + state.upgrades.magnet * 8,
-    maxCombo: 2 + state.upgrades.combo * 0.08,
-    regenEvery: state.upgrades.regen > 0 ? Math.max(10, 32 - state.upgrades.regen * 0.5) : 0,
+    magnetRadius: 44 + effectiveUpgradeLevel("magnet") * 8,
+    maxCombo: 2 + effectiveUpgradeLevel("combo") * 0.08,
+    regenEvery: effectiveUpgradeLevel("regen") > 0 ? Math.max(10, 32 - effectiveUpgradeLevel("regen") * 0.5) : 0,
     idleMultiplier
   };
 }
 
 function equipmentBonuses() {
+  if (isTasEnabled()) return {};
   const bonuses = {};
   for (const itemId of Object.values(state.equipped)) {
     const item = state.equipment.find((entry) => entry.id === itemId);
@@ -5246,19 +5251,49 @@ function autoRunnerIncome(level) {
 }
 
 function normalUpgradeCap() {
-  return BASE_UPGRADE_CAP + state.prestigeCount;
+  return BASE_UPGRADE_CAP + effectivePrestigeCount();
 }
 
 function factoryLevelCap() {
-  return BASE_UPGRADE_CAP + state.prestigeCount;
+  return BASE_UPGRADE_CAP + effectivePrestigeCount();
 }
 
 function researchLevelCap() {
-  return BASE_UPGRADE_CAP + state.prestigeCount;
+  return BASE_UPGRADE_CAP + effectivePrestigeCount();
+}
+
+function effectivePrestigeCount() {
+  if (!isTasEnabled()) return Number(state.prestigeCount || 0);
+  return areaIndexForDistance(Math.max(state.currentPrestigeDistance || 0, run.distance || 0));
+}
+
+function effectiveUpgradeLevel(id) {
+  if (!isTasEnabled()) return Number(state.upgrades[id] || 0);
+  if (id === "hp" || id === "regen") return 0;
+  return normalUpgradeCap();
 }
 
 function researchLevel(id) {
+  if (isTasEnabled()) {
+    const def = researchDefs.find((entry) => entry.id === id);
+    if (!def || !isResearchDiscovered(def)) return 0;
+    return researchLevelCap();
+  }
   return Number(state.researchTree[id] || 0);
+}
+
+function effectiveUpgradeTotal() {
+  return upgradeDefs.reduce((sum, def) => sum + effectiveUpgradeLevel(def.id), 0);
+}
+
+function effectiveResearchTotal(defs = researchDefs) {
+  return defs.reduce((sum, def) => sum + researchLevel(def.id), 0);
+}
+
+function applyTasBalanceOverrides() {
+  if (!isTasEnabled()) return;
+  const stats = getStats();
+  run.hp = Math.min(Math.max(0, run.hp), stats.maxHp);
 }
 
 function isActiveResearch(id) {
@@ -5825,24 +5860,30 @@ function renderPanel() {
 
 function renderUpgrades() {
   const cap = normalUpgradeCap();
+  const totalLevel = isTasEnabled() ? effectiveUpgradeTotal() : sumValues(state.upgrades);
   const html = [
-    panelHead("通常強化", `Lv合計 ${sumValues(state.upgrades)} / 上限 Lv${cap}`),
+    panelHead("通常強化", `Lv合計 ${totalLevel} / 上限 Lv${cap}${isTasEnabled() ? " / TAS" : ""}`),
     renderActiveSkillSelector(),
     `<div class="list">`,
     ...upgradeDefs.map((def) => {
-      const level = state.upgrades[def.id] || 0;
+      const realLevel = state.upgrades[def.id] || 0;
+      const level = isTasEnabled() ? effectiveUpgradeLevel(def.id) : realLevel;
+      const tasForcedOff = isTasEnabled() && (def.id === "hp" || def.id === "regen");
       const capped = level >= cap;
-      const cost = upgradeCost(def, level);
+      const cost = upgradeCost(def, realLevel);
+      const meta = isTasEnabled()
+        ? (tasForcedOff ? ["TAS fixed Lv0", "HP / Regen disabled"] : [`TAS cap Lv${cap}`, "Save data unchanged"])
+        : (capped
+          ? [`上限 Lv${cap}`, `転生で上限 +1`]
+          : [`次 ${def.effect(level + 1)}`, `${formatCurrency(cost, def.currency)}`, `上限 Lv${cap}`]);
       return rowItem({
         title: `${def.name} Lv${level}`,
         desc: def.effect(level),
-        meta: capped
-          ? [`上限 Lv${cap}`, `転生で上限 +1`]
-          : [`次 ${def.effect(level + 1)}`, `${formatCurrency(cost, def.currency)}`, `上限 Lv${cap}`],
+        meta,
         action: "buyUpgrade",
         id: def.id,
-        disabled: capped || (state[def.currency] || 0) < cost,
-        label: capped ? "上限" : "強化"
+        disabled: isTasEnabled() || capped || (state[def.currency] || 0) < cost,
+        label: isTasEnabled() ? "TAS" : (capped ? "上限" : "強化")
       });
     }),
     `</div>`
@@ -5919,8 +5960,9 @@ function renderPrestige() {
   const gain = prestigeGain();
   const progress = Math.min(1, state.coins / PRESTIGE_COIN_REQUIREMENT);
   const permanentList = permanentDefs.filter((def) => ADS_ENABLED || def.id !== "ad");
+  const prestigeCount = effectivePrestigeCount();
   const html = [
-    panelHead("Prestige", `転生 ${state.prestigeCount}回`),
+    panelHead("Prestige", `転生 ${prestigeCount}回${isTasEnabled() ? " (TAS)" : ""}`),
     `<div class="section-stack">
       ${ADS_ENABLED ? `<div class="list">${renderAdRewards()}</div>` : ""}
       <div class="summary-band">
@@ -5935,7 +5977,7 @@ function renderPrestige() {
           <div class="meta"><span class="pill">現在上限 Lv${normalUpgradeCap()}</span><span class="pill">転生後 Lv${normalUpgradeCap() + 1}</span></div>
           <div class="progress"><i style="width:${progress * 100}%"></i></div>
         </div>
-        <button class="buy-button" data-action="prestige" ${gain <= 0 ? "disabled" : ""}>転生</button>
+        <button class="buy-button" data-action="prestige" ${isTasEnabled() || gain <= 0 ? "disabled" : ""}>${isTasEnabled() ? "TAS" : "転生"}</button>
       </div>
       <div class="list">
         ${permanentList.map((def) => {
@@ -5991,6 +6033,7 @@ function renderAdRewards() {
 function renderEquipment() {
   const chests = state.chests.slice().sort((a, b) => a.remaining - b.remaining);
   const equippedNames = slots.map((slot) => {
+    if (isTasEnabled()) return `<div><span>${slot}</span><strong>TAS unequipped</strong></div>`;
     const item = state.equipment.find((entry) => entry.id === state.equipped[slot]);
     return `<div><span>${slot}</span><strong>${item ? escapeHtml(item.name) : "-"}</strong></div>`;
   }).join("");
@@ -6009,7 +6052,7 @@ function renderEquipment() {
     ? renderChestList(chests)
     : renderEquipmentList(sortedEquipment);
   const html = [
-    panelHead("装備", `所持 ${state.equipment.length}`),
+    panelHead("装備", `所持 ${state.equipment.length}${isTasEnabled() ? " / TAS unequipped" : ""}`),
     `<div class="section-stack">
       <div class="summary-band">${equippedNames}</div>
       <div class="filter-row">${filterButtons}</div>
@@ -6052,7 +6095,7 @@ function renderChestList(chests) {
 function renderEquipmentList(items) {
   return `<div class="list">
     ${items.length ? items.map((item) => {
-      const equipped = state.equipped[item.slot] === item.id;
+      const equipped = !isTasEnabled() && state.equipped[item.slot] === item.id;
       const valueText = item.stat === "hp" ? `+${item.value}` : `+${Math.round(item.value * 100)}%`;
       return `<div class="row-item">
         <div>
@@ -6065,7 +6108,7 @@ function renderEquipmentList(items) {
           ${debugEquipmentValueControl(item)}
         </div>
         <div class="row-actions">
-          <button class="buy-button" data-action="equip" data-id="${item.id}" ${equipped ? "disabled" : ""}>${equipped ? "装備中" : "装備"}</button>
+          <button class="buy-button" data-action="equip" data-id="${item.id}" ${isTasEnabled() || equipped ? "disabled" : ""}>${isTasEnabled() ? "TAS" : (equipped ? "装備中" : "装備")}</button>
           <button class="buy-button danger" data-action="discardEquipment" data-id="${item.id}">捨てる</button>
         </div>
       </div>`;
@@ -6133,21 +6176,24 @@ function renderMissionGroup(group, defs) {
 function renderResearch() {
   const cap = researchLevelCap();
   const visibleDefs = visibleResearchDefs();
-  const unlockText = state.prestigeCount >= 100
+  const prestigeCount = effectivePrestigeCount();
+  const totalLevel = isTasEnabled() ? effectiveResearchTotal(visibleDefs) : sumValues(state.researchTree);
+  const unlockText = prestigeCount >= 100
     ? "ENDGAME ONLINE"
-    : `本格研究まで ${Math.max(0, 100 - state.prestigeCount)}転生 / 上限 Lv${cap}`;
+    : `本格研究まで ${Math.max(0, 100 - prestigeCount)}転生 / 上限 Lv${cap}${isTasEnabled() ? " / TAS" : ""}`;
   panelContent.innerHTML = [
     panelHead("研究ツリー", unlockText),
     `<div class="section-stack">
       <div class="summary-band">
         <div><span>研究ポイント</span><strong>${formatNumber(state.research)}</strong></div>
-        <div><span>研究Lv合計</span><strong>${sumValues(state.researchTree)}</strong></div>
+        <div><span>研究Lv合計</span><strong>${totalLevel}</strong></div>
       </div>
       <div class="list">
       ${visibleDefs.length ? visibleDefs.map((def) => {
-        const level = state.researchTree[def.id] || 0;
+        const realLevel = state.researchTree[def.id] || 0;
+        const level = isTasEnabled() ? researchLevel(def.id) : realLevel;
         const capped = level >= cap;
-        const cost = upgradeCost(def, level);
+        const cost = upgradeCost(def, realLevel);
         const typeMeta = def.active ? [`アクティブ`, `CD ${def.cooldown}s`] : [`パッシブ`];
         return rowItem({
           title: `${def.name} Lv${level}`,
@@ -6157,8 +6203,8 @@ function renderResearch() {
             : [...typeMeta, `次 ${def.effect(level + 1)}`, `${formatNumber(cost)} LAB`, `上限 Lv${cap}`],
           action: "buyResearch",
           id: def.id,
-          disabled: capped || state.research < cost,
-          label: capped ? "上限" : "研究"
+          disabled: isTasEnabled() || capped || state.research < cost,
+          label: isTasEnabled() ? "TAS" : (capped ? "上限" : "研究")
         });
       }).join("") : `<div class="row-item"><div><h3>研究候補なし</h3><p>エリア最終ボスを撃破すると、そのボスをもとにした次エリア攻略用の研究が見つかります。</p></div></div>`}
       </div>
@@ -6324,6 +6370,7 @@ function drawTasOverlay() {
   if (debugSettings.tasShowWatch) {
     lines.push(`OBJ ${objects.length} EVT ${run.event || "none"} ${Math.max(0, run.eventTimer || 0).toFixed(2)}`);
     lines.push(`BOSS ${run.bossBattle ? `${run.bossPhase} p${run.bossPatternIndex} v${run.bossVolley}` : "none"}`);
+    lines.push(`TAS PR ${effectivePrestigeCount()} UP ${effectiveUpgradeTotal()} RES ${effectiveResearchTotal(visibleResearchDefs())}`);
     lines.push(`INPUT J:${Number(inputState.jumpHolding)} S:${Number(inputState.slideHolding)} B:${inputState.blockDirection}`);
   }
   if (!lines.length) return;
