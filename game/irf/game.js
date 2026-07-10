@@ -206,8 +206,8 @@ const introGuideSteps = [
     target: ".command-row",
     title: { ja: "操作", en: "Controls" },
     text: {
-      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓長押しで、キーやボタンを離すと早めに解除できます。スキルは研究後にセットし、Dキーでも使えます。",
-      en: "Hold Space/↑ to jump farther. Hold ↓ to slide, then release to cancel early. Set a researched skill and trigger it with D."
+      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓長押しで、キーやボタンを離すと早めに解除できます。スキルはDで使い、Qで解放順に切り替えます。",
+      en: "Hold Space/↑ to jump farther. Hold ↓ to slide, then release to cancel early. Use the selected skill with D and cycle unlocked skills with Q."
     }
   },
   {
@@ -435,6 +435,7 @@ const staticI18n = {
   jump: { ja: "ジャンプ\nSpace / ↑", en: "Jump\nSpace / ↑" },
   slide: { ja: "スライド\n↓", en: "Slide\n↓" },
   dash: { ja: "スキル\nD", en: "Skill\nD" },
+  cycleSkill: { ja: "切替\nQ", en: "Cycle\nQ" },
   restart: { ja: "再走", en: "Restart" },
   save: { ja: "保存", en: "Save" },
   upgrades: { ja: "強化", en: "Upgrades" },
@@ -1676,7 +1677,8 @@ function bindEvents() {
       || event.code === "ArrowDown"
       || event.code === "ArrowLeft"
       || event.code === "ArrowRight"
-      || event.code === "KeyD";
+      || event.code === "KeyD"
+      || event.code === "KeyQ";
     if (gameplayKey) event.preventDefault();
     if (event.repeat) return;
     if (event.code === "Space" || event.code === "ArrowUp") {
@@ -1687,7 +1689,11 @@ function bindEvents() {
     if (run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple") {
       if (event.code === "Space" || event.code === "ArrowUp") shiftWebLane(-1);
       if (event.code === "ArrowDown") shiftWebLane(1);
-      if (event.code !== "KeyD") return;
+      if (event.code !== "KeyD" && event.code !== "KeyQ") return;
+    }
+    if (event.code === "KeyQ") {
+      cycleActiveSkill();
+      return;
     }
     if (event.code === "Space" || event.code === "ArrowUp") {
       startJumpHold();
@@ -1706,7 +1712,8 @@ function bindEvents() {
       || event.code === "ArrowDown"
       || event.code === "ArrowLeft"
       || event.code === "ArrowRight"
-      || event.code === "KeyD";
+      || event.code === "KeyD"
+      || event.code === "KeyQ";
     if (gameplayKey) event.preventDefault();
     if ((event.code === "Space" || event.code === "ArrowUp") && inputState.blockDirection === "high") {
       inputState.blockDirection = "mid";
@@ -1725,6 +1732,7 @@ function bindEvents() {
   bindHoldButton(document.getElementById("jumpBtn"), startJumpHold, releaseJumpHold);
   bindHoldButton(document.getElementById("slideBtn"), startSlideHold, cancelSlideHold);
   document.getElementById("dashBtn").addEventListener("click", activateActiveSkill);
+  document.getElementById("cycleSkillBtn").addEventListener("click", cycleActiveSkill);
   document.getElementById("restartBtn").addEventListener("click", restartFromButton);
   document.getElementById("overlayRestart").addEventListener("click", restartFromButton);
   document.getElementById("saveBtn").addEventListener("click", saveState);
@@ -3703,6 +3711,29 @@ function selectActiveSkill(id) {
   logEvent(`${activeSkillName(id)} SET`);
 }
 
+function unlockedActiveSkillDefs() {
+  return activeSkillDefs.filter((def) => researchLevel(def.id) > 0 && isResearchDiscovered(def));
+}
+
+function cycleActiveSkill() {
+  if (isGameplayPaused()) return;
+  const unlocked = unlockedActiveSkillDefs();
+  if (unlocked.length === 0) {
+    state.settings.activeSkill = "none";
+    logEvent("NO ACTIVE SKILL");
+    updateHud();
+    persistStateQuiet();
+    return;
+  }
+  const current = state.settings.activeSkill || "none";
+  const currentIndex = unlocked.findIndex((def) => def.id === current);
+  const next = unlocked[(currentIndex + 1) % unlocked.length];
+  selectActiveSkill(next.id);
+  renderPanel();
+  updateHud();
+  persistStateQuiet();
+}
+
 function activeSkillName(id = state.settings.activeSkill) {
   const def = activeSkillDefs.find((entry) => entry.id === id);
   return def && researchLevel(id) > 0 && isResearchDiscovered(def) ? def.name : "スキルなし";
@@ -4635,7 +4666,7 @@ function renderUpgrades() {
 
 function renderActiveSkillSelector() {
   const current = state.settings.activeSkill || "none";
-  const unlocked = activeSkillDefs.filter((def) => researchLevel(def.id) > 0 && isResearchDiscovered(def));
+  const unlocked = unlockedActiveSkillDefs();
   const buttons = [
     `<button class="${current === "none" || unlocked.length === 0 ? "active" : ""}" data-action="selectActiveSkill" data-id="none" type="button">なし</button>`,
     ...unlocked.map((def) => (
@@ -5018,11 +5049,17 @@ function updateHud() {
   setDebugHudText("levelStat", state.level);
   document.getElementById("areaName").textContent = `${localizedAreaName(area)} / ${area.line}`;
   const dashButton = document.getElementById("dashBtn");
+  const cycleSkillButton = document.getElementById("cycleSkillBtn");
   const justiceMode = run.bossBattle && activeBossSoulMode() === "yellow";
   dashButton.disabled = run.gameOver || (justiceMode ? run.justiceCooldown > 0 : (run.dashCooldown > 0 || !selectedActiveSkillDef()));
   dashButton.textContent = justiceMode
     ? `${currentLanguage === "en" ? "Shot" : "ショット"}\nD`
     : run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s\nD` : `${translateText(activeSkillName())}\nD`;
+  if (cycleSkillButton) {
+    const unlockedSkills = unlockedActiveSkillDefs();
+    cycleSkillButton.disabled = unlockedSkills.length === 0;
+    cycleSkillButton.textContent = `${currentLanguage === "en" ? "Cycle" : "切替"}\nQ`;
+  }
   const bgmButton = document.getElementById("bgmBtn");
   bgmButton.textContent = state.settings.bgmEnabled ? "BGM ON" : "BGM OFF";
 }
