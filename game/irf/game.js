@@ -2988,7 +2988,10 @@ function spawnEventPattern(event, pattern, baseX, area, index) {
   for (const entry of eventPattern.entries) {
     const jitter = entry.jitter || 0;
     const x = baseX + entry.offset + random(-jitter, jitter);
-    spawnPatternEntry(entry, x, area, index, pattern.templateIndex + Math.floor(entry.offset / 100), { clearPath: false });
+    const eventEntry = event === "meteor" && entry.kind === "meteor"
+      ? { ...entry, airObstacle: true, vx: 0, vy: 0, gravity: 0 }
+      : entry;
+    spawnPatternEntry(eventEntry, x, area, index, pattern.templateIndex + Math.floor(entry.offset / 100), { clearPath: false });
   }
 }
 
@@ -3115,16 +3118,17 @@ function spawnPatternHazard(kind, x, area, index, entry = {}) {
   }
 
   if (kind === "meteor") {
+    const airObstacle = Boolean(entry.airObstacle);
     objects.push({
       type: "obstacle",
       kind,
       x,
-      y: hazardAirY(entry.lane) - random(35, 85),
+      y: airObstacle ? hazardAirY(entry.lane) : hazardAirY(entry.lane) - random(35, 85),
       w: 34,
       h: 34,
-      vx: entry.vx ?? -random(25, 55),
-      vy: entry.vy ?? random(90, 130),
-      gravity: entry.gravity ?? random(65, 95),
+      vx: entry.vx ?? (airObstacle ? 0 : -random(25, 55)),
+      vy: entry.vy ?? (airObstacle ? 0 : random(90, 130)),
+      gravity: entry.gravity ?? (airObstacle ? 0 : random(65, 95)),
       color: entry.color || area.accent
     });
     tagLatestHazardForGuide(kind);
