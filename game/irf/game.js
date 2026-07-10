@@ -787,6 +787,7 @@ const run = {
   bossSoulMode: "red",
   bossModeTimer: 0,
   bossModePulse: 0,
+  bossResearchCounters: {},
   webLane: 1,
   justiceCooldown: 0,
   echoActive: false,
@@ -2455,7 +2456,7 @@ function handleSoulObstacleCollision(obj, removed) {
     if (shieldDirection() === obj.shieldLane) {
       removed.add(obj);
       burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#60d878", 8);
-      if (run.hp < getStats().maxHp && Math.random() < 0.18) run.hp += 1;
+      if (run.hp < getStats().maxHp && shouldShieldBlockHeal()) run.hp += 1;
       gainCombo(1);
     } else {
       damagePlayer();
@@ -2731,7 +2732,13 @@ function updateFinalBossGimmick(boss, dt) {
   if (boss.bossGimmick === "infinitePhase") {
     boss.phased = run.phasePinTimer <= 0 && Math.sin(performance.now() / 130) > -0.1;
     if (boss.gimmickTimer <= 0) {
-      addBossEnemy("bird", boss, { x: bossSpawnX(boss, random(50, 140)), y: groundY - random(116, 184), vx: bossSpeed(index, 62), color: "#8fffc6" });
+      const birdPattern = nextFinalBossGimmickPattern(boss, "infinitePhaseBird");
+      addBossEnemy("bird", boss, {
+        x: bossSpawnX(boss, birdPattern.offset),
+        y: groundY - birdPattern.height,
+        vx: bossSpeed(index, birdPattern.speedAdd),
+        color: "#8fffc6"
+      });
       boss.gimmickTimer = 1.45;
     }
   }
@@ -3357,22 +3364,39 @@ function isHazardObject(obj) {
 
 function applyEnemyTraits(obj, index) {
   const trait = areaEnemyTraits[index]?.id || "plain";
+  const deterministicBossTrait = Boolean(obj.bossAttack || obj.finalBoss);
   obj.areaIndex = index;
   obj.trait = trait;
   obj.hitCooldown = obj.hitCooldown || 0;
   if (trait === "sandArmor") obj.armor = obj.type === "boss" ? 2 : 1;
   if (trait === "energyShield") obj.shield = obj.type === "boss" ? 2 : 1;
-  if (trait === "gravityPulse") obj.pulseTimer = random(1.2, 2.8);
+  if (trait === "gravityPulse") {
+    obj.pulseTimer = deterministicBossTrait
+      ? deterministicTraitRange(obj, index, 1.2, 2.8)
+      : random(1.2, 2.8);
+  }
   if (trait === "regen") {
     obj.hp = obj.hp || (obj.type === "boss" ? obj.maxHp : 2);
     obj.maxHp = Math.max(obj.maxHp || obj.hp, obj.hp);
     obj.regenTimer = 1.5;
   }
   if (trait === "phase") {
-    obj.phaseTimer = Math.random() * Math.PI * 2;
+    obj.phaseTimer = deterministicBossTrait
+      ? deterministicTraitRange(obj, index, 0, Math.PI * 2)
+      : Math.random() * Math.PI * 2;
     obj.phased = false;
   }
   return obj;
+}
+
+function deterministicTraitRange(obj, index, min, max) {
+  const xBucket = Math.max(0, Math.round((obj.x || 0) / 24));
+  const yBucket = Math.max(0, Math.round((obj.y || 0) / 24));
+  const pattern = run.bossPatternIndex || 0;
+  const volley = run.bossVolley || 0;
+  const kindCode = String(obj.kind || obj.type || "").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const slot = (index * 13 + pattern * 7 + volley * 5 + xBucket * 3 + yBucket + kindCode) % 11;
+  return min + (max - min) * (slot / 10);
 }
 
 function spawnChest(x) {
@@ -3460,6 +3484,7 @@ function startAreaBossBattle(index) {
   run.bossSoulMode = bossSoulModeForArea(index);
   run.bossModeTimer = 0;
   run.bossModePulse = 0.85;
+  run.bossResearchCounters = {};
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
@@ -3669,6 +3694,26 @@ function bossSpawnX(boss, offset = 0) {
   return Math.min(canvasWidth + 140, boss.x + boss.w / 2 + offset);
 }
 
+const FINAL_BOSS_METEOR_AIM_PATTERNS = [
+  { startAhead: 250, startHeight: 252, targetOffsetX: -34, targetRatio: 0.2, targetOffsetY: -44, travelAdjust: -0.08 },
+  { startAhead: 320, startHeight: 304, targetOffsetX: -72, targetRatio: 0.55, targetOffsetY: -8, travelAdjust: 0.04 },
+  { startAhead: 390, startHeight: 278, targetOffsetX: -48, targetRatio: 0.9, targetOffsetY: 26, travelAdjust: 0.1 },
+  { startAhead: 285, startHeight: 318, targetOffsetX: -90, targetRatio: 0.35, targetOffsetY: 18, travelAdjust: -0.02 },
+  { startAhead: 360, startHeight: 266, targetOffsetX: -26, targetRatio: 0.7, targetOffsetY: -28, travelAdjust: 0.07 },
+  { startAhead: 415, startHeight: 292, targetOffsetX: -64, targetRatio: 0.45, targetOffsetY: 36, travelAdjust: -0.05 }
+];
+
+const FINAL_BOSS_GIMMICK_PATTERNS = {
+  infinitePhaseBird: [
+    { offset: 58, height: 126, speedAdd: 50 },
+    { offset: 132, height: 184, speedAdd: 66 },
+    { offset: 84, height: 152, speedAdd: 58 },
+    { offset: 156, height: 112, speedAdd: 72 },
+    { offset: 48, height: 174, speedAdd: 54 },
+    { offset: 118, height: 138, speedAdd: 62 }
+  ]
+};
+
 function addBossMeteor(boss, options = {}) {
   return addBossObstacle("meteor", boss, aimedBossMeteorOptions(boss, options));
 }
@@ -3679,19 +3724,54 @@ function aimedBossMeteorOptions(boss, options = {}) {
   const h = options.h || 34;
   const playerRect = getPlayerRect();
   const startOffset = options.startOffset || 0;
-  const startX = options.x ?? playerRect.x + playerRect.w + random(230, 410) + startOffset;
-  const startY = options.y ?? Math.max(30, groundY - random(245, 315));
-  const targetX = options.targetX ?? playerRect.x - random(26, 96);
+  const aim = finalBossMeteorAimPattern(boss, options);
+  const startX = options.x ?? playerRect.x + playerRect.w + aim.startAhead + startOffset;
+  const startY = options.y ?? Math.max(30, groundY - aim.startHeight);
+  const targetX = options.targetX ?? playerRect.x + aim.targetOffsetX;
   const minTargetY = Math.max(46, playerRect.y - 58);
   const maxTargetY = Math.min(groundY - h * 0.5, playerRect.y + playerRect.h + 46);
-  const targetY = options.targetY ?? random(minTargetY, Math.max(minTargetY + 1, maxTargetY));
-  const travelTime = options.travelTime ?? Math.max(0.82, 1.16 - index * 0.025 + random(-0.1, 0.12));
+  const rawTargetY = playerRect.y + playerRect.h * aim.targetRatio + aim.targetOffsetY;
+  const targetY = options.targetY ?? Math.max(minTargetY, Math.min(Math.max(minTargetY + 1, maxTargetY), rawTargetY));
+  const travelTime = options.travelTime ?? Math.max(0.82, 1.16 - index * 0.025 + aim.travelAdjust);
   const gravity = options.gravity ?? (112 + index * 7);
   const startCenterX = startX + w / 2;
   const startCenterY = startY + h / 2;
   const vx = (targetX - startCenterX) / travelTime;
   const vy = (targetY - startCenterY - 0.5 * gravity * travelTime * travelTime) / travelTime;
   return { ...options, x: startX, y: startY, w, h, vx, vy, gravity };
+}
+
+function finalBossMeteorAimPattern(boss, options = {}) {
+  const salt = finalBossOptionSalt(options);
+  return FINAL_BOSS_METEOR_AIM_PATTERNS[finalBossPatternIndex(boss, FINAL_BOSS_METEOR_AIM_PATTERNS.length, salt)];
+}
+
+function finalBossOptionSalt(options = {}) {
+  return Math.abs(Math.round(
+    (options.startOffset || 0) * 0.1
+    + (options.w || 0) * 0.37
+    + (options.h || 0) * 0.41
+    + (options.gravity || 0) * 0.13
+    + (options.travelTime || 0) * 17
+  ));
+}
+
+function finalBossPatternIndex(boss, length, salt = 0) {
+  const area = boss.areaIndex || 0;
+  const pattern = boss.attackPattern || 0;
+  const volley = Math.max(0, (boss.attackVolley || 1) - 1);
+  return Math.abs(area * 17 + pattern * 7 + volley * 5 + salt) % length;
+}
+
+function nextFinalBossGimmickPattern(boss, key) {
+  const sequence = FINAL_BOSS_GIMMICK_PATTERNS[key] || [];
+  if (!sequence.length) return null;
+  const counterKey = `${key}Counter`;
+  const counter = boss[counterKey] || 0;
+  boss[counterKey] = counter + 1;
+  const area = boss.areaIndex || 0;
+  const pattern = boss.attackPattern || 0;
+  return sequence[(area + pattern * 2 + counter) % sequence.length];
 }
 
 function addBossObstacle(kind, boss, options = {}) {
@@ -4058,6 +4138,7 @@ function completeAreaBoss(index) {
   run.bossSoulMode = "red";
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
+  run.bossResearchCounters = {};
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
@@ -4179,6 +4260,7 @@ function resetRun() {
   run.bossSoulMode = "red";
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
+  run.bossResearchCounters = {};
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
@@ -4701,11 +4783,28 @@ function passiveResearchLevel(id) {
 }
 
 function researchChance(id, perLevel = 0.02) {
-  return Math.random() < passiveResearchLevel(id) * perLevel;
+  const chance = passiveResearchLevel(id) * perLevel;
+  if (chance <= 0) return false;
+  if (!run.bossBattle) return Math.random() < chance;
+  return deterministicBossChance(`research:${id}`, chance);
 }
 
 function researchReduction(id, perLevel = 0.02) {
   return Math.max(0.75, 1 - passiveResearchLevel(id) * perLevel);
+}
+
+function shouldShieldBlockHeal() {
+  if (!run.bossBattle) return Math.random() < 0.18;
+  return deterministicBossChance("shieldBlockHeal", 0.18);
+}
+
+function deterministicBossChance(key, chance) {
+  run.bossResearchCounters = run.bossResearchCounters || {};
+  const count = run.bossResearchCounters[key] || 0;
+  run.bossResearchCounters[key] = count + 1;
+  const period = Math.max(1, Math.ceil(1 / Math.max(0.001, chance)));
+  const offset = String(key).split("").reduce((sum, char) => sum + char.charCodeAt(0), 0) % period;
+  return (count + offset + (run.bossPatternIndex || 0)) % period === 0;
 }
 
 function isResearchDiscovered(def) {
@@ -6138,13 +6237,15 @@ function drawParticles() {
 
 function burst(x, y, color, count) {
   for (let i = 0; i < count; i++) {
+    const bossBattleBurst = run.bossBattle;
+    const angle = bossBattleBurst ? (i * 2.39996 + count * 0.21) : 0;
     particles.push({
       x,
       y,
-      vx: random(-160, 160),
-      vy: random(-220, -40),
-      size: random(3, 7),
-      life: random(0.35, 0.9),
+      vx: bossBattleBurst ? Math.cos(angle) * (70 + (i % 5) * 22) : random(-160, 160),
+      vy: bossBattleBurst ? -60 - Math.abs(Math.sin(angle)) * (80 + (i % 4) * 26) : random(-220, -40),
+      size: bossBattleBurst ? 3 + (i % 5) : random(3, 7),
+      life: bossBattleBurst ? 0.38 + (i % 6) * 0.08 : random(0.35, 0.9),
       color
     });
   }
