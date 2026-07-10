@@ -365,7 +365,7 @@ button:disabled {
 
 .command-row {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -390,7 +390,11 @@ button:disabled {
   border-color: rgba(185, 140, 255, 0.58);
 }
 
-.command-row button:nth-child(7) {
+.command-row button:nth-child(5) {
+  border-color: rgba(76, 195, 138, 0.58);
+}
+
+.command-row button:nth-child(8) {
   border-color: rgba(185, 140, 255, 0.58);
 }
 

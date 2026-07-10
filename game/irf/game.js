@@ -206,8 +206,8 @@ const introGuideSteps = [
     target: ".command-row",
     title: { ja: "操作", en: "Controls" },
     text: {
-      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓長押しで、キーやボタンを離すと早めに解除できます。スキルはDで使い、Qで解放順に切り替えます。",
-      en: "Hold Space/↑ to jump farther. Hold ↓ to slide, then release to cancel early. Use the selected skill with D and cycle unlocked skills with Q."
+      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓長押しで、キーやボタンを離すと早めに解除できます。スキルはDで使い、Qで解放順に切り替えます。拾った特殊アイテムは1個だけストックされ、Eで使えます。",
+      en: "Hold Space/↑ to jump farther. Hold ↓ to slide, then release to cancel early. Use the selected skill with D and cycle unlocked skills with Q. Picked special items stock one at a time and can be used with E."
     }
   },
   {
@@ -278,27 +278,27 @@ const hazardGuideDefs = {
 const itemGuideDefs = {
   dash: {
     title: { ja: "特殊アイテム: ダッシュ", en: "Special Item: Dash" },
-    text: { ja: "一定時間だけ高速で走り、接触にも強くなります。ボス戦では移動ではなく、短い攻撃チャンスとして働きます。", en: "Temporarily boosts speed and contact strength. In boss battles, it works more like a short attack window than movement." }
+    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。一定時間だけ高速で走り、接触にも強くなります。", en: "Picking this stores one item. Use it with E or the item button. It temporarily boosts speed and contact strength." }
   },
   shield: {
     title: { ja: "特殊アイテム: 無敵", en: "Special Item: Invincible" },
-    text: { ja: "短い間ダメージを受けにくくなります。危険な攻撃が重なった時の保険になります。", en: "Briefly protects you from damage. It is useful when several threats overlap." }
+    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。短い間ダメージを受けにくくなります。", en: "Picking this stores one item. Use it with E or the item button. It briefly protects you from damage." }
   },
   giant: {
     title: { ja: "特殊アイテム: 巨大化", en: "Special Item: Giant" },
-    text: { ja: "ロボットが大きくなり、当たりも強くなります。見た目も判定も大きくなるので、足場感覚が少し変わります。", en: "Your robot grows larger and stronger. Its visual size and collision feel both change for a while." }
+    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。ロボットが大きくなり、当たりも強くなります。", en: "Picking this stores one item. Use it with E or the item button. Your robot grows larger and stronger." }
   },
   magnet: {
     title: { ja: "特殊アイテム: 磁石", en: "Special Item: Magnet" },
-    text: { ja: "近くのコインや報酬を一気に引き寄せます。取り逃しを減らして強化速度を上げられます。", en: "Pulls nearby coins and rewards toward you, reducing misses and speeding up upgrades." }
+    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。近くのコインや報酬を一気に引き寄せます。", en: "Picking this stores one item. Use it with E or the item button. It pulls nearby coins and rewards toward you." }
   },
   time: {
     title: { ja: "特殊アイテム: 時間停止", en: "Special Item: Time Stop" },
-    text: { ja: "一部の敵や障害物の動きを止めます。止まっている間に位置関係を立て直せます。", en: "Stops some enemies and hazards briefly, giving you time to reset positioning." }
+    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。一部の敵や障害物の動きを止めます。", en: "Picking this stores one item. Use it with E or the item button. It briefly stops some enemies and hazards." }
   },
   doubleJump: {
     title: { ja: "特殊アイテム: 2段ジャンプ", en: "Special Item: Double Jump" },
-    text: { ja: "空中で使えるジャンプ回数を少し戻します。連続した障害物やボス攻撃への立て直しに役立ちます。", en: "Restores a bit of jump control in midair, helping you recover from chained hazards or boss attacks." }
+    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。空中で使えるジャンプ回数を少し戻します。", en: "Picking this stores one item. Use it with E or the item button. It restores a bit of jump control in midair." }
   }
 };
 
@@ -436,6 +436,7 @@ const staticI18n = {
   slide: { ja: "スライド\n↓", en: "Slide\n↓" },
   dash: { ja: "スキル\nD", en: "Skill\nD" },
   cycleSkill: { ja: "切替\nQ", en: "Cycle\nQ" },
+  stockItem: { ja: "アイテム\nE", en: "Item\nE" },
   restart: { ja: "再走", en: "Restart" },
   save: { ja: "保存", en: "Save" },
   upgrades: { ja: "強化", en: "Upgrades" },
@@ -775,6 +776,7 @@ const run = {
   eventTimer: 0,
   eventCooldown: 50,
   gravityFlip: false,
+  stockedItem: null,
   sessionCoins: 0,
   sessionEnemies: 0,
   sessionBosses: 0,
@@ -1678,7 +1680,8 @@ function bindEvents() {
       || event.code === "ArrowLeft"
       || event.code === "ArrowRight"
       || event.code === "KeyD"
-      || event.code === "KeyQ";
+      || event.code === "KeyQ"
+      || event.code === "KeyE";
     if (gameplayKey) event.preventDefault();
     if (event.repeat) return;
     if (event.code === "Space" || event.code === "ArrowUp") {
@@ -1689,10 +1692,14 @@ function bindEvents() {
     if (run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple") {
       if (event.code === "Space" || event.code === "ArrowUp") shiftWebLane(-1);
       if (event.code === "ArrowDown") shiftWebLane(1);
-      if (event.code !== "KeyD" && event.code !== "KeyQ") return;
+      if (event.code !== "KeyD" && event.code !== "KeyQ" && event.code !== "KeyE") return;
     }
     if (event.code === "KeyQ") {
       cycleActiveSkill();
+      return;
+    }
+    if (event.code === "KeyE") {
+      useStockedItem();
       return;
     }
     if (event.code === "Space" || event.code === "ArrowUp") {
@@ -1713,7 +1720,8 @@ function bindEvents() {
       || event.code === "ArrowLeft"
       || event.code === "ArrowRight"
       || event.code === "KeyD"
-      || event.code === "KeyQ";
+      || event.code === "KeyQ"
+      || event.code === "KeyE";
     if (gameplayKey) event.preventDefault();
     if ((event.code === "Space" || event.code === "ArrowUp") && inputState.blockDirection === "high") {
       inputState.blockDirection = "mid";
@@ -1733,6 +1741,7 @@ function bindEvents() {
   bindHoldButton(document.getElementById("slideBtn"), startSlideHold, cancelSlideHold);
   document.getElementById("dashBtn").addEventListener("click", activateActiveSkill);
   document.getElementById("cycleSkillBtn").addEventListener("click", cycleActiveSkill);
+  document.getElementById("stockItemBtn").addEventListener("click", useStockedItem);
   document.getElementById("restartBtn").addEventListener("click", restartFromButton);
   document.getElementById("overlayRestart").addEventListener("click", restartFromButton);
   document.getElementById("saveBtn").addEventListener("click", saveState);
@@ -2208,7 +2217,7 @@ function updateObjects(dt, scrollSpeed, stats) {
         addChest(obj.chestType);
         removed.add(obj);
       } else if (obj.type === "item") {
-        activateItem(obj.kind);
+        stockItem(obj.kind);
         removed.add(obj);
       } else if (obj.type === "obstacle") {
         if (handleSoulObstacleCollision(obj, removed)) {
@@ -3407,6 +3416,35 @@ function activateItem(kind) {
   gainCombo(2);
 }
 
+function stockItem(kind) {
+  if (!itemGuideDefs[kind]) return;
+  run.stockedItem = kind;
+  logEvent(`${itemName(kind)} STOCKED`);
+  updateHud();
+}
+
+function useStockedItem() {
+  if (isGameplayPaused()) return;
+  if (run.gameOver || !run.stockedItem) return;
+  const kind = run.stockedItem;
+  run.stockedItem = null;
+  activateItem(kind);
+  updateHud();
+}
+
+function itemName(kind) {
+  const names = {
+    dash: { ja: "ダッシュ", en: "Dash" },
+    shield: { ja: "無敵", en: "Invincible" },
+    giant: { ja: "巨大化", en: "Giant" },
+    magnet: { ja: "磁石", en: "Magnet" },
+    time: { ja: "時間停止", en: "Time Stop" },
+    doubleJump: { ja: "2段ジャンプ", en: "Double Jump" }
+  };
+  const entry = names[kind];
+  return entry ? entry[currentLanguage] || entry.ja : kind || "-";
+}
+
 function defeatEnemy(obj) {
   state.lifetimeEnemies += 1;
   run.sessionEnemies += 1;
@@ -3502,6 +3540,7 @@ function clearTemporaryEffects() {
   run.chillTimer = 0;
   run.gravityFlip = false;
   run.echoActive = false;
+  run.stockedItem = null;
   player.jumpsUsed = 0;
   player.slideTimer = 0;
   inputState.jumpHolding = false;
@@ -3576,6 +3615,7 @@ function resetRun() {
   run.eventTimer = 0;
   run.eventCooldown = random(45, 85);
   run.gravityFlip = false;
+  run.stockedItem = null;
   run.sessionCoins = 0;
   run.sessionEnemies = 0;
   run.sessionBosses = 0;
@@ -5059,6 +5099,11 @@ function updateHud() {
     const unlockedSkills = unlockedActiveSkillDefs();
     cycleSkillButton.disabled = unlockedSkills.length === 0;
     cycleSkillButton.textContent = `${currentLanguage === "en" ? "Cycle" : "切替"}\nQ`;
+  }
+  const stockItemButton = document.getElementById("stockItemBtn");
+  if (stockItemButton) {
+    stockItemButton.disabled = run.gameOver || !run.stockedItem;
+    stockItemButton.textContent = `${run.stockedItem ? itemName(run.stockedItem) : (currentLanguage === "en" ? "Item" : "アイテム")}\nE`;
   }
   const bgmButton = document.getElementById("bgmBtn");
   bgmButton.textContent = state.settings.bgmEnabled ? "BGM ON" : "BGM OFF";
