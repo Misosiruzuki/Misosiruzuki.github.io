@@ -19,6 +19,9 @@ const PRESTIGE_COIN_REQUIREMENT = 10000000;
 const CHEST_DISTANCE_INTERVAL = 500;
 const HAZARD_MIN_GAP = 190;
 const ITEM_MIN_GAP = 960;
+const PLAYER_GRAVITY = 1200;
+const PLAYER_CEILING_Y = 34;
+const GRAVITY_LANDING_SAFE_RADIUS = 160;
 const FINAL_BOSS_OFFSET = 100;
 const FINAL_BOSS_ATTACK_PATTERNS = 3;
 const RUN_PATTERN_LENGTH_METERS = 30;
@@ -791,6 +794,7 @@ const run = {
   eventTimer: 0,
   eventCooldown: 50,
   gravityFlip: false,
+  gravityLandingGuard: false,
   stockedItem: null,
   lastPatternKey: "",
   sessionCoins: 0,
@@ -2188,9 +2192,8 @@ function updatePlayer(dt, stats) {
     updateWebLanePlayer(dt);
     return;
   }
-  const gravity = run.gravityFlip ? -1200 : 1200;
-  const ceilingY = 34;
-  const targetGround = run.gravityFlip ? ceilingY : groundY - getPlayerHeight();
+  const gravity = run.gravityFlip ? -PLAYER_GRAVITY : PLAYER_GRAVITY;
+  const targetGround = run.gravityFlip ? PLAYER_CEILING_Y : groundY - getPlayerHeight();
 
   player.slideTimer = Math.max(0, player.slideTimer - dt);
   player.vy += gravity * dt;
@@ -2201,6 +2204,7 @@ function updatePlayer(dt, stats) {
       player.y = targetGround;
       player.vy = 0;
       player.jumpsUsed = 0;
+      run.gravityLandingGuard = false;
     }
   } else if (player.y <= targetGround) {
     player.y = targetGround;
@@ -2750,6 +2754,7 @@ function updateEvent(dt) {
       const ended = run.event;
       run.event = null;
       run.gravityFlip = false;
+      if (ended === "gravity") run.gravityLandingGuard = shouldGuardGravityLanding();
       logEvent(`${eventName(ended)} END`);
     }
     return;
@@ -3084,7 +3089,11 @@ function hazardAirY(lane = "mid") {
 }
 
 function spawnPatternHazard(kind, x, area, index, entry = {}) {
-  if (!canSpawnHazardAt(x, entry.gap || HAZARD_MIN_GAP)) return false;
+  const plannedVx = plannedHazardVx(kind, entry);
+  if (!canSpawnHazardAt(x, entry.gap || HAZARD_MIN_GAP, {
+    vx: plannedVx,
+    safeRadius: gravityLandingSafeRadiusFor(kind)
+  })) return false;
 
   if (kind === "slime" || kind === "bird" || kind === "bomb") {
     const airborne = kind === "bird";
@@ -3147,6 +3156,25 @@ function spawnPatternHazard(kind, x, area, index, entry = {}) {
   });
   tagLatestHazardForGuide(kind);
   return true;
+}
+
+function plannedHazardVx(kind, entry = {}) {
+  if (entry.vx !== undefined) return entry.vx;
+  if (kind === "meteor" && !entry.airObstacle) return -40;
+  return 0;
+}
+
+function gravityLandingSafeRadiusFor(kind) {
+  const hazardWidth = {
+    laser: 46,
+    bird: 54,
+    meteor: 48,
+    spike: 56,
+    crate: 54,
+    slime: 50,
+    bomb: 50
+  }[kind] || 52;
+  return Math.max(GRAVITY_LANDING_SAFE_RADIUS, player.w + hazardWidth + 72);
 }
 
 function spawnCoinLine(startX, arc) {
@@ -3244,8 +3272,83 @@ function spawnObstacleOrEnemy(x, area) {
   return true;
 }
 
-function canSpawnHazardAt(x, gap = HAZARD_MIN_GAP) {
+function canSpawnHazardAt(x, gap = HAZARD_MIN_GAP, options = {}) {
+  if (isGravityLandingSpawnBlocked(x, options.vx || 0, options.safeRadius || GRAVITY_LANDING_SAFE_RADIUS)) return false;
   return !objects.some((obj) => isHazardObject(obj) && Math.abs(obj.x - x) < gap);
+}
+
+function isGravityLandingSpawnBlocked(x, hazardVx = 0, radius = GRAVITY_LANDING_SAFE_RADIUS) {
+  const prediction = predictGravityLanding();
+  if (!prediction) return false;
+  const blockedSpawnX = player.x + (prediction.scrollSpeed - hazardVx) * prediction.timeToLanding;
+  return Math.abs(x - blockedSpawnX) < radius;
+}
+
+function predictGravityLanding() {
+  const duringGravityEvent = run.event === "gravity" && run.gravityFlip && run.eventTimer > 0;
+  const guardingLanding = run.gravityLandingGuard && !run.gravityFlip;
+  if (!duringGravityEvent && !guardingLanding) return null;
+
+  const targetY = groundY - getPlayerHeight();
+  let forecastY = player.y;
+  let forecastVy = player.vy;
+  let timeToLanding = 0;
+
+  if (duringGravityEvent) {
+    const timeUntilFlipEnds = Math.max(0, run.eventTimer);
+    const timeToCeiling = solveTimeToY(forecastY, forecastVy, -PLAYER_GRAVITY, PLAYER_CEILING_Y);
+    if (timeToCeiling !== null && timeToCeiling <= timeUntilFlipEnds) {
+      forecastY = PLAYER_CEILING_Y;
+      forecastVy = 0;
+    } else {
+      forecastY += forecastVy * timeUntilFlipEnds - 0.5 * PLAYER_GRAVITY * timeUntilFlipEnds * timeUntilFlipEnds;
+      forecastVy -= PLAYER_GRAVITY * timeUntilFlipEnds;
+    }
+    timeToLanding += timeUntilFlipEnds;
+  }
+
+  if (forecastY >= targetY - 1) return null;
+  const fallTime = solveTimeToY(forecastY, forecastVy, PLAYER_GRAVITY, targetY);
+  if (fallTime === null) return null;
+  timeToLanding += fallTime;
+  if (timeToLanding <= 0 || timeToLanding > 20) return null;
+
+  return {
+    timeToLanding,
+    scrollSpeed: currentRunScrollSpeedPixels()
+  };
+}
+
+function solveTimeToY(y, vy, acceleration, targetY) {
+  const a = 0.5 * acceleration;
+  const b = vy;
+  const c = y - targetY;
+  const epsilon = 0.0001;
+  if (Math.abs(a) < epsilon) {
+    if (Math.abs(b) < epsilon) return null;
+    const time = -c / b;
+    return time >= 0 ? time : null;
+  }
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return null;
+  const root = Math.sqrt(discriminant);
+  const times = [(-b - root) / (2 * a), (-b + root) / (2 * a)].filter((time) => time >= 0);
+  if (!times.length) return null;
+  return Math.min(...times);
+}
+
+function currentRunScrollSpeedPixels() {
+  if (run.bossBattle || run.timeStop > 0) return 0;
+  const stats = getStats();
+  const dashMult = run.dashTimer > 0 ? 1.9 : 1;
+  const eventSpeed = run.event === "fever" ? 1.25 : 1;
+  const chillMult = run.chillTimer > 0 ? 0.78 : 1;
+  return stats.speed * dashMult * eventSpeed * chillMult * 48;
+}
+
+function shouldGuardGravityLanding() {
+  const targetY = groundY - getPlayerHeight();
+  return player.y < targetY - 2 || Math.abs(player.vy) > 10;
 }
 
 function isHazardObject(obj) {
@@ -3363,6 +3466,7 @@ function startAreaBossBattle(index) {
   run.event = null;
   run.eventTimer = 0;
   run.gravityFlip = false;
+  run.gravityLandingGuard = false;
   run.nextSpawn = 999;
   objects = [];
   const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor((state.prestigeCount || 0) / 4);
@@ -3516,6 +3620,7 @@ function resetBossSoulModeMovement(mode) {
   run.echoActive = false;
   if (mode === "blue" || mode === "purple" || mode === "dual" || mode === "rainbow") {
     run.gravityFlip = false;
+    run.gravityLandingGuard = false;
     run.webLane = 1;
     player.y = groundY - getPlayerHeight();
     player.vy = 0;
@@ -3957,6 +4062,7 @@ function completeAreaBoss(index) {
   run.justiceCooldown = 0;
   run.echoActive = false;
   run.gravityFlip = false;
+  run.gravityLandingGuard = false;
   run.nextSpawn = 0.4;
   run.lastPatternKey = "";
   run.eventCooldown = random(45, 85);
@@ -4002,6 +4108,7 @@ function clearTemporaryEffects() {
   run.phasePinTimer = 0;
   run.chillTimer = 0;
   run.gravityFlip = false;
+  run.gravityLandingGuard = false;
   run.echoActive = false;
   run.stockedItem = null;
   player.jumpsUsed = 0;
@@ -4079,6 +4186,7 @@ function resetRun() {
   run.eventTimer = 0;
   run.eventCooldown = random(45, 85);
   run.gravityFlip = false;
+  run.gravityLandingGuard = false;
   run.stockedItem = null;
   run.sessionCoins = 0;
   run.sessionEnemies = 0;
@@ -4353,6 +4461,7 @@ function activateGravityAnchor(level) {
   run.gravityGuardTimer = Math.max(run.gravityGuardTimer, 0.35 + level * 0.09);
   if (run.gravityFlip) {
     run.gravityFlip = false;
+    run.gravityLandingGuard = shouldGuardGravityLanding();
     player.vy *= -0.2;
   }
   burst(player.x + player.w / 2, player.y + getPlayerHeight(), "#48bde7", 10);
@@ -5046,7 +5155,9 @@ function startRandomEvent() {
 
 function startEvent(event, options = {}) {
   if (!RANDOM_EVENT_DEFS.some((def) => def.value === event)) return;
+  const shouldGuardInterruptedGravity = run.event === "gravity" && run.gravityFlip && event !== "gravity";
   run.gravityFlip = event === "gravity";
+  run.gravityLandingGuard = event === "gravity" ? false : shouldGuardInterruptedGravity && shouldGuardGravityLanding();
   run.event = event;
   run.eventTimer = event === "gravity" ? 12 : 14;
   if (options.resetCooldown) run.eventCooldown = random(55, 100);
