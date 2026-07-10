@@ -2558,7 +2558,8 @@ function updateFinalBossGimmick(boss, dt) {
 
   if (boss.bossGimmick === "sandBurrow") {
     boss.phased = run.bossChargeTimer > finalBossAttackDuration(index) - 0.75;
-    boss.y = groundY - boss.h + (boss.phased ? 48 : Math.sin(performance.now() / 180) * 8);
+    const bob = boss.phased ? 0 : Math.abs(Math.sin(performance.now() / 180)) * 8;
+    boss.y = groundY - boss.h - bob;
   }
 
   if (boss.bossGimmick === "frostPrison") {
