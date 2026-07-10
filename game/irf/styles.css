@@ -216,9 +216,29 @@ button:disabled {
 .debug-tas-controls {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   padding-inline: 8px;
   border-inline: 1px solid rgba(242, 184, 75, 0.28);
+}
+
+.debug-tas-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  font-size: 0.74rem;
+  color: #e8cf9a;
+}
+
+.debug-tas-select select {
+  max-width: min(420px, 62vw);
+  min-height: 28px;
+  border: 1px solid rgba(242, 184, 75, 0.55);
+  border-radius: 4px;
+  background: #17130c;
+  color: #ffe3a8;
+  font: inherit;
 }
 
 .debug-event-buttons button,

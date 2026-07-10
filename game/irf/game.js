@@ -7,6 +7,9 @@ const MUSIC_ROOT = `${ASSET_ROOT}music/loop/`;
 const REWARD_AD_URL = "https://omg10.com/4/11245499";
 const LANGUAGE_STORAGE_KEY = "irf_language_v1";
 const DEBUG_SETTINGS_KEY = "irf_debug_settings_v1";
+const TAS_SITE_SAVE_KEY = "irf_tas_site_saves_v1";
+const TAS_AUTO_INPUT_BANK_KEY = "irf_tas_auto_input_bank_v1";
+const TAS_SITE_SAVE_LIMIT = 30;
 const LANGUAGE_MODE = document.documentElement.dataset.languageMode || "auto";
 const ADS_ENABLED = (document.documentElement.dataset.adMode || "reward") !== "none";
 const DEBUG_MODE = document.documentElement.dataset.debugMode === "true";
@@ -26,6 +29,7 @@ const FINAL_BOSS_OFFSET = 100;
 const FINAL_BOSS_ATTACK_PATTERNS = 3;
 const RUN_PATTERN_LENGTH_METERS = 30;
 const RUN_PATTERN_WIDTH = RUN_PATTERN_LENGTH_METERS * 48;
+const TAS_DEFAULT_SCENARIO_ID = "a0_run_arc_gate";
 
 const upgradeDefs = [
   { id: "speed", name: "スピード", base: 10, growth: 2, currency: "coins", effect: (lv) => `速度 +${(lv * 1.2).toFixed(1)}%` },
@@ -763,6 +767,14 @@ const tasState = {
   playbackFrame: 0,
   inputFrames: [],
   pendingActions: {},
+  scenarioId: "",
+  siteSaveName: "",
+  autoEnabled: false,
+  autoCurrentScenarioId: "",
+  autoStartedAtMs: 0,
+  autoStartDistance: 0,
+  autoLoadedCount: 0,
+  autoMissCount: 0,
   rngCalls: 0,
   rngLast: 0,
   rngState: ((Date.now() ^ 0x9e3779b9) >>> 0) || 0x12345678
@@ -812,6 +824,7 @@ const run = {
   bossModeTimer: 0,
   bossModePulse: 0,
   bossResearchCounters: {},
+  tasAreaIndex: null,
   webLane: 1,
   justiceCooldown: 0,
   echoActive: false,
@@ -966,6 +979,7 @@ function initDebugMode() {
   debugMaxUpgrades?.addEventListener("click", setDebugUpgradesToCap);
   debugSkipGuides?.addEventListener("click", toggleDebugSkipGuides);
   renderDebugTasControls();
+  window.setTimeout(renderDebugTasControls, 0);
   renderDebugEventButtons();
   updateDebugSkipGuidesButton();
   configureDebugHudInputs();
@@ -1015,18 +1029,132 @@ function forceDebugEvent(event) {
   debugMessage(`EVENT: ${eventName(event)}`);
 }
 
+function tasScenarioOptionsSafe() {
+  try {
+    return tasScenarioOptions();
+  } catch (error) {
+    if (error instanceof ReferenceError) return [];
+    console.warn(error);
+    return [];
+  }
+}
+
+function selectedTasScenarioId() {
+  return debugSettings.tasScenarioId || tasState.scenarioId || TAS_DEFAULT_SCENARIO_ID;
+}
+
+function renderTasScenarioOptions(options, selectedId) {
+  if (!options.length) return `<option value="">SCENE LOADING</option>`;
+  return options.map((option) => (
+    `<option value="${escapeHtml(option.id)}" ${option.id === selectedId ? "selected" : ""}>${escapeHtml(option.label)}</option>`
+  )).join("");
+}
+
+function loadTasSiteSaves() {
+  if (!DEBUG_MODE) return [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TAS_SITE_SAVE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed.filter((entry) => entry && entry.filename && entry.snapshot) : [];
+  } catch (error) {
+    console.warn(error);
+    return [];
+  }
+}
+
+function persistTasSiteSaves(entries) {
+  if (!DEBUG_MODE) return;
+  localStorage.setItem(TAS_SITE_SAVE_KEY, JSON.stringify(entries.slice(0, TAS_SITE_SAVE_LIMIT)));
+}
+
+function renderTasSiteSaveOptions(entries, selectedName) {
+  if (!entries.length) return `<option value="">NO SITE SAVE</option>`;
+  return entries.map((entry) => (
+    `<option value="${escapeHtml(entry.filename)}" ${entry.filename === selectedName ? "selected" : ""}>${escapeHtml(entry.filename)}</option>`
+  )).join("");
+}
+
+function loadTasAutoInputBank() {
+  if (!DEBUG_MODE) return {};
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TAS_AUTO_INPUT_BANK_KEY) || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (error) {
+    console.warn(error);
+    return {};
+  }
+}
+
+function persistTasAutoInputBank(bank) {
+  if (!DEBUG_MODE) return;
+  localStorage.setItem(TAS_AUTO_INPUT_BANK_KEY, JSON.stringify(bank || {}));
+}
+
+function tasAutoInputBankCount() {
+  return Object.keys(loadTasAutoInputBank()).length;
+}
+
+function normalizeTasInputFrames(frames) {
+  const normalized = [];
+  for (const frame of Array.isArray(frames) ? frames : []) {
+    const index = Number(frame.frame);
+    if (!Number.isFinite(index) || index < 0) continue;
+    normalized[index] = {
+      frame: index,
+      jump: Boolean(frame.jump),
+      slide: Boolean(frame.slide),
+      block: ["high", "mid", "low"].includes(frame.block) ? frame.block : "mid",
+      skill: Boolean(frame.skill),
+      cycle: Boolean(frame.cycle)
+    };
+  }
+  return normalized;
+}
+
+function inferTasScenarioIdFromFileName(name) {
+  const match = String(name || "").match(/irf_tas(?:_input)?_(.+)_f\d+_/);
+  return match ? match[1] : "";
+}
+
 function renderDebugTasControls() {
   if (!DEBUG_MODE || !debugTasControls) return;
   const enabled = isTasEnabled();
   const speed = tasSpeedMultiplier();
   const recording = tasState.recording;
   const playing = tasState.playing;
+  const scenarioOptions = tasScenarioOptionsSafe();
+  const scenarioId = scenarioOptions.some((option) => option.id === selectedTasScenarioId())
+    ? selectedTasScenarioId()
+    : (scenarioOptions[0]?.id || selectedTasScenarioId());
+  const siteSaves = loadTasSiteSaves();
+  const siteSaveName = siteSaves.some((entry) => entry.filename === debugSettings.tasSiteSaveName)
+    ? debugSettings.tasSiteSaveName
+    : (siteSaves[0]?.filename || "");
+  const autoCount = tasAutoInputBankCount();
+  tasState.autoLoadedCount = autoCount;
+  const autoElapsed = tasState.autoEnabled ? ((gameNow() - tasState.autoStartedAtMs) / 1000).toFixed(1) : "0.0";
   debugTasControls.innerHTML = `
     <button type="button" data-debug-tas="toggle" aria-pressed="${String(enabled)}">TAS ${enabled ? "ON" : "OFF"} F1</button>
+    <label class="debug-tas-select">SCENE
+      <select data-debug-tas-scenario ${enabled && scenarioOptions.length ? "" : "disabled"}>
+        ${renderTasScenarioOptions(scenarioOptions, scenarioId)}
+      </select>
+    </label>
+    <button type="button" data-debug-tas="applyScenario" ${enabled && scenarioOptions.length ? "" : "disabled"}>SET SCENE</button>
     <button type="button" data-debug-tas="pause" aria-pressed="${String(tasState.paused)}" ${enabled ? "" : "disabled"}>${tasState.paused ? "PAUSED" : "RUN"} F2</button>
     <button type="button" data-debug-tas="step" ${enabled ? "" : "disabled"}>1F F3</button>
     <button type="button" data-debug-tas="saveState" ${enabled ? "" : "disabled"}>SAVE F5</button>
     <button type="button" data-debug-tas="loadState" ${enabled ? "" : "disabled"}>LOAD F8</button>
+    <label class="debug-tas-select">SITE
+      <select data-debug-tas-site-save ${enabled && siteSaves.length ? "" : "disabled"}>
+        ${renderTasSiteSaveOptions(siteSaves, siteSaveName)}
+      </select>
+    </label>
+    <button type="button" data-debug-tas="loadSite" ${enabled && siteSaves.length ? "" : "disabled"}>LOAD SITE</button>
+    <button type="button" data-debug-tas="deleteSite" ${enabled && siteSaves.length ? "" : "disabled"}>DEL SITE</button>
+    <button type="button" data-debug-tas="auto" aria-pressed="${String(tasState.autoEnabled)}" ${enabled ? "" : "disabled"}>AUTO ${tasState.autoEnabled ? "ON" : "OFF"}</button>
+    <button type="button" data-debug-tas="autoStart" ${enabled ? "" : "disabled"}>AUTO START</button>
+    <button type="button" data-debug-tas="autoImport" ${enabled ? "" : "disabled"}>AUTO IMPORT</button>
+    <button type="button" data-debug-tas="autoClear" ${enabled && autoCount ? "" : "disabled"}>AUTO CLEAR</button>
     <button type="button" data-debug-tas="record" aria-pressed="${String(recording)}" ${enabled ? "" : "disabled"}>REC F9</button>
     <button type="button" data-debug-tas="play" aria-pressed="${String(playing)}" ${enabled ? "" : "disabled"}>PLAY F10</button>
     <button type="button" data-debug-tas="edit" ${enabled ? "" : "disabled"}>EDIT F6</button>
@@ -1040,16 +1168,27 @@ function renderDebugTasControls() {
     <button type="button" data-debug-tas="watch" aria-pressed="${String(Boolean(debugSettings.tasShowWatch))}" ${enabled ? "" : "disabled"}>WATCH A+V</button>
     <button type="button" data-debug-tas="export" ${enabled ? "" : "disabled"}>EXPORT A+S</button>
     <button type="button" data-debug-tas="import" ${enabled ? "" : "disabled"}>IMPORT A+O</button>
-    <span class="debug-tas-readout">F${tasState.frame} x${speed} IN ${tasState.inputFrames.length}</span>
+    <span class="debug-tas-readout">F${tasState.frame} x${speed} IN ${tasState.inputFrames.length} AUTO ${autoCount} ${autoElapsed}s</span>
   `;
   debugTasControls.querySelectorAll("button[data-debug-tas]").forEach((button) => {
     button.addEventListener("click", () => handleDebugTasAction(button.dataset.debugTas));
+  });
+  const scenarioSelect = debugTasControls.querySelector("[data-debug-tas-scenario]");
+  scenarioSelect?.addEventListener("change", () => {
+    debugSettings.tasScenarioId = scenarioSelect.value || TAS_DEFAULT_SCENARIO_ID;
+    persistDebugSettings();
+  });
+  const siteSelect = debugTasControls.querySelector("[data-debug-tas-site-save]");
+  siteSelect?.addEventListener("change", () => {
+    debugSettings.tasSiteSaveName = siteSelect.value || "";
+    persistDebugSettings();
   });
 }
 
 function handleDebugTasAction(action) {
   if (!DEBUG_MODE) return;
   if (action === "toggle") toggleDebugTas();
+  if (action === "applyScenario") applySelectedTasScenario();
   if (action === "pause") toggleTasPause();
   if (action === "step") stepTasFrame();
   if (action === "fast") changeTasSpeed(-1);
@@ -1067,12 +1206,22 @@ function handleDebugTasAction(action) {
   if (action === "watch") toggleTasDisplay("tasShowWatch", "WATCH");
   if (action === "export") exportTasFile();
   if (action === "import") importTasFile();
+  if (action === "loadSite") loadSelectedTasSiteSave();
+  if (action === "deleteSite") deleteSelectedTasSiteSave();
+  if (action === "auto") toggleTasAutoReplay();
+  if (action === "autoStart") startTasAutoRun();
+  if (action === "autoImport") importTasAutoFiles();
+  if (action === "autoClear") clearTasAutoInputBank();
 }
 
 function toggleDebugTas() {
   debugSettings.tasEnabled = !debugSettings.tasEnabled;
   tasState.paused = debugSettings.tasEnabled;
   tasState.queuedSteps = 0;
+  if (!debugSettings.tasEnabled) {
+    tasState.autoEnabled = false;
+    tasState.autoCurrentScenarioId = "";
+  }
   if (debugSettings.tasEnabled) applyTasBalanceOverrides();
   persistDebugSettings();
   renderDebugTasControls();
@@ -1120,6 +1269,438 @@ function toggleTasDisplay(key, label) {
   debugMessage(`${label} ${debugSettings[key] ? "ON" : "OFF"}`);
 }
 
+function applySelectedTasScenario() {
+  if (!isTasEnabled()) return;
+  const option = tasScenarioOptionById(selectedTasScenarioId());
+  if (!option) {
+    debugMessage("TAS SCENE NOT FOUND");
+    return;
+  }
+  applyTasScenario(option);
+}
+
+function tasScenarioOptionById(id) {
+  return tasScenarioOptionsSafe().find((option) => option.id === id) || null;
+}
+
+function applyTasScenario(option) {
+  tasState.scenarioId = option.id;
+  debugSettings.tasScenarioId = option.id;
+  persistDebugSettings();
+  seedTasRng(option.id);
+  tasState.paused = true;
+  tasState.queuedSteps = 0;
+  tasState.frame = 0;
+  tasState.rewind = [];
+  tasState.recording = false;
+  tasState.playing = false;
+  tasState.playbackFrame = 0;
+  tasState.inputFrames = [];
+  tasState.pendingActions = {};
+  if (isGuideActive()) finishGuide();
+  if (option.kind === "boss") setupTasBossScenario(option);
+  else setupTasRunScenario(option);
+  applyTasBalanceOverrides();
+  renderDebugTasControls();
+  renderPanel();
+  updateHud();
+  syncBgm();
+  debugMessage(`TAS SCENE ${option.id}`);
+}
+
+function seedTasRng(seedText) {
+  tasState.rngState = hashTasString(seedText || "tas") || 0x12345678;
+  tasState.rngCalls = 0;
+  tasState.rngLast = 0;
+}
+
+function hashTasString(value) {
+  let hash = 2166136261;
+  for (const char of String(value)) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function setupTasRunScenario(option) {
+  const distance = tasRunScenarioDistance(option.areaIndex);
+  prepareTasScenarioRun(option.areaIndex, distance);
+  if (option.event) startEvent(option.event);
+  const area = areas[option.areaIndex] || currentArea();
+  const patterns = areaRunPatterns(option.areaIndex);
+  const pattern = patterns[option.patternIndex] || patterns[0];
+  const baseX = Math.max(player.x + 230, Math.min(canvasWidth * 0.58, canvasWidth - 240));
+  run.lastPatternKey = pattern?.key || "";
+  spawnRunPattern(pattern, baseX, area, option.areaIndex);
+  if (option.event) spawnEventPattern(option.event, pattern, baseX, area, option.areaIndex);
+  run.nextSpawn = 999;
+}
+
+function setupTasBossScenario(option) {
+  const distance = tasBossScenarioDistance(option.areaIndex);
+  prepareTasScenarioRun(option.areaIndex, distance);
+  run.bossBattle = true;
+  run.bossAreaIndex = option.areaIndex;
+  run.bossPhase = option.phase;
+  run.bossPatternIndex = option.patternIndex;
+  run.bossVolley = 0;
+  run.bossSoulMode = bossSoulModeForArea(option.areaIndex);
+  run.bossModeTimer = 0;
+  run.bossModePulse = 0.85;
+  run.bossResearchCounters = {};
+  run.nextSpawn = 999;
+  objects = [];
+  const hp = (option.areaIndex === 0 ? 3 : 6 + option.areaIndex * 2) + Math.floor(effectivePrestigeCount() / 4);
+  const boss = spawnBoss(option.areaIndex, {
+    finalBoss: true,
+    x: option.phase === "vulnerable" ? canvasWidth + 120 : canvasWidth - 170,
+    hp
+  });
+  boss.attackPattern = option.patternIndex;
+  boss.attackVolley = 0;
+  boss.vulnerable = option.phase === "vulnerable";
+  boss.phased = false;
+  if (option.phase === "vulnerable") {
+    run.bossChargeTimer = finalBossVulnerableDuration(option.areaIndex);
+    run.bossAttackTimer = 99;
+    boss.x = finalBossApproachStartX(boss);
+    boss.y = finalBossVulnerableY(boss);
+    boss.vx = finalBossApproachVelocity(boss, option.areaIndex);
+  } else {
+    run.bossChargeTimer = finalBossAttackDuration(option.areaIndex);
+    run.bossAttackTimer = finalBossAttackInterval(option.areaIndex, option.patternIndex);
+    boss.x = canvasWidth - 170;
+    boss.y = groundY - boss.h;
+    spawnBossAttack(boss);
+  }
+}
+
+function prepareTasScenarioRun(areaIndexValue, distance) {
+  const areaIndexSafe = Math.max(0, Math.min(areas.length - 1, Number(areaIndexValue) || 0));
+  run.tasAreaIndex = areaIndexSafe;
+  run.active = true;
+  run.gameOver = false;
+  run.distance = Math.max(0, Number(distance) || 0);
+  run.combo = 0;
+  run.dashTimer = 0;
+  run.dashCooldown = 0;
+  run.skillShield = 0;
+  run.giantTimer = 0;
+  run.timeStop = 0;
+  run.gravityGuardTimer = 0;
+  run.phasePinTimer = 0;
+  run.chillTimer = 0;
+  run.nextSpawn = 999;
+  run.lastPatternKey = "";
+  run.nextBossMark = nextAreaBossDistance(areaIndexSafe);
+  run.nextChestMark = Math.floor(run.distance / CHEST_DISTANCE_INTERVAL) * CHEST_DISTANCE_INTERVAL + CHEST_DISTANCE_INTERVAL;
+  run.bossBattle = false;
+  run.bossAreaIndex = -1;
+  run.bossAttackTimer = 0;
+  run.bossChargeTimer = 0;
+  run.bossRetreating = false;
+  run.bossPhase = "attack";
+  run.bossPatternIndex = 0;
+  run.bossVolley = 0;
+  run.bossSoulMode = "red";
+  run.bossModeTimer = 0;
+  run.bossModePulse = 0;
+  run.bossResearchCounters = {};
+  run.webLane = 1;
+  run.justiceCooldown = 0;
+  run.echoActive = false;
+  run.event = null;
+  run.eventTimer = 0;
+  run.eventCooldown = 999;
+  run.gravityFlip = false;
+  run.gravityLandingGuard = false;
+  run.stockedItem = null;
+  run.sessionCoins = 0;
+  run.sessionEnemies = 0;
+  run.sessionBosses = 0;
+  run.sessionChests = 0;
+  objects = [];
+  particles = [];
+  player.x = 112;
+  player.w = 36;
+  player.h = 48;
+  player.y = groundY - player.h;
+  player.vy = 0;
+  player.jumpsUsed = 0;
+  player.slideTimer = 0;
+  player.invulnerable = 1;
+  player.regenTimer = 0;
+  player.damageTimer = 0;
+  inputState.jumpHolding = false;
+  inputState.jumpActive = false;
+  inputState.jumpMaxVelocity = 0;
+  inputState.jumpAppliedVelocity = 0;
+  inputState.slideHolding = false;
+  inputState.pointerSlideActive = false;
+  inputState.pointerJumpActive = false;
+  inputState.blockDirection = "mid";
+  run.hp = getStats().maxHp;
+  runOverlay.classList.add("hidden");
+  musicScene = "run";
+  restartPlayerAnimation("running");
+}
+
+function tasRunScenarioDistance(areaIndexValue) {
+  const area = areas[areaIndexValue] || areas[0];
+  const nextArea = areas[areaIndexValue + 1];
+  const safeBeforeBoss = nextArea ? Math.max(area.start + 20, nextArea.start - FINAL_BOSS_OFFSET - 160) : area.start + 400;
+  return Math.min(area.start + 140, safeBeforeBoss);
+}
+
+function tasBossScenarioDistance(areaIndexValue) {
+  const mark = nextAreaBossDistance(areaIndexValue);
+  if (Number.isFinite(mark)) return mark;
+  return (areas[areaIndexValue]?.start || 0) + 900;
+}
+
+function tasScenarioOptions() {
+  const options = [];
+  for (let areaIndexValue = 0; areaIndexValue < areas.length; areaIndexValue += 1) {
+    const areaLabel = tasAreaLabel(areaIndexValue);
+    RUN_PATTERN_TEMPLATES.forEach((template, patternIndex) => {
+      options.push({
+        id: tasRunPatternScenarioId(areaIndexValue, { id: template.id, templateIndex: patternIndex }),
+        kind: "run",
+        areaIndex: areaIndexValue,
+        patternIndex,
+        label: `${areaLabel} / RUN / ${template.id}`
+      });
+    });
+    for (const eventDef of RANDOM_EVENT_DEFS) {
+      const eventTemplates = RUN_EVENT_PATTERN_TEMPLATES[eventDef.value] || [];
+      eventTemplates.forEach((template, patternIndex) => {
+        options.push({
+          id: tasRunPatternScenarioId(areaIndexValue, { id: template.id, templateIndex: patternIndex }, eventDef.value),
+          kind: "event",
+          areaIndex: areaIndexValue,
+          patternIndex,
+          event: eventDef.value,
+          label: `${areaLabel} / EVENT ${eventName(eventDef.value)} / ${template.id}`
+        });
+      });
+    }
+    for (let patternIndex = 0; patternIndex < FINAL_BOSS_ATTACK_PATTERNS; patternIndex += 1) {
+      options.push({
+        id: tasBossScenarioId(areaIndexValue, "attack", patternIndex),
+        kind: "boss",
+        areaIndex: areaIndexValue,
+        patternIndex,
+        phase: "attack",
+        label: `${areaLabel} / BOSS ATTACK / p${patternIndex + 1}`
+      });
+      options.push({
+        id: tasBossScenarioId(areaIndexValue, "vulnerable", patternIndex),
+        kind: "boss",
+        areaIndex: areaIndexValue,
+        patternIndex,
+        phase: "vulnerable",
+        label: `${areaLabel} / BOSS APPROACH / p${patternIndex + 1}`
+      });
+    }
+  }
+  return options;
+}
+
+function tasAreaLabel(index) {
+  const area = areas[index] || areas[0];
+  return `A${index + 1} ${area.line}`;
+}
+
+function tasRunPatternScenarioId(index, pattern, event = null) {
+  const patternId = pattern?.id || RUN_PATTERN_TEMPLATES[pattern?.templateIndex || 0]?.id || "unknown";
+  return event ? `a${index}_event_${event}_${patternId}` : `a${index}_run_${patternId}`;
+}
+
+function tasBossScenarioId(index, phase, patternIndex) {
+  const phaseId = phase === "vulnerable" ? "approach" : "attack";
+  return `a${index}_boss_${phaseId}_p${patternIndex + 1}`;
+}
+
+function currentTasScenarioId() {
+  return tasState.scenarioId || selectedTasScenarioId() || "manual";
+}
+
+function tasSaveFilename(prefix = "irf_tas") {
+  const scenarioId = sanitizeTasFilePart(currentTasScenarioId());
+  const frame = Math.max(0, Math.floor(tasState.frame || 0));
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  return `${prefix}_${scenarioId}_f${frame}_${stamp}.json`;
+}
+
+function sanitizeTasFilePart(value) {
+  return String(value || "manual").replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 96) || "manual";
+}
+
+function saveTasSnapshotToSite(snapshot, filename = tasSaveFilename()) {
+  const entries = loadTasSiteSaves().filter((entry) => entry.filename !== filename);
+  const entry = {
+    filename,
+    scenarioId: currentTasScenarioId(),
+    savedAt: new Date().toISOString(),
+    frame: tasState.frame,
+    snapshot: clonePlain(snapshot)
+  };
+  entries.unshift(entry);
+  persistTasSiteSaves(entries);
+  tasState.siteSaveName = filename;
+  debugSettings.tasSiteSaveName = filename;
+  persistDebugSettings();
+  return filename;
+}
+
+function loadSelectedTasSiteSave() {
+  if (!isTasEnabled()) return;
+  const entries = loadTasSiteSaves();
+  const filename = debugSettings.tasSiteSaveName || entries[0]?.filename || "";
+  const entry = entries.find((item) => item.filename === filename);
+  if (!entry) {
+    debugMessage("TAS SITE SAVE EMPTY");
+    return;
+  }
+  tasState.saveSlot = clonePlain(entry.snapshot);
+  restoreTasSnapshot(entry.snapshot);
+  tasState.paused = true;
+  tasState.playing = false;
+  tasState.recording = false;
+  tasState.scenarioId = entry.scenarioId || entry.snapshot.tasScenarioId || "";
+  debugSettings.tasScenarioId = tasState.scenarioId || debugSettings.tasScenarioId;
+  debugSettings.tasSiteSaveName = entry.filename;
+  persistDebugSettings();
+  renderDebugTasControls();
+  debugMessage(`TAS SITE LOAD ${entry.filename}`);
+}
+
+function deleteSelectedTasSiteSave() {
+  if (!isTasEnabled()) return;
+  const entries = loadTasSiteSaves();
+  const filename = debugSettings.tasSiteSaveName || entries[0]?.filename || "";
+  if (!filename) return;
+  const nextEntries = entries.filter((entry) => entry.filename !== filename);
+  persistTasSiteSaves(nextEntries);
+  debugSettings.tasSiteSaveName = nextEntries[0]?.filename || "";
+  persistDebugSettings();
+  renderDebugTasControls();
+  debugMessage(`TAS SITE DELETE ${filename}`);
+}
+
+function toggleTasAutoReplay() {
+  if (!isTasEnabled()) return;
+  tasState.autoEnabled = !tasState.autoEnabled;
+  tasState.autoCurrentScenarioId = "";
+  tasState.autoMissCount = 0;
+  if (tasState.autoEnabled) {
+    if (run.gameOver) resetRun();
+    tasState.paused = false;
+    tasState.playing = false;
+    tasState.recording = false;
+    tasState.playbackFrame = 0;
+    tasState.autoStartedAtMs = gameNow();
+    tasState.autoStartDistance = run.distance || 0;
+  } else {
+    tasState.playing = false;
+    tasState.playbackFrame = 0;
+  }
+  renderDebugTasControls();
+  debugMessage(`TAS AUTO ${tasState.autoEnabled ? "ON" : "OFF"}`);
+}
+
+function startTasAutoRun() {
+  if (!isTasEnabled()) return;
+  resetRun();
+  tasState.autoEnabled = true;
+  tasState.autoCurrentScenarioId = "";
+  tasState.autoMissCount = 0;
+  tasState.playing = false;
+  tasState.recording = false;
+  tasState.playbackFrame = 0;
+  tasState.paused = false;
+  tasState.autoStartedAtMs = gameNow();
+  tasState.autoStartDistance = run.distance || 0;
+  renderDebugTasControls();
+  updateHud();
+  debugMessage("TAS AUTO START");
+}
+
+function importTasAutoFiles() {
+  if (!isTasEnabled()) return;
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "application/json,.json";
+  input.multiple = true;
+  input.addEventListener("change", async () => {
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    const bank = loadTasAutoInputBank();
+    let imported = 0;
+    for (const file of files) {
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text || "{}");
+        const scenarioId = parsed.scenarioId || inferTasScenarioIdFromFileName(file.name);
+        const frames = normalizeTasInputFrames(parsed.inputs);
+        if (!scenarioId || !frames.length) continue;
+        bank[scenarioId] = {
+          scenarioId,
+          filename: file.name,
+          importedAt: new Date().toISOString(),
+          frameCount: frames.length,
+          inputs: frames.filter(Boolean)
+        };
+        imported += 1;
+      } catch (error) {
+        console.warn(error);
+      }
+    }
+    persistTasAutoInputBank(bank);
+    tasState.autoLoadedCount = Object.keys(bank).length;
+    renderDebugTasControls();
+    debugMessage(`TAS AUTO IMPORT ${imported}/${files.length}`);
+  });
+  input.click();
+}
+
+function clearTasAutoInputBank() {
+  if (!isTasEnabled()) return;
+  localStorage.removeItem(TAS_AUTO_INPUT_BANK_KEY);
+  tasState.autoLoadedCount = 0;
+  tasState.autoCurrentScenarioId = "";
+  tasState.autoMissCount = 0;
+  renderDebugTasControls();
+  debugMessage("TAS AUTO BANK CLEARED");
+}
+
+function startTasAutoReplayForScenario(scenarioId) {
+  if (!isTasEnabled() || !tasState.autoEnabled || !scenarioId) return false;
+  const bank = loadTasAutoInputBank();
+  const entry = bank[scenarioId];
+  if (!entry || !Array.isArray(entry.inputs) || !entry.inputs.length) {
+    tasState.autoMissCount += 1;
+    tasState.autoCurrentScenarioId = scenarioId;
+    return false;
+  }
+  tasState.inputFrames = normalizeTasInputFrames(entry.inputs);
+  tasState.playbackFrame = 0;
+  tasState.playing = true;
+  tasState.recording = false;
+  tasState.paused = false;
+  tasState.scenarioId = scenarioId;
+  tasState.autoCurrentScenarioId = scenarioId;
+  debugSettings.tasScenarioId = scenarioId;
+  persistDebugSettings();
+  debugMessage(`TAS AUTO PLAY ${scenarioId}`);
+  return true;
+}
+
+function tasAutoScenarioElapsedSeconds() {
+  return tasState.autoEnabled ? Math.max(0, (gameNow() - tasState.autoStartedAtMs) / 1000) : 0;
+}
+
 function clonePlain(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -1128,6 +1709,7 @@ function captureTasSnapshot() {
   return {
     version: 1,
     frame: tasState.frame,
+    tasScenarioId: currentTasScenarioId(),
     gameClockMs,
     state: clonePlain(state),
     run: clonePlain(run),
@@ -1168,6 +1750,7 @@ function restoreTasSnapshot(snapshot) {
   tasState.rngState = Number(snapshot.rngState || tasState.rngState) >>> 0;
   tasState.rngCalls = Number(snapshot.rngCalls || 0);
   tasState.rngLast = Number(snapshot.rngLast || 0);
+  tasState.scenarioId = snapshot.tasScenarioId || tasState.scenarioId || "";
   runOverlay.classList.toggle("hidden", !run.gameOver);
   renderPanel();
   updateHud();
@@ -1177,9 +1760,11 @@ function restoreTasSnapshot(snapshot) {
 
 function saveTasState() {
   if (!isTasEnabled()) return;
-  tasState.saveSlot = captureTasSnapshot();
+  const snapshot = captureTasSnapshot();
+  tasState.saveSlot = snapshot;
+  const filename = saveTasSnapshotToSite(snapshot);
   renderDebugTasControls();
-  debugMessage(`TAS SAVE F${tasState.frame}`);
+  debugMessage(`TAS SAVE ${filename}`);
 }
 
 function loadTasState() {
@@ -1270,9 +1855,9 @@ function applyTasPlaybackFrame() {
   const frame = tasState.inputFrames[tasState.playbackFrame];
   if (!frame) {
     tasState.playing = false;
-    tasState.paused = true;
+    tasState.paused = !tasState.autoEnabled;
     renderDebugTasControls();
-    debugMessage("TAS PLAY END");
+    debugMessage(tasState.autoEnabled ? `TAS AUTO WAIT ${tasState.autoCurrentScenarioId || ""}` : "TAS PLAY END");
     return;
   }
   if (frame.jump && !inputState.jumpHolding) startJumpHold(gameNow());
@@ -1319,8 +1904,11 @@ function editTasInputFrame() {
 
 function exportTasFile() {
   if (!isTasEnabled()) return;
+  const filename = tasSaveFilename("irf_tas_input");
   const payload = {
     format: "irf-tas-v1",
+    filename,
+    scenarioId: currentTasScenarioId(),
     exportedAt: new Date().toISOString(),
     frame: tasState.frame,
     inputs: tasState.inputFrames.filter(Boolean).map((frame, index) => ({
@@ -1337,12 +1925,12 @@ function exportTasFile() {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `irf_tas_${Date.now()}.json`;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   URL.revokeObjectURL(link.href);
   link.remove();
-  debugMessage("TAS FILE EXPORTED");
+  debugMessage(`TAS FILE EXPORTED ${filename}`);
 }
 
 function importTasFile() {
@@ -1358,22 +1946,14 @@ function importTasFile() {
       try {
         const parsed = JSON.parse(String(reader.result || "{}"));
         const frames = Array.isArray(parsed.inputs) ? parsed.inputs : [];
-        tasState.inputFrames = [];
-        for (const frame of frames) {
-          const index = Number(frame.frame);
-          if (Number.isFinite(index) && index >= 0) {
-            tasState.inputFrames[index] = {
-              frame: index,
-              jump: Boolean(frame.jump),
-              slide: Boolean(frame.slide),
-              block: ["high", "mid", "low"].includes(frame.block) ? frame.block : "mid",
-              skill: Boolean(frame.skill),
-              cycle: Boolean(frame.cycle)
-            };
-          }
-        }
+        tasState.inputFrames = normalizeTasInputFrames(frames);
         if (Number.isFinite(parsed.rngState)) tasState.rngState = Number(parsed.rngState) >>> 0;
         if (Number.isFinite(parsed.rngCalls)) tasState.rngCalls = Number(parsed.rngCalls);
+        if (typeof parsed.scenarioId === "string") {
+          tasState.scenarioId = parsed.scenarioId;
+          debugSettings.tasScenarioId = parsed.scenarioId;
+          persistDebugSettings();
+        }
         renderDebugTasControls();
         debugMessage(`TAS FILE IMPORTED ${frames.length}F`);
       } catch (error) {
@@ -1457,6 +2037,8 @@ function loadDebugSettings() {
     skipGuides: false,
     tasEnabled: false,
     tasSpeedIndex: TAS_DEFAULT_SPEED_INDEX,
+    tasScenarioId: TAS_DEFAULT_SCENARIO_ID,
+    tasSiteSaveName: "",
     tasShowFrame: true,
     tasShowKinematics: true,
     tasShowHitboxes: false,
@@ -1471,6 +2053,8 @@ function loadDebugSettings() {
       skipGuides: Boolean(parsed.skipGuides),
       tasEnabled: Boolean(parsed.tasEnabled),
       tasSpeedIndex: normalizeTasSpeedIndex(parsed.tasSpeedIndex),
+      tasScenarioId: typeof parsed.tasScenarioId === "string" ? parsed.tasScenarioId : defaults.tasScenarioId,
+      tasSiteSaveName: typeof parsed.tasSiteSaveName === "string" ? parsed.tasSiteSaveName : defaults.tasSiteSaveName,
       tasShowFrame: parsed.tasShowFrame !== undefined ? Boolean(parsed.tasShowFrame) : defaults.tasShowFrame,
       tasShowKinematics: parsed.tasShowKinematics !== undefined ? Boolean(parsed.tasShowKinematics) : defaults.tasShowKinematics,
       tasShowHitboxes: Boolean(parsed.tasShowHitboxes),
@@ -3466,6 +4050,7 @@ function spawnSegment(stats) {
   const pattern = pickRunPattern(index);
   spawnRunPattern(pattern, baseX, area, index);
   spawnEventPattern(run.event, pattern, baseX, area, index);
+  startTasAutoReplayForScenario(tasRunPatternScenarioId(index, pattern, run.event));
 }
 
 function runPatternSpawnDelay(speedMeters) {
@@ -4003,6 +4588,7 @@ function startAreaBossBattle(index) {
   objects = [];
   const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor(effectivePrestigeCount() / 4);
   spawnBoss(index, { finalBoss: true, x: canvasWidth + 90, hp });
+  startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   restartPlayerAnimation("running");
   logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
   maybeExplainBoss(index);
@@ -4068,6 +4654,7 @@ function switchBossPhase(boss, phase) {
     run.bossChargeTimer = finalBossAttackDuration(index);
     run.bossAttackTimer = 0.7;
     logEvent(`${bossName(index).toUpperCase()} PATTERN ${boss.attackPattern + 1}`);
+    startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   } else {
     clearBossAttackObjects();
     resetBossSoulModeMovement(mode);
@@ -4079,6 +4666,7 @@ function switchBossPhase(boss, phase) {
     boss.vx = finalBossApproachVelocity(boss, index);
     burst(boss.x + boss.w / 2, boss.y + 12, boss.color, 12);
     logEvent("BOSS OPEN");
+    startTasAutoReplayForScenario(tasBossScenarioId(index, "vulnerable", run.bossPatternIndex));
   }
 }
 
@@ -4724,6 +5312,9 @@ function endRun() {
   overlayText.textContent = `${formatNumber(run.distance)}m / XP +${formatNumber(xp)}`;
   runOverlay.classList.remove("hidden");
   logEvent(`RUN END ${formatNumber(run.distance)}m`);
+  if (tasState.autoEnabled) {
+    debugMessage(`TAS AUTO END ${tasAutoScenarioElapsedSeconds().toFixed(1)}s ${formatNumber(run.distance)}m`);
+  }
   saveState();
 }
 
@@ -4768,6 +5359,7 @@ function resetRun() {
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
   run.bossResearchCounters = {};
+  run.tasAreaIndex = null;
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
@@ -5279,6 +5871,9 @@ function researchLevelCap() {
 }
 
 function effectivePrestigeCount() {
+  if (isTasEnabled() && Number.isFinite(run.tasAreaIndex)) {
+    return Math.max(0, Math.floor(run.tasAreaIndex));
+  }
   if (!isTasEnabled()) return Number(state.prestigeCount || 0);
   return areaIndexForDistance(Math.max(state.currentPrestigeDistance || 0, run.distance || 0));
 }
@@ -5819,6 +6414,9 @@ function currentArea() {
 }
 
 function areaIndex() {
+  if (isTasEnabled() && Number.isFinite(run.tasAreaIndex)) {
+    return Math.max(0, Math.min(areas.length - 1, Math.floor(run.tasAreaIndex)));
+  }
   return areaIndexForDistance(Math.max(state.currentPrestigeDistance || 0, run.distance || 0));
 }
 
@@ -6375,6 +6973,7 @@ function drawTasOverlay() {
     lines.push(`F ${tasState.frame} ${tasState.paused ? "PAUSE" : `x${tasSpeedMultiplier()}`}`);
     if (tasState.recording) lines.push("REC");
     if (tasState.playing) lines.push(`PLAY ${tasState.playbackFrame}/${tasState.inputFrames.length}`);
+    if (tasState.autoEnabled) lines.push(`AUTO ${tasAutoScenarioElapsedSeconds().toFixed(1)}s ${tasState.autoCurrentScenarioId || "wait"} miss:${tasState.autoMissCount}`);
   }
   if (debugSettings.tasShowKinematics) {
     lines.push(`P x:${player.x.toFixed(1)} y:${player.y.toFixed(1)} vy:${player.vy.toFixed(1)}`);
