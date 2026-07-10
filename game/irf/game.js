@@ -1202,9 +1202,10 @@ function showGuideStep() {
   guideTitle.textContent = guideValue(step.title);
   guideText.textContent = guideValue(step.text);
   guideStep.textContent = `${guideState.index + 1}/${guideState.steps.length}`;
+  const keyHint = "Space / ↑";
   guideNext.textContent = currentLanguage === "en"
-    ? guideState.index >= guideState.steps.length - 1 ? "Close" : "Next"
-    : guideState.index >= guideState.steps.length - 1 ? "閉じる" : "次へ";
+    ? guideState.index >= guideState.steps.length - 1 ? `Close (${keyHint})` : `Next (${keyHint})`
+    : guideState.index >= guideState.steps.length - 1 ? `閉じる (${keyHint})` : `次へ (${keyHint})`;
   guideOverlay.classList.remove("hidden");
   guideState.currentTarget = step.target;
   updateGuideHighlight(step.target);
@@ -1674,6 +1675,12 @@ function bindEvents() {
   document.addEventListener("keydown", unlockAudio, { once: true });
 
   document.addEventListener("keydown", (event) => {
+    const jumpKey = event.code === "Space" || event.code === "ArrowUp";
+    if (isGuideActive() && jumpKey) {
+      event.preventDefault();
+      if (!event.repeat) advanceGuide();
+      return;
+    }
     const gameplayKey = event.code === "Space"
       || event.code === "ArrowUp"
       || event.code === "ArrowDown"
