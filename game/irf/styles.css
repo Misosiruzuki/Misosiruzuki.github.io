@@ -176,6 +176,7 @@ button:disabled {
   top: 0;
   z-index: 18;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   min-height: 42px;
@@ -204,6 +205,18 @@ button:disabled {
   border-color: rgba(76, 195, 138, 0.82);
   background: #173024;
   color: #bff0d2;
+}
+
+.debug-event-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.debug-event-buttons button {
+  min-height: 28px;
+  padding: 5px 8px;
+  font-size: 0.76rem;
 }
 
 .debug-panel span {

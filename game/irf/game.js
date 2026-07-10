@@ -703,6 +703,7 @@ const debugPanel = document.getElementById("debugPanel");
 const debugResetSave = document.getElementById("debugResetSave");
 const debugMaxUpgrades = document.getElementById("debugMaxUpgrades");
 const debugSkipGuides = document.getElementById("debugSkipGuides");
+const debugEventButtons = document.getElementById("debugEventButtons");
 const debugStatus = document.getElementById("debugStatus");
 const debugHudFields = {
   coinsStat: "coins",
@@ -715,6 +716,15 @@ const debugHudFields = {
   comboStat: "combo",
   levelStat: "level"
 };
+
+const RANDOM_EVENT_DEFS = [
+  { value: "coinRain", weight: 18 },
+  { value: "meteor", weight: 12 },
+  { value: "fever", weight: 16 },
+  { value: "gravity", weight: 11 },
+  { value: "clearPath", weight: 15 },
+  { value: "coin3", weight: 16 }
+];
 
 let state = loadState();
 let activeTab = "upgrades";
@@ -924,6 +934,7 @@ function initDebugMode() {
   debugResetSave?.addEventListener("click", resetDebugSave);
   debugMaxUpgrades?.addEventListener("click", setDebugUpgradesToCap);
   debugSkipGuides?.addEventListener("click", toggleDebugSkipGuides);
+  renderDebugEventButtons();
   updateDebugSkipGuidesButton();
   configureDebugHudInputs();
 }
@@ -951,6 +962,25 @@ function setDebugUpgradesToCap() {
   updateHud();
   debugMessage(`通常強化を上限 Lv${cap} にしました`);
   persistStateQuiet();
+}
+
+function renderDebugEventButtons() {
+  if (!DEBUG_MODE || !debugEventButtons) return;
+  debugEventButtons.textContent = "";
+  for (const def of RANDOM_EVENT_DEFS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = eventName(def.value);
+    button.dataset.debugEvent = def.value;
+    button.addEventListener("click", () => forceDebugEvent(def.value));
+    debugEventButtons.appendChild(button);
+  }
+}
+
+function forceDebugEvent(event) {
+  if (!DEBUG_MODE) return;
+  startEvent(event, { resetCooldown: true });
+  debugMessage(`EVENT: ${eventName(event)}`);
 }
 
 function loadDebugSettings() {
@@ -5006,17 +5036,16 @@ function openRewardAd() {
 }
 
 function startRandomEvent() {
-  const event = weightedPick([
-    { value: "coinRain", weight: 18 },
-    { value: "meteor", weight: 12 },
-    { value: "fever", weight: 16 },
-    { value: "gravity", weight: 11 },
-    { value: "clearPath", weight: 15 },
-    { value: "coin3", weight: 16 }
-  ]);
+  const event = weightedPick(RANDOM_EVENT_DEFS);
+  startEvent(event);
+}
+
+function startEvent(event, options = {}) {
+  if (!RANDOM_EVENT_DEFS.some((def) => def.value === event)) return;
+  run.gravityFlip = event === "gravity";
   run.event = event;
   run.eventTimer = event === "gravity" ? 12 : 14;
-  if (event === "gravity") run.gravityFlip = true;
+  if (options.resetCooldown) run.eventCooldown = random(55, 100);
   run.nextSpawn = Math.min(run.nextSpawn, 0.15);
   logEvent(`${eventName(event)} START`);
 }
