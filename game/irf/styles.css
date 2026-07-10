@@ -200,6 +200,12 @@ button:disabled {
   color: #ffe3a8;
 }
 
+.debug-panel button[aria-pressed="true"] {
+  border-color: rgba(76, 195, 138, 0.82);
+  background: #173024;
+  color: #bff0d2;
+}
+
 .debug-panel span {
   color: #e8cf9a;
   font-size: 0.82rem;

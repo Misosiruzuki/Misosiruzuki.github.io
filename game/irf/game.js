@@ -6,6 +6,7 @@ const ASSET_ROOT = "asset/";
 const MUSIC_ROOT = `${ASSET_ROOT}music/loop/`;
 const REWARD_AD_URL = "https://omg10.com/4/11245499";
 const LANGUAGE_STORAGE_KEY = "irf_language_v1";
+const DEBUG_SETTINGS_KEY = "irf_debug_settings_v1";
 const LANGUAGE_MODE = document.documentElement.dataset.languageMode || "auto";
 const ADS_ENABLED = (document.documentElement.dataset.adMode || "reward") !== "none";
 const DEBUG_MODE = document.documentElement.dataset.debugMode === "true";
@@ -699,6 +700,7 @@ const guideNext = document.getElementById("guideNext");
 const debugPanel = document.getElementById("debugPanel");
 const debugResetSave = document.getElementById("debugResetSave");
 const debugMaxUpgrades = document.getElementById("debugMaxUpgrades");
+const debugSkipGuides = document.getElementById("debugSkipGuides");
 const debugStatus = document.getElementById("debugStatus");
 const debugHudFields = {
   coinsStat: "coins",
@@ -725,6 +727,7 @@ let uiTimer = 0;
 let messageTimer = 0;
 let musicScene = "run";
 let languageSelectionActive = false;
+let debugSettings = loadDebugSettings();
 
 const player = {
   x: 112,
@@ -917,6 +920,8 @@ function initDebugMode() {
   debugPanel?.classList.remove("hidden");
   debugResetSave?.addEventListener("click", resetDebugSave);
   debugMaxUpgrades?.addEventListener("click", setDebugUpgradesToCap);
+  debugSkipGuides?.addEventListener("click", toggleDebugSkipGuides);
+  updateDebugSkipGuidesButton();
   configureDebugHudInputs();
 }
 
@@ -943,6 +948,44 @@ function setDebugUpgradesToCap() {
   updateHud();
   debugMessage(`通常強化を上限 Lv${cap} にしました`);
   persistStateQuiet();
+}
+
+function loadDebugSettings() {
+  const defaults = { skipGuides: false };
+  if (!DEBUG_MODE) return defaults;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DEBUG_SETTINGS_KEY) || "{}");
+    return { ...defaults, skipGuides: Boolean(parsed.skipGuides) };
+  } catch (error) {
+    console.warn(error);
+    return defaults;
+  }
+}
+
+function persistDebugSettings() {
+  if (!DEBUG_MODE) return;
+  localStorage.setItem(DEBUG_SETTINGS_KEY, JSON.stringify(debugSettings));
+}
+
+function shouldSkipGuides() {
+  return DEBUG_MODE && Boolean(debugSettings.skipGuides);
+}
+
+function toggleDebugSkipGuides() {
+  if (!DEBUG_MODE) return;
+  debugSettings.skipGuides = !debugSettings.skipGuides;
+  persistDebugSettings();
+  updateDebugSkipGuidesButton();
+  debugMessage(`説明スキップ ${debugSettings.skipGuides ? "ON" : "OFF"}`);
+  if (debugSettings.skipGuides && isGuideActive()) {
+    finishGuide();
+  }
+}
+
+function updateDebugSkipGuidesButton() {
+  if (!debugSkipGuides) return;
+  debugSkipGuides.textContent = `説明スキップ ${debugSettings.skipGuides ? "ON" : "OFF"}`;
+  debugSkipGuides.setAttribute("aria-pressed", String(Boolean(debugSettings.skipGuides)));
 }
 
 function debugMessage(message) {
@@ -1178,6 +1221,10 @@ function queueGuide(steps, options = {}) {
   const normalizedSteps = (Array.isArray(steps) ? steps : [steps]).filter(Boolean);
   if (normalizedSteps.length === 0 || !guideOverlay) return;
   const entry = { steps: normalizedSteps, onComplete: options.onComplete || null };
+  if (shouldSkipGuides()) {
+    skipGuideEntry(entry);
+    return;
+  }
   if (guideState.active) {
     guideState.queue.push(entry);
     return;
@@ -1186,11 +1233,21 @@ function queueGuide(steps, options = {}) {
 }
 
 function beginGuide(entry) {
+  if (shouldSkipGuides()) {
+    skipGuideEntry(entry);
+    return;
+  }
   guideState.active = true;
   guideState.steps = entry.steps;
   guideState.index = 0;
   guideState.onComplete = entry.onComplete;
   showGuideStep();
+}
+
+function skipGuideEntry(entry) {
+  if (entry?.onComplete) entry.onComplete();
+  const next = guideState.queue.shift();
+  if (next) beginGuide(next);
 }
 
 function showGuideStep() {
