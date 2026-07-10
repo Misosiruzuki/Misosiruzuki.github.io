@@ -3037,7 +3037,11 @@ function resetBossSoulModeMovement(mode) {
 }
 
 function finalBossVulnerableY(boss) {
-  return groundY - Math.min(boss.h, 72);
+  return groundY - finalBossVulnerableHeight(boss);
+}
+
+function finalBossVulnerableHeight(boss) {
+  return Math.min(boss.h, 72);
 }
 
 function spawnBossAttack(boss) {
@@ -5403,12 +5407,13 @@ function drawEnemy(obj) {
 function drawBoss(obj) {
   ctx.save();
   if (obj.phased) ctx.globalAlpha = 0.42;
+  const drawH = obj.finalBoss && obj.vulnerable ? finalBossVulnerableHeight(obj) : obj.h;
   ctx.fillStyle = obj.color;
-  roundRect(obj.x, obj.y, obj.w, obj.h, 8);
+  roundRect(obj.x, obj.y, obj.w, drawH, 8);
   ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.34)";
-  ctx.fillRect(obj.x + 18, obj.y + 26, 10, 10);
-  ctx.fillRect(obj.x + obj.w - 28, obj.y + 26, 10, 10);
+  ctx.fillRect(obj.x + 18, obj.y + Math.min(26, drawH * 0.36), 10, 10);
+  ctx.fillRect(obj.x + obj.w - 28, obj.y + Math.min(26, drawH * 0.36), 10, 10);
   ctx.fillStyle = "#101217";
   ctx.fillRect(obj.x, obj.y - 12, obj.w, 6);
   ctx.fillStyle = "#ef6b65";
@@ -5423,7 +5428,7 @@ function drawBoss(obj) {
   if (obj.armor > 0 || obj.shield > 0) {
     ctx.strokeStyle = obj.shield > 0 ? "#48bde7" : "#d7b878";
     ctx.lineWidth = 3;
-    ctx.strokeRect(obj.x - 3, obj.y - 3, obj.w + 6, obj.h + 6);
+    ctx.strokeRect(obj.x - 3, obj.y - 3, obj.w + 6, drawH + 6);
   }
   ctx.restore();
 }
