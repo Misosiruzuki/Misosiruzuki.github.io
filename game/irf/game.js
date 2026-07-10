@@ -2132,6 +2132,7 @@ function updateObjects(dt, scrollSpeed, stats) {
       obj.x += (obj.vx || 0) * dt;
       obj.y += (obj.vy || 0) * dt;
       if (obj.gravity) obj.vy = (obj.vy || 0) + obj.gravity * dt;
+      if (obj.bounceOnGround) applyGroundBounce(obj);
       obj.x -= scrollSpeed * dt;
     }
     checkHazardGuideTrigger(obj);
@@ -2274,6 +2275,16 @@ function updateObjects(dt, scrollSpeed, stats) {
   }
 
   objects = objects.filter((obj) => obj.x > -220 && !removed.has(obj));
+}
+
+function applyGroundBounce(obj) {
+  const floorY = groundY - obj.h;
+  if (obj.y < floorY) return;
+  obj.y = floorY;
+  if ((obj.vy || 0) <= 0) return;
+  const factor = obj.bounceFactor ?? 0.72;
+  const minimum = obj.bounceVelocity || 260;
+  obj.vy = -Math.max(minimum, Math.abs(obj.vy) * factor);
 }
 
 function handlePlayerShotCollision(shot, removed) {
@@ -3110,6 +3121,9 @@ function addBossObstacle(kind, boss, options = {}) {
     vx: options.vx ?? bossSpeed(boss.areaIndex || 0),
     vy: options.vy || 0,
     gravity: options.gravity || 0,
+    bounceOnGround: Boolean(options.bounceOnGround),
+    bounceVelocity: options.bounceVelocity || 0,
+    bounceFactor: options.bounceFactor ?? 0.72,
     color: options.color || boss.color
   };
   applyBossSoulRule(obj, boss, options);
@@ -3131,6 +3145,9 @@ function addBossEnemy(kind, boss, options = {}) {
     vx: options.vx ?? bossSpeed(boss.areaIndex || 0, 12),
     vy: options.vy || 0,
     gravity: options.gravity || 0,
+    bounceOnGround: Boolean(options.bounceOnGround),
+    bounceVelocity: options.bounceVelocity || 0,
+    bounceFactor: options.bounceFactor ?? 0.72,
     color: options.color || (kind === "slime" ? "#75d05e" : boss.color)
   }, boss.areaIndex || 0);
   applyBossSoulRule(obj, boss, options);
@@ -3165,7 +3182,21 @@ function inferShieldLane(obj) {
 function spawnSlimeKingPattern(boss, pattern, volley) {
   if (pattern === 0) {
     addBossEnemy("slime", boss, { x: bossSpawnX(boss, volley % 2 ? 36 : 0), w: 34, h: 34, vx: bossSpeed(0, 8) });
-    if (volley % 2 === 1) addBossEnemy("slime", boss, { x: bossSpawnX(boss, 86), y: groundY - 62, w: 28, h: 28, vx: bossSpeed(0, 26), vy: -70, gravity: 170 });
+    if (volley % 2 === 1) {
+      addBossEnemy("slime", boss, {
+        x: bossSpawnX(boss, 126),
+        y: groundY - 104,
+        w: 30,
+        h: 30,
+        vx: bossSpeed(0, 42),
+        vy: -250,
+        gravity: 760,
+        bounceOnGround: true,
+        bounceVelocity: 300,
+        bounceFactor: 0.74,
+        color: "#9be977"
+      });
+    }
   } else if (pattern === 1) {
     addBossObstacle("spike", boss, { x: bossSpawnX(boss, 0), w: 46, h: 40, color: "#75d05e", vx: bossSpeed(0, 18) });
     addBossEnemy("slime", boss, { x: bossSpawnX(boss, 92), w: 30, h: 30, vx: bossSpeed(0, 34) });
