@@ -737,6 +737,7 @@ const RANDOM_EVENT_DEFS = [
 const TAS_STEP_SECONDS = 1 / 60;
 const TAS_SPEEDS = [4, 2, 1, 0.5, 0.25, 0.1];
 const TAS_DEFAULT_SPEED_INDEX = 2;
+const TAS_MAX_STEPS_PER_DRAW = 240;
 const GAMEPLAY_KEY_CODES = new Set(["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyD", "KeyQ", "KeyE"]);
 const TAS_ALLOWED_GAMEPLAY_KEY_CODES = new Set(["ArrowUp", "ArrowDown", "KeyD", "KeyQ"]);
 
@@ -777,6 +778,7 @@ const tasState = {
   autoStartDistance: 0,
   autoLoadedCount: 0,
   autoMissCount: 0,
+  pauseAtFrame: null,
   rngCalls: 0,
   rngLast: 0,
   rngState: ((Date.now() ^ 0x9e3779b9) >>> 0) || 0x12345678
@@ -868,6 +870,8 @@ const inputState = {
   pointerStartedAt: 0,
   pointerSlideActive: false,
   pointerJumpActive: false,
+  tasWantsJump: false,
+  tasJumpRetry: false,
   blockDirection: "mid"
 };
 
@@ -985,6 +989,47 @@ function initDebugMode() {
   renderDebugEventButtons();
   updateDebugSkipGuidesButton();
   configureDebugHudInputs();
+  exposeTasDeterminismTools();
+}
+
+function exposeTasDeterminismTools() {
+  if (!DEBUG_MODE) return;
+  window.__irfTasDeterminism = Object.freeze({
+    prepareScenario(scenarioId, speedIndex, targetFrame, inputFrames = []) {
+      if (!isTasEnabled()) return false;
+      const option = tasScenarioOptionById(scenarioId);
+      if (!option) return false;
+      debugSettings.tasSpeedIndex = normalizeTasSpeedIndex(speedIndex);
+      applyTasScenario(option);
+      tasState.inputFrames = normalizeTasInputFrames(inputFrames);
+      tasState.playbackFrame = 0;
+      tasState.playing = tasState.inputFrames.length > 0;
+      tasState.pauseAtFrame = Math.max(0, Math.floor(Number(targetFrame) || 0));
+      tasState.paused = tasState.pauseAtFrame === 0;
+      resetTasScheduler();
+      return true;
+    },
+    state: captureTasDeterminismState
+  });
+}
+
+function captureTasDeterminismState() {
+  const cleanObject = (entry) => {
+    const copy = clonePlain(entry);
+    delete copy.id;
+    return copy;
+  };
+  return {
+    frame: tasState.frame,
+    gameClockMs,
+    rngState: tasState.rngState,
+    rngCalls: tasState.rngCalls,
+    run: clonePlain(run),
+    player: clonePlain(player),
+    inputState: clonePlain(inputState),
+    objects: objects.map(cleanObject),
+    particles: particles.map(cleanObject)
+  };
 }
 
 function resetDebugSave() {
@@ -1220,6 +1265,8 @@ function toggleDebugTas() {
   debugSettings.tasEnabled = !debugSettings.tasEnabled;
   tasState.paused = debugSettings.tasEnabled;
   tasState.queuedSteps = 0;
+  tasState.pauseAtFrame = null;
+  resetTasScheduler();
   if (!debugSettings.tasEnabled) {
     tasState.autoEnabled = false;
     tasState.autoCurrentScenarioId = "";
@@ -1235,6 +1282,7 @@ function toggleDebugTas() {
 function toggleTasPause() {
   if (!isTasEnabled()) return;
   tasState.paused = !tasState.paused;
+  resetTasScheduler();
   renderDebugTasControls();
   debugMessage(`TAS ${tasState.paused ? "PAUSE" : `RUN x${tasSpeedMultiplier()}`}`);
 }
@@ -1242,6 +1290,7 @@ function toggleTasPause() {
 function stepTasFrame() {
   if (!isTasEnabled()) return;
   tasState.paused = true;
+  tasState.pauseAtFrame = null;
   tasState.queuedSteps += 1;
   renderDebugTasControls();
   debugMessage("TAS STEP 1F");
@@ -1250,6 +1299,7 @@ function stepTasFrame() {
 function cycleTasSpeed() {
   if (!isTasEnabled()) return;
   debugSettings.tasSpeedIndex = normalizeTasSpeedIndex(debugSettings.tasSpeedIndex + 1);
+  resetTasScheduler();
   persistDebugSettings();
   renderDebugTasControls();
   debugMessage(`TAS SPEED x${tasSpeedMultiplier()}`);
@@ -1258,6 +1308,7 @@ function cycleTasSpeed() {
 function changeTasSpeed(direction) {
   if (!isTasEnabled()) return;
   debugSettings.tasSpeedIndex = normalizeTasSpeedIndex(debugSettings.tasSpeedIndex + direction);
+  resetTasScheduler();
   persistDebugSettings();
   renderDebugTasControls();
   debugMessage(`TAS SPEED x${tasSpeedMultiplier()}`);
@@ -1292,6 +1343,7 @@ function applyTasScenario(option) {
   seedTasRng(option.id);
   tasState.paused = true;
   tasState.queuedSteps = 0;
+  tasState.pauseAtFrame = null;
   tasState.frame = 0;
   tasState.rewind = [];
   tasState.recording = false;
@@ -1299,6 +1351,8 @@ function applyTasScenario(option) {
   tasState.playbackFrame = 0;
   tasState.inputFrames = [];
   tasState.pendingActions = {};
+  gameClockMs = 0;
+  resetTasScheduler();
   if (isGuideActive()) finishGuide();
   if (option.kind === "boss") setupTasBossScenario(option);
   else setupTasRunScenario(option);
@@ -1441,6 +1495,8 @@ function prepareTasScenarioRun(areaIndexValue, distance) {
   inputState.slideHolding = false;
   inputState.pointerSlideActive = false;
   inputState.pointerJumpActive = false;
+  inputState.tasWantsJump = false;
+  inputState.tasJumpRetry = false;
   inputState.blockDirection = "mid";
   run.hp = getStats().maxHp;
   runOverlay.classList.add("hidden");
@@ -1596,6 +1652,8 @@ function toggleTasAutoReplay() {
   tasState.autoEnabled = !tasState.autoEnabled;
   tasState.autoCurrentScenarioId = "";
   tasState.autoMissCount = 0;
+  tasState.pauseAtFrame = null;
+  resetTasScheduler();
   if (tasState.autoEnabled) {
     if (run.gameOver) resetRun();
     tasState.paused = false;
@@ -1616,6 +1674,13 @@ function toggleTasAutoReplay() {
 
 function startTasAutoRun() {
   if (!isTasEnabled()) return;
+  seedTasRng("tas-auto-run-v2");
+  tasState.frame = 0;
+  tasState.rewind = [];
+  tasState.queuedSteps = 0;
+  tasState.pauseAtFrame = null;
+  gameClockMs = 0;
+  resetTasScheduler();
   resetRun();
   tasState.autoEnabled = true;
   tasState.autoCurrentScenarioId = "";
@@ -1765,6 +1830,8 @@ function restoreTasSnapshot(snapshot) {
   tasState.rngCalls = Number(snapshot.rngCalls || 0);
   tasState.rngLast = Number(snapshot.rngLast || 0);
   tasState.scenarioId = snapshot.tasScenarioId || tasState.scenarioId || "";
+  tasState.pauseAtFrame = null;
+  resetTasScheduler();
   runOverlay.classList.toggle("hidden", !run.gameOver);
   renderPanel();
   updateHud();
@@ -1892,15 +1959,28 @@ function applyTasAutoTracksFrame() {
     cycle: false
   };
   const activeTracks = [];
+  const gravityEventTrackActive = run.event === "gravity"
+    && tasState.autoTracks.some((track) => String(track.scenarioId || "").includes("_event_gravity_"));
+  const newestGravityTrackFrame = gravityEventTrackActive
+    ? Math.max(...tasState.autoTracks
+      .filter((track) => String(track.scenarioId || "").includes("_event_gravity_"))
+      .map((track) => Number(track.startedAtFrame || 0)))
+    : -Infinity;
   for (const track of tasState.autoTracks) {
     const frame = track.frames[track.frame];
     if (!frame) continue;
-    combined.jump = combined.jump || Boolean(frame.jump);
-    combined.slide = combined.slide || Boolean(frame.slide);
-    combined.skill = combined.skill || Boolean(frame.skill);
-    combined.cycle = combined.cycle || Boolean(frame.cycle);
-    if (frame.block === "low") combined.block = "low";
-    else if (frame.block === "high" && combined.block === "mid") combined.block = "high";
+    const scenarioId = String(track.scenarioId || "");
+    const isGravityTrack = scenarioId.includes("_event_gravity_");
+    const suppressInput = gravityEventTrackActive
+      && (!isGravityTrack || Number(track.startedAtFrame || 0) < newestGravityTrackFrame);
+    if (!suppressInput) {
+      combined.jump = combined.jump || Boolean(frame.jump);
+      combined.slide = combined.slide || Boolean(frame.slide);
+      combined.skill = combined.skill || Boolean(frame.skill);
+      combined.cycle = combined.cycle || Boolean(frame.cycle);
+      if (frame.block === "low") combined.block = "low";
+      else if (frame.block === "high" && combined.block === "mid") combined.block = "high";
+    }
     track.frame += 1;
     activeTracks.push(track);
   }
@@ -1910,6 +1990,8 @@ function applyTasAutoTracksFrame() {
     tasState.playbackFrame = 0;
     if (inputState.jumpHolding) releaseJumpHold();
     if (inputState.slideHolding) cancelSlideHold();
+    inputState.tasWantsJump = false;
+    inputState.tasJumpRetry = false;
     inputState.blockDirection = "mid";
     return;
   }
@@ -1921,10 +2003,16 @@ function applyTasInputFrame(frame) {
   if (run.gameOver) return;
   const wantsJump = Boolean(frame.jump);
   const wantsSlide = Boolean(frame.slide) && !wantsJump;
+  inputState.tasWantsJump = wantsJump;
   if (wantsSlide && !inputState.slideHolding) startSlideHold();
   if (!wantsSlide && inputState.slideHolding) cancelSlideHold();
-  if (wantsJump && !inputState.jumpHolding) startJumpHold(gameNow());
+  if (wantsJump && !inputState.jumpHolding) {
+    inputState.tasJumpRetry = !startJumpHold(gameNow());
+  } else {
+    inputState.tasJumpRetry = false;
+  }
   if (!wantsJump && inputState.jumpHolding) releaseJumpHold();
+  if (!wantsJump) inputState.tasJumpRetry = false;
   inputState.blockDirection = frame.block || "mid";
   if (frame.cycle) cycleActiveSkill();
   if (frame.skill) activateActiveSkill();
@@ -2074,22 +2162,15 @@ function tasSpeedMultiplier() {
   return TAS_SPEEDS[normalizeTasSpeedIndex(debugSettings.tasSpeedIndex)] || 1;
 }
 
+function resetTasScheduler() {
+  tasStepAccumulator = 0;
+  lastFrame = performance.now();
+}
+
 function normalizeTasSpeedIndex(value) {
   const index = Number(value);
   if (!Number.isFinite(index)) return TAS_DEFAULT_SPEED_INDEX;
   return Math.max(0, Math.min(TAS_SPEEDS.length - 1, Math.floor(index)));
-}
-
-function resolveTasDelta(rawDt) {
-  if (!isTasEnabled()) return rawDt;
-  if (tasState.paused) {
-    if (tasState.queuedSteps > 0) {
-      tasState.queuedSteps -= 1;
-      return TAS_STEP_SECONDS;
-    }
-    return 0;
-  }
-  return Math.min(0.05, rawDt * tasSpeedMultiplier());
 }
 
 function loadDebugSettings() {
@@ -3199,31 +3280,35 @@ function loop(now) {
 }
 
 function updateTasFixedSteps(rawDt) {
+  if (isGameplayPaused()) {
+    tasStepAccumulator = 0;
+    return;
+  }
   if (tasState.paused) {
     tasStepAccumulator = 0;
     if (tasState.queuedSteps > 0) {
       tasState.queuedSteps -= 1;
-      gameClockMs += TAS_STEP_SECONDS * 1000;
-      update(TAS_STEP_SECONDS);
-    } else {
-      update(0);
+      advanceTasSimulationFrame();
     }
     return;
   }
 
   tasStepAccumulator += rawDt * tasSpeedMultiplier();
   let steps = 0;
-  const maxStepsPerDraw = 16;
-  while (tasStepAccumulator >= TAS_STEP_SECONDS && steps < maxStepsPerDraw) {
+  while (
+    tasStepAccumulator >= TAS_STEP_SECONDS
+    && steps < TAS_MAX_STEPS_PER_DRAW
+    && !tasState.paused
+  ) {
     tasStepAccumulator -= TAS_STEP_SECONDS;
-    gameClockMs += TAS_STEP_SECONDS * 1000;
-    update(TAS_STEP_SECONDS);
+    advanceTasSimulationFrame();
     steps += 1;
   }
-  if (steps === maxStepsPerDraw) {
-    tasStepAccumulator = Math.min(tasStepAccumulator, TAS_STEP_SECONDS * 2);
-  }
-  if (steps === 0) update(0);
+}
+
+function advanceTasSimulationFrame() {
+  gameClockMs += TAS_STEP_SECONDS * 1000;
+  update(TAS_STEP_SECONDS);
 }
 
 function gameNow() {
@@ -3274,6 +3359,11 @@ function update(dt) {
   }
   if (tasAdvancing) {
     tasState.frame += 1;
+    if (Number.isFinite(tasState.pauseAtFrame) && tasState.frame >= tasState.pauseAtFrame) {
+      tasState.paused = true;
+      tasState.pauseAtFrame = null;
+      tasStepAccumulator = 0;
+    }
     renderDebugTasControls();
   }
 }
@@ -3309,6 +3399,7 @@ function updateRun(dt) {
   }
 
   updatePlayer(dt, stats);
+  retryTasJumpAfterLanding();
   updateObjects(dt, scrollSpeed, stats);
   updateParticles(dt);
   if (!run.bossBattle) updateEvent(dt);
@@ -3333,6 +3424,7 @@ function updateRun(dt) {
     }
   }
 
+  syncPlayerAnimationState();
   state.bestDistance = Math.max(state.bestDistance, run.distance);
   state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
 }
@@ -3968,8 +4060,8 @@ const RUN_PATTERN_TEMPLATES = [
   {
     id: "step_low",
     entries: [
-      { type: "hazard", role: "block", offset: 220 },
-      { type: "coins", offset: 340, count: 6, arc: true, lane: "mid" },
+      { type: "hazard", role: "block", offset: 340 },
+      { type: "coins", offset: 460, count: 6, arc: true, lane: "mid" },
       { type: "hazard", role: "ground", offset: 740 },
       { type: "item", offset: 1100, chance: 0.1 }
     ]
@@ -4334,7 +4426,7 @@ function spawnPatternHazard(kind, x, area, index, entry = {}) {
     return true;
   }
 
-  const height = kind === "spike" ? 42 : randomInt(46, 70);
+  const height = kind === "spike" ? 42 : entry.role === "block" ? randomInt(8, 12) : randomInt(46, 70);
   objects.push({
     type: "obstacle",
     kind,
@@ -5427,6 +5519,8 @@ function clearTemporaryEffects() {
   inputState.slideHolding = false;
   inputState.pointerSlideActive = false;
   inputState.pointerJumpActive = false;
+  inputState.tasWantsJump = false;
+  inputState.tasJumpRetry = false;
   inputState.blockDirection = "mid";
 }
 
@@ -5531,17 +5625,25 @@ function resetRun() {
 }
 
 function startJumpHold(startedAt = gameNow()) {
-  if (isGameplayPaused()) return;
+  if (isGameplayPaused()) return false;
   musicScene = "run";
   unlockAudio();
   if (run.gameOver) {
     resetRun();
-    return;
+    return false;
   }
-  if (inputState.jumpHolding) return;
-  if (!beginJump()) return;
+  if (inputState.jumpHolding) return false;
+  if (!beginJump()) return false;
   inputState.jumpHolding = true;
   inputState.jumpStartedAt = startedAt;
+  return true;
+}
+
+function retryTasJumpAfterLanding() {
+  if (!isTasEnabled() || (!inputState.tasJumpRetry && !inputState.tasWantsJump) || inputState.jumpHolding || run.gameOver) return;
+  if (startJumpHold(gameNow())) {
+    inputState.tasJumpRetry = false;
+  }
 }
 
 function releaseJumpHold() {
@@ -5631,7 +5733,12 @@ function startSlideHold() {
 }
 
 function cancelSlideHold() {
+  const wasSliding = inputState.slideHolding || player.slideTimer > 0;
   inputState.slideHolding = false;
+  if (isTasEnabled() && wasSliding) {
+    player.slideTimer = Math.max(player.slideTimer, TAS_STEP_SECONDS * 2);
+    return;
+  }
   player.slideTimer = 0;
 }
 
@@ -7300,10 +7407,6 @@ function drawPlayerSprite(rect, accent) {
   const frames = robotSprite.frames[animation] || robotSprite.frames.running;
   if (!frames || frames.length === 0) return false;
 
-  if (player.animationKey !== animation) {
-    restartPlayerAnimation(animation);
-  }
-
   const frame = currentPlayerFrame(animation, frames);
   const metrics = playerSpriteMetrics(rect, frame);
   if (!metrics) return false;
@@ -7360,6 +7463,11 @@ function drawPlayerSprite(rect, accent) {
     ctx.stroke();
   }
   return true;
+}
+
+function syncPlayerAnimationState() {
+  const animation = playerAnimationKey();
+  if (player.animationKey !== animation) restartPlayerAnimation(animation);
 }
 
 function playerSpriteMetrics(rect, frame) {
