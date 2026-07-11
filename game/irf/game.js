@@ -749,6 +749,7 @@ let canvasHeight = 420;
 let groundY = 340;
 let lastFrame = performance.now();
 let gameClockMs = lastFrame;
+let tasStepAccumulator = 0;
 let autosaveTimer = 0;
 let uiTimer = 0;
 let messageTimer = 0;
@@ -771,6 +772,7 @@ const tasState = {
   siteSaveName: "",
   autoEnabled: false,
   autoCurrentScenarioId: "",
+  autoTracks: [],
   autoStartedAtMs: 0,
   autoStartDistance: 0,
   autoLoadedCount: 0,
@@ -1600,11 +1602,13 @@ function toggleTasAutoReplay() {
     tasState.playing = false;
     tasState.recording = false;
     tasState.playbackFrame = 0;
+    tasState.autoTracks = [];
     tasState.autoStartedAtMs = gameNow();
     tasState.autoStartDistance = run.distance || 0;
   } else {
     tasState.playing = false;
     tasState.playbackFrame = 0;
+    tasState.autoTracks = [];
   }
   renderDebugTasControls();
   debugMessage(`TAS AUTO ${tasState.autoEnabled ? "ON" : "OFF"}`);
@@ -1619,6 +1623,7 @@ function startTasAutoRun() {
   tasState.playing = false;
   tasState.recording = false;
   tasState.playbackFrame = 0;
+  tasState.autoTracks = [];
   tasState.paused = false;
   tasState.autoStartedAtMs = gameNow();
   tasState.autoStartDistance = run.distance || 0;
@@ -1671,6 +1676,7 @@ function clearTasAutoInputBank() {
   tasState.autoLoadedCount = 0;
   tasState.autoCurrentScenarioId = "";
   tasState.autoMissCount = 0;
+  tasState.autoTracks = [];
   renderDebugTasControls();
   debugMessage("TAS AUTO BANK CLEARED");
 }
@@ -1684,7 +1690,15 @@ function startTasAutoReplayForScenario(scenarioId) {
     tasState.autoCurrentScenarioId = scenarioId;
     return false;
   }
-  tasState.inputFrames = normalizeTasInputFrames(entry.inputs);
+  const frames = normalizeTasInputFrames(entry.inputs);
+  tasState.inputFrames = frames;
+  tasState.autoTracks.push({
+    scenarioId,
+    frames,
+    frame: 0,
+    startedAtFrame: tasState.frame
+  });
+  if (tasState.autoTracks.length > 8) tasState.autoTracks.shift();
   tasState.playbackFrame = 0;
   tasState.playing = true;
   tasState.recording = false;
@@ -1851,6 +1865,10 @@ function toggleTasPlayback() {
 }
 
 function applyTasPlaybackFrame() {
+  if (isTasEnabled() && tasState.autoEnabled) {
+    applyTasAutoTracksFrame();
+    return;
+  }
   if (!isTasEnabled() || !tasState.playing) return;
   const frame = tasState.inputFrames[tasState.playbackFrame];
   if (!frame) {
@@ -1860,14 +1878,56 @@ function applyTasPlaybackFrame() {
     debugMessage(tasState.autoEnabled ? `TAS AUTO WAIT ${tasState.autoCurrentScenarioId || ""}` : "TAS PLAY END");
     return;
   }
-  if (frame.jump && !inputState.jumpHolding) startJumpHold(gameNow());
-  if (!frame.jump && inputState.jumpHolding) releaseJumpHold();
-  if (frame.slide && !inputState.slideHolding) startSlideHold();
-  if (!frame.slide && inputState.slideHolding) cancelSlideHold();
+  applyTasInputFrame(frame);
+  tasState.playbackFrame += 1;
+}
+
+function applyTasAutoTracksFrame() {
+  if (!isTasEnabled() || !tasState.autoEnabled) return;
+  const combined = {
+    jump: false,
+    slide: false,
+    block: "mid",
+    skill: false,
+    cycle: false
+  };
+  const activeTracks = [];
+  for (const track of tasState.autoTracks) {
+    const frame = track.frames[track.frame];
+    if (!frame) continue;
+    combined.jump = combined.jump || Boolean(frame.jump);
+    combined.slide = combined.slide || Boolean(frame.slide);
+    combined.skill = combined.skill || Boolean(frame.skill);
+    combined.cycle = combined.cycle || Boolean(frame.cycle);
+    if (frame.block === "low") combined.block = "low";
+    else if (frame.block === "high" && combined.block === "mid") combined.block = "high";
+    track.frame += 1;
+    activeTracks.push(track);
+  }
+  tasState.autoTracks = activeTracks;
+  tasState.playing = activeTracks.length > 0;
+  if (!activeTracks.length) {
+    tasState.playbackFrame = 0;
+    if (inputState.jumpHolding) releaseJumpHold();
+    if (inputState.slideHolding) cancelSlideHold();
+    inputState.blockDirection = "mid";
+    return;
+  }
+  tasState.playbackFrame = Math.max(...activeTracks.map((track) => track.frame));
+  applyTasInputFrame(combined);
+}
+
+function applyTasInputFrame(frame) {
+  if (run.gameOver) return;
+  const wantsJump = Boolean(frame.jump);
+  const wantsSlide = Boolean(frame.slide) && !wantsJump;
+  if (wantsSlide && !inputState.slideHolding) startSlideHold();
+  if (!wantsSlide && inputState.slideHolding) cancelSlideHold();
+  if (wantsJump && !inputState.jumpHolding) startJumpHold(gameNow());
+  if (!wantsJump && inputState.jumpHolding) releaseJumpHold();
   inputState.blockDirection = frame.block || "mid";
   if (frame.cycle) cycleActiveSkill();
   if (frame.skill) activateActiveSkill();
-  tasState.playbackFrame += 1;
 }
 
 function editTasInputFrame() {
@@ -3126,13 +3186,44 @@ function resizeCanvas() {
 function loop(now) {
   const rawDt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
   lastFrame = now;
-  const dt = resolveTasDelta(rawDt);
-  gameClockMs += dt * 1000;
-
-  update(dt);
+  if (isTasEnabled()) {
+    updateTasFixedSteps(rawDt);
+  } else {
+    tasStepAccumulator = 0;
+    gameClockMs += rawDt * 1000;
+    update(rawDt);
+  }
   draw();
 
   requestAnimationFrame(loop);
+}
+
+function updateTasFixedSteps(rawDt) {
+  if (tasState.paused) {
+    tasStepAccumulator = 0;
+    if (tasState.queuedSteps > 0) {
+      tasState.queuedSteps -= 1;
+      gameClockMs += TAS_STEP_SECONDS * 1000;
+      update(TAS_STEP_SECONDS);
+    } else {
+      update(0);
+    }
+    return;
+  }
+
+  tasStepAccumulator += rawDt * tasSpeedMultiplier();
+  let steps = 0;
+  const maxStepsPerDraw = 16;
+  while (tasStepAccumulator >= TAS_STEP_SECONDS && steps < maxStepsPerDraw) {
+    tasStepAccumulator -= TAS_STEP_SECONDS;
+    gameClockMs += TAS_STEP_SECONDS * 1000;
+    update(TAS_STEP_SECONDS);
+    steps += 1;
+  }
+  if (steps === maxStepsPerDraw) {
+    tasStepAccumulator = Math.min(tasStepAccumulator, TAS_STEP_SECONDS * 2);
+  }
+  if (steps === 0) update(0);
 }
 
 function gameNow() {
@@ -3420,7 +3511,7 @@ function updateObjects(dt, scrollSpeed, stats) {
           removed.add(obj);
           gainCombo(1);
         } else {
-          damagePlayer();
+          damagePlayer({ source: obj, playerRect });
           obj.x -= 80;
         }
       } else if (obj.type === "enemy") {
@@ -3432,7 +3523,7 @@ function updateObjects(dt, scrollSpeed, stats) {
             removed.add(obj);
           }
         } else {
-          damagePlayer({ source: obj });
+          damagePlayer({ source: obj, playerRect });
           obj.x -= 85;
         }
       } else if (obj.type === "boss") {
@@ -3440,7 +3531,7 @@ function updateObjects(dt, scrollSpeed, stats) {
         const finalBossOpen = obj.finalBoss && obj.vulnerable;
         if (finalBossClosed) {
           if (!isInvincible() && run.skillShield <= 0 && player.invulnerable <= 0.05) {
-            damagePlayer({ source: obj });
+            damagePlayer({ source: obj, playerRect });
           }
           player.vy = run.gravityFlip ? 300 : -300;
           obj.x += 70;
@@ -3455,7 +3546,7 @@ function updateObjects(dt, scrollSpeed, stats) {
             gainCombo(3);
           } else {
             const hpBefore = run.hp;
-            damagePlayer({ source: obj });
+            damagePlayer({ source: obj, playerRect });
             if (!run.gameOver && run.hp < hpBefore) {
               switchBossPhase(obj, "attack");
             }
@@ -3477,7 +3568,7 @@ function updateObjects(dt, scrollSpeed, stats) {
           burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#ef6b65", 14);
           gainCombo(3);
         } else {
-          damagePlayer({ source: obj });
+          damagePlayer({ source: obj, playerRect });
           obj.x -= 90;
         }
       }
@@ -4588,6 +4679,7 @@ function startAreaBossBattle(index) {
   objects = [];
   const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor(effectivePrestigeCount() / 4);
   spawnBoss(index, { finalBoss: true, x: canvasWidth + 90, hp });
+  if (tasState.autoEnabled) tasState.autoTracks = [];
   startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   restartPlayerAnimation("running");
   logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
@@ -4646,6 +4738,12 @@ function switchBossPhase(boss, phase) {
   boss.vx = 0;
   boss.vy = 0;
   boss.gravity = 0;
+  if (tasState.autoEnabled) tasState.autoTracks = [];
+  inputState.jumpHolding = false;
+  inputState.jumpActive = false;
+  inputState.slideHolding = false;
+  player.slideTimer = 0;
+  player.jumpsUsed = 0;
   if (phase === "attack") {
     clearBossAttackObjects();
     run.bossPatternIndex = (run.bossPatternIndex + 1) % FINAL_BOSS_ATTACK_PATTERNS;
@@ -4705,6 +4803,7 @@ function finalBossVulnerableDuration(index) {
 }
 
 function finalBossAttackInterval(index, pattern) {
+  if (index === 0 && pattern === 2) return 1.28;
   return Math.max(0.58, 1.02 - index * 0.025 - pattern * 0.03);
 }
 
@@ -4786,7 +4885,7 @@ function bossSpeed(index, add = 0) {
 }
 
 function bossSpawnX(boss, offset = 0) {
-  return Math.min(canvasWidth + 140, boss.x + boss.w / 2 + offset);
+  return boss.x + boss.w / 2 + offset;
 }
 
 const FINAL_BOSS_METEOR_AIM_PATTERNS = [
@@ -4950,14 +5049,14 @@ function spawnSlimeKingPattern(boss, pattern, volley) {
     if (volley % 2 === 1) {
       addBossEnemy("slime", boss, {
         x: bossSpawnX(boss, 126),
-        y: groundY - 104,
-        w: 30,
-        h: 30,
-        vx: bossSpeed(0, 42),
-        vy: -250,
-        gravity: 760,
+        y: groundY - 150,
+        w: 26,
+        h: 26,
+        vx: bossSpeed(0, -42),
+        vy: -430,
+        gravity: 540,
         bounceOnGround: true,
-        bounceVelocity: 300,
+        bounceVelocity: 430,
         bounceFactor: 0.74,
         color: "#9be977"
       });
@@ -4967,7 +5066,7 @@ function spawnSlimeKingPattern(boss, pattern, volley) {
     addBossEnemy("slime", boss, { x: bossSpawnX(boss, 92), w: 30, h: 30, vx: bossSpeed(0, 34) });
   } else {
     addBossEnemy("bird", boss, { x: bossSpawnX(boss, 20), y: groundY - 132 - (volley % 2) * 28, vx: bossSpeed(0, 22), color: "#a8ee78" });
-    addBossEnemy("slime", boss, { x: bossSpawnX(boss, 112), w: 32, h: 32, vx: bossSpeed(0, 38) });
+    addBossEnemy("slime", boss, { x: bossSpawnX(boss, 220), w: 32, h: 32, vx: bossSpeed(0, 38) });
   }
 }
 
@@ -5255,6 +5354,38 @@ function completeAreaBoss(index) {
 
 function damagePlayer(options = {}) {
   if (!options.force && (player.invulnerable > 0 || run.skillShield > 0 || run.dashTimer > 0)) return;
+  if (DEBUG_MODE) {
+    const source = options.source || null;
+    window.__irfLastDamage = {
+      frame: tasState.frame,
+      playbackFrame: tasState.playbackFrame,
+      scenarioId: tasState.autoCurrentScenarioId || tasState.scenarioId || "",
+      tracks: tasState.autoTracks.map((track) => ({
+        scenarioId: track.scenarioId,
+        frame: track.frame,
+        length: track.frames?.length || 0
+      })),
+      distance: run.distance,
+      hp: run.hp,
+      player: { ...(options.playerRect || getPlayerRect()), vy: player.vy, y: player.y, slideTimer: player.slideTimer },
+      input: {
+        jump: inputState.jumpHolding,
+        slide: inputState.slideHolding,
+        block: inputState.blockDirection || "mid"
+      },
+      source: source ? {
+        type: source.type,
+        kind: source.kind,
+        x: source.x,
+        y: source.y,
+        w: source.w,
+        h: source.h,
+        vx: source.vx || 0,
+        vy: source.vy || 0,
+        bossAttack: Boolean(source.bossAttack)
+      } : null
+    };
+  }
   const damage = incomingDamageAmount(options);
   run.hp -= damage;
   run.combo = 0;
@@ -5436,6 +5567,7 @@ function performJump(heldSeconds = MAX_JUMP_HOLD_SECONDS) {
 function beginJump() {
   const stats = getStats();
   const maxJumps = 1 + (effectiveUpgradeLevel("jump") >= 8 ? 1 : 0);
+  syncGroundedJumpState();
   if (player.jumpsUsed >= maxJumps) return false;
   const jumpVelocity = jumpVelocityCap(stats);
   if (jumpVelocity <= 0) return false;
@@ -5450,6 +5582,17 @@ function beginJump() {
   state.stats.jumps += 1;
   gainCombo(0.2);
   return true;
+}
+
+function syncGroundedJumpState() {
+  const targetGround = run.gravityFlip ? PLAYER_CEILING_Y : groundY - getPlayerHeight();
+  const closeToGround = run.gravityFlip
+    ? player.y <= targetGround + 4 && player.vy <= 20
+    : player.y >= targetGround - 4 && player.vy >= -20;
+  if (!closeToGround) return;
+  player.y = targetGround;
+  player.vy = 0;
+  player.jumpsUsed = 0;
 }
 
 function jumpVelocityCap(stats) {
@@ -6973,7 +7116,7 @@ function drawTasOverlay() {
     lines.push(`F ${tasState.frame} ${tasState.paused ? "PAUSE" : `x${tasSpeedMultiplier()}`}`);
     if (tasState.recording) lines.push("REC");
     if (tasState.playing) lines.push(`PLAY ${tasState.playbackFrame}/${tasState.inputFrames.length}`);
-    if (tasState.autoEnabled) lines.push(`AUTO ${tasAutoScenarioElapsedSeconds().toFixed(1)}s ${tasState.autoCurrentScenarioId || "wait"} miss:${tasState.autoMissCount}`);
+    if (tasState.autoEnabled) lines.push(`AUTO ${tasAutoScenarioElapsedSeconds().toFixed(1)}s ${tasState.autoCurrentScenarioId || "wait"} tracks:${tasState.autoTracks.length} miss:${tasState.autoMissCount}`);
   }
   if (debugSettings.tasShowKinematics) {
     lines.push(`P x:${player.x.toFixed(1)} y:${player.y.toFixed(1)} vy:${player.vy.toFixed(1)}`);
