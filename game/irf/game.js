@@ -13,6 +13,8 @@ const TAS_SITE_SAVE_LIMIT = 30;
 const LANGUAGE_MODE = document.documentElement.dataset.languageMode || "auto";
 const ADS_ENABLED = (document.documentElement.dataset.adMode || "reward") !== "none";
 const DEBUG_MODE = document.documentElement.dataset.debugMode === "true";
+const GAME_WIDTH = 790;
+const GAME_HEIGHT = 424;
 const MAX_JUMP_HOLD_SECONDS = 1;
 const MIN_JUMP_HOLD_SECONDS = 0.1;
 const BASE_JUMP_VELOCITY = 380;
@@ -745,9 +747,9 @@ let state = loadState();
 let activeTab = "upgrades";
 let factoryView = "coins";
 let equipmentView = "chests";
-let canvasWidth = 960;
-let canvasHeight = 420;
-let groundY = 340;
+let canvasWidth = GAME_WIDTH;
+let canvasHeight = GAME_HEIGHT;
+let groundY = GAME_HEIGHT - 62;
 let lastFrame = performance.now();
 let lastAnimationFrameAt = lastFrame;
 let gameClockMs = lastFrame;
@@ -3255,15 +3257,9 @@ function stopBgm() {
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-  canvas.width = Math.floor(rect.width * dpr);
-  canvas.height = Math.floor(rect.height * dpr);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  canvasWidth = rect.width;
-  canvasHeight = rect.height;
-  groundY = canvasHeight - 62;
-  if (!Number.isFinite(player.y) || player.y === 0) {
-    player.y = groundY - player.h;
-  }
+  canvas.width = Math.max(1, Math.round(rect.width * dpr));
+  canvas.height = Math.max(1, Math.round(rect.height * dpr));
+  ctx.setTransform(canvas.width / GAME_WIDTH, 0, 0, canvas.height / GAME_HEIGHT, 0, 0);
 }
 
 function loop(now) {
