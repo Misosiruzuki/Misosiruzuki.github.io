@@ -749,6 +749,7 @@ let canvasWidth = 960;
 let canvasHeight = 420;
 let groundY = 340;
 let lastFrame = performance.now();
+let lastAnimationFrameAt = lastFrame;
 let gameClockMs = lastFrame;
 let tasStepAccumulator = 0;
 let autosaveTimer = 0;
@@ -905,6 +906,7 @@ function init() {
   initDebugMode();
   logEvent("RUN START");
   maybeStartIntroGuide();
+  if (DEBUG_MODE) window.setInterval(runTasAnimationFallback, 50);
   requestAnimationFrame(loop);
 }
 
@@ -3265,7 +3267,14 @@ function resizeCanvas() {
 }
 
 function loop(now) {
-  const rawDt = Math.min(0.05, Math.max(0, (now - lastFrame) / 1000));
+  lastAnimationFrameAt = performance.now();
+  runLoopFrame(now);
+  requestAnimationFrame(loop);
+}
+
+function runLoopFrame(now) {
+  const elapsed = Math.max(0, (now - lastFrame) / 1000);
+  const rawDt = isTasEnabled() ? Math.min(1, elapsed) : Math.min(0.05, elapsed);
   lastFrame = now;
   if (isTasEnabled()) {
     updateTasFixedSteps(rawDt);
@@ -3275,8 +3284,12 @@ function loop(now) {
     update(rawDt);
   }
   draw();
+}
 
-  requestAnimationFrame(loop);
+function runTasAnimationFallback() {
+  const now = performance.now();
+  if (!isTasEnabled() || now - lastAnimationFrameAt < 100) return;
+  runLoopFrame(now);
 }
 
 function updateTasFixedSteps(rawDt) {
@@ -3945,7 +3958,7 @@ function updateFinalBossGimmick(boss, dt) {
   boss.gimmickTimer = (boss.gimmickTimer || 0.75) - dt;
 
   if (boss.bossGimmick === "slimeSplit" && boss.gimmickTimer <= 0) {
-    addBossEnemy("slime", boss, { x: boss.x - 18, y: groundY - 30, w: 28, h: 28, vx: bossSpeed(index, 44), color: "#75d05e" });
+    addBossEnemy("slime", boss, { x: boss.x - 64, y: groundY - 28, w: 26, h: 26, vx: bossSpeed(index, 64), color: "#75d05e" });
     boss.gimmickTimer = 1.35;
   }
 
@@ -4113,7 +4126,7 @@ const RUN_PATTERN_TEMPLATES = [
   {
     id: "stagger_wall",
     entries: [
-      { type: "hazard", role: "block", offset: 230 },
+      { type: "coins", offset: 230, count: 4, lane: "low" },
       { type: "hazard", role: "tall", offset: 620 },
       { type: "coins", offset: 800, count: 6, arc: true, lane: "mid" },
       { type: "item", offset: 1220, chance: 0.1 }
@@ -4229,7 +4242,7 @@ const RUN_EVENT_PATTERN_TEMPLATES = {
 function spawnSegment(stats) {
   const index = areaIndex();
   const area = areas[index] || currentArea();
-  const baseX = canvasWidth + random(40, 100);
+  const baseX = canvasWidth + 70;
   const pattern = pickRunPattern(index);
   spawnRunPattern(pattern, baseX, area, index);
   spawnEventPattern(run.event, pattern, baseX, area, index);
@@ -4426,12 +4439,13 @@ function spawnPatternHazard(kind, x, area, index, entry = {}) {
     return true;
   }
 
-  const height = kind === "spike" ? 42 : entry.role === "block" ? randomInt(8, 12) : randomInt(46, 70);
+  const isSlideBlock = entry.role === "block";
+  const height = kind === "spike" ? 42 : isSlideBlock ? 24 : randomInt(46, 70);
   objects.push({
     type: "obstacle",
     kind,
     x,
-    y: groundY - height,
+    y: isSlideBlock ? groundY - 56 : groundY - height,
     w: kind === "spike" ? 48 : 44,
     h: height,
     color: area.obstacle
@@ -4556,7 +4570,11 @@ function spawnObstacleOrEnemy(x, area) {
 
 function canSpawnHazardAt(x, gap = HAZARD_MIN_GAP, options = {}) {
   if (isGravityLandingSpawnBlocked(x, options.vx || 0, options.safeRadius || GRAVITY_LANDING_SAFE_RADIUS)) return false;
-  return !objects.some((obj) => isHazardObject(obj) && Math.abs(obj.x - x) < gap);
+  const conflicts = new Set(objects.filter((obj) => isHazardObject(obj) && Math.abs(obj.x - x) < gap));
+  if (conflicts.size > 0) {
+    objects = objects.filter((obj) => !conflicts.has(obj));
+  }
+  return true;
 }
 
 function isGravityLandingSpawnBlocked(x, hazardVx = 0, radius = GRAVITY_LANDING_SAFE_RADIUS) {
@@ -4838,6 +4856,8 @@ function switchBossPhase(boss, phase) {
   player.jumpsUsed = 0;
   if (phase === "attack") {
     clearBossAttackObjects();
+    boss.x = canvasWidth - 170;
+    boss.y = groundY - boss.h;
     run.bossPatternIndex = (run.bossPatternIndex + 1) % FINAL_BOSS_ATTACK_PATTERNS;
     boss.attackPattern = run.bossPatternIndex;
     run.bossModePulse = 0.85;
@@ -5154,10 +5174,12 @@ function spawnSlimeKingPattern(boss, pattern, volley) {
       });
     }
   } else if (pattern === 1) {
-    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 0), w: 46, h: 40, color: "#75d05e", vx: bossSpeed(0, 18) });
-    addBossEnemy("slime", boss, { x: bossSpawnX(boss, 92), w: 30, h: 30, vx: bossSpeed(0, 34) });
+    addBossObstacle("spike", boss, { x: bossSpawnX(boss, 0), w: 26, h: 40, color: "#75d05e", vx: bossSpeed(0, 38) });
+    addBossEnemy("slime", boss, { x: bossSpawnX(boss, 64), w: 30, h: 30, vx: bossSpeed(0, 48) });
   } else {
-    addBossEnemy("bird", boss, { x: bossSpawnX(boss, 20), y: groundY - 132 - (volley % 2) * 28, vx: bossSpeed(0, 22), color: "#a8ee78" });
+    if (volley < 2) {
+      addBossEnemy("bird", boss, { x: bossSpawnX(boss, 20), y: groundY - 132 - (volley % 2) * 28, vx: bossSpeed(0, 315), color: "#a8ee78" });
+    }
     addBossEnemy("slime", boss, { x: bossSpawnX(boss, 220), w: 32, h: 32, vx: bossSpeed(0, 38) });
   }
 }

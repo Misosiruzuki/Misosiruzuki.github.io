@@ -23,6 +23,14 @@ body {
   min-height: 100%;
 }
 
+html[data-debug-mode="true"] {
+  scrollbar-width: none;
+}
+
+html[data-debug-mode="true"]::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   margin: 0;
   background:
