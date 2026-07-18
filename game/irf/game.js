@@ -453,6 +453,7 @@ const staticI18n = {
   stockItem: { ja: "アイテム\nE", en: "Item\nE" },
   restart: { ja: "再走", en: "Restart" },
   save: { ja: "保存", en: "Save" },
+  home: { ja: "トップページへ", en: "Back to Home" },
   upgrades: { ja: "強化", en: "Upgrades" },
   factory: { ja: "工場", en: "Factory" },
   prestige: { ja: "転生", en: "Prestige" },

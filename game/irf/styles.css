@@ -322,6 +322,27 @@ button:disabled {
   gap: 12px;
 }
 
+.title-block {
+  min-width: 0;
+}
+
+.home-link {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: var(--cyan);
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.home-link:hover,
+.home-link:focus-visible {
+  color: #8eddf7;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .topbar h1 {
   margin: 0;
   font-size: clamp(1.25rem, 2.5vw, 2rem);
