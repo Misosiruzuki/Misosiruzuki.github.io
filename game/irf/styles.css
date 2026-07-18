@@ -7,8 +7,8 @@
   --text: #eef3f7;
   --muted: #9eaab8;
   --gold: #f2b84b;
-  --green: #4cc38a;
-  --cyan: #48bde7;
+  --success: #4cc38a;
+  --signal: #48bde7;
   --red: #ef6b65;
   --violet: #b98cff;
   --ink: #0c1014;
@@ -375,7 +375,7 @@ body.asset-scene-active .guide-overlay {
 .home-link {
   display: inline-block;
   margin-bottom: 7px;
-  color: var(--cyan);
+  color: var(--signal);
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 1.2;
@@ -693,7 +693,7 @@ body.asset-scene-active .guide-overlay {
 
 .filter-row button.active {
   color: var(--ink);
-  background: var(--cyan);
+  background: var(--signal);
   border-color: rgba(72, 189, 231, 0.9);
 }
 
@@ -762,7 +762,7 @@ body.asset-scene-active .guide-overlay {
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, var(--cyan), var(--green));
+  background: linear-gradient(90deg, var(--signal), var(--success));
 }
 
 .rarity-n { color: #c8d0da; }

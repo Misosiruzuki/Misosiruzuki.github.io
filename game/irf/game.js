@@ -90,19 +90,19 @@ const permanentDefs = [
 ];
 
 const researchDefs = [
-  { id: "sandBreaker", sourceAreaIndex: 0, name: "粘液コアブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力が少しずつ上がります。", effect: (lv) => lv ? `範囲 ${sandBreakerRange(lv)}px / 対ボス ${sandBreakerBossDamage(lv)} ダメージ` : "未解放" },
-  { id: "frostInsulation", sourceAreaIndex: 1, name: "凍結対策", base: 160, growth: 1.58, description: "砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
-  { id: "heatPlating", sourceAreaIndex: 2, name: "灼熱対策", base: 220, growth: 1.6, description: "雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
-  { id: "shieldPiercer", sourceAreaIndex: 3, name: "シールド解析", base: 300, growth: 1.62, description: "火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
-  { id: "gravityAnchor", sourceAreaIndex: 4, name: "巨兵アンカー", base: 420, growth: 1.65, active: true, cooldown: 22, description: "未来都市ボスの脚部固定杭を再現します。発動中だけ重力反転波を受け流しますが、Lv5でも持続は短めです。", effect: (lv) => lv ? `重力固定 ${(0.35 + lv * 0.09).toFixed(2)}s` : "未解放" },
-  { id: "voidTether", sourceAreaIndex: 5, name: "虚空テザー", base: 580, growth: 1.68, description: "宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", effect: (lv) => `吸引軽減 +${lv * 2}%` },
-  { id: "aetherSeal", sourceAreaIndex: 6, name: "神気封印", base: 820, growth: 1.7, description: "ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", effect: (lv) => `再生遅延 +${(lv * 0.12).toFixed(2)}s` },
-  { id: "phaseAnchor", sourceAreaIndex: 7, name: "位相ピン", base: 1150, growth: 1.72, active: true, cooldown: 24, description: "神界ボスの光杭を模した位相固定スキルです。発動中だけ位相化を短く止め、Lv5でも一瞬の攻撃機会を作る程度です。", effect: (lv) => lv ? `位相固定 ${(0.3 + lv * 0.08).toFixed(2)}s` : "未解放" }
+  { id: "sandBreaker", sourceAreaIndex: 0, name: "粘液コアブレイク", base: 120, growth: 1.55, active: true, cooldown: 20, description: "草原の増殖ゲル群体から回収した核を圧縮した近距離破砕モジュールです。砂潜り搬送機の砂装甲に特効があり、発動時は範囲内の敵すべてへ衝撃を与えます。通常敵には1ダメージ、最終管理機には装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力だけが少しずつ上がります。", effect: (lv) => lv ? `範囲 ${sandBreakerRange(lv)}px / 対管理機 ${sandBreakerBossDamage(lv)} ダメージ` : "未解放" },
+  { id: "frostInsulation", sourceAreaIndex: 1, name: "凍結対策", base: 160, growth: 1.58, description: "砂潜り搬送機の放熱器官を応用し、凍結炉心が放つ凍結オーラの持続をわずかに短くします。", effect: (lv) => `凍結時間 -${lv * 2}%` },
+  { id: "heatPlating", sourceAreaIndex: 2, name: "灼熱対策", base: 220, growth: 1.6, description: "凍結炉心の冷却コアから耐熱装甲を作り、熔鉱巨体による追加ダメージを低確率で抑えます。", effect: (lv) => `灼熱軽減 ${lv * 2}%` },
+  { id: "shieldPiercer", sourceAreaIndex: 3, name: "シールド解析", base: 300, growth: 1.62, description: "熔鉱巨体の硬質外殻を解析し、区画封鎖機と未来都市の敵が持つエネルギー盾を少しだけ貫通しやすくします。", effect: (lv) => `盾対策 +${lv * 2}%` },
+  { id: "gravityAnchor", sourceAreaIndex: 4, name: "巨兵アンカー", base: 420, growth: 1.65, active: true, cooldown: 22, description: "区画封鎖機の脚部固定杭を再現します。発動中だけ星間航路竜の重力反転波を受け流しますが、Lv5でも持続は短めです。", effect: (lv) => lv ? `重力固定 ${(0.35 + lv * 0.09).toFixed(2)}s` : "未解放" },
+  { id: "voidTether", sourceAreaIndex: 5, name: "虚空テザー", base: 580, growth: 1.68, description: "星間航路竜の軌道データを使い、虚空推進炉とブラックホールの敵による吸引をほんの少し弱めます。", effect: (lv) => `吸引軽減 +${lv * 2}%` },
+  { id: "aetherSeal", sourceAreaIndex: 6, name: "再生粒子封止", base: 820, growth: 1.7, description: "虚空推進炉の特異点残滓で、天上保守主と神界の敵が使う保守粒子の再生間隔をわずかに遅らせます。", effect: (lv) => `再生遅延 +${(lv * 0.12).toFixed(2)}s` },
+  { id: "phaseAnchor", sourceAreaIndex: 7, name: "位相ピン", base: 1150, growth: 1.72, active: true, cooldown: 24, description: "天上保守主の光杭を模した位相固定モジュールです。発動中だけ無限接続門の位相化を短く止め、Lv5でも一瞬の保守機会を作る程度です。", effect: (lv) => lv ? `位相固定 ${(0.3 + lv * 0.08).toFixed(2)}s` : "未解放" }
 ];
 
 const areas = [
   { name: "草原", line: "Grassland Line", start: 0, runDistance: 1590, sky: ["#81c7e8", "#d6f3ff"], ground: "#61a64f", accent: "#f2cf5a", obstacle: "#8a6a45" },
-  { name: "砂漠", line: "Dune Engine", start: 1690, runDistance: 1610, sky: ["#f1c274", "#ffe7a8"], ground: "#c78942", accent: "#5cb8b2", obstacle: "#9c6a32" },
+  { name: "砂漠", line: "Dune Engine", start: 1690, runDistance: 1610, sky: ["#f1c274", "#ffe7a8"], ground: "#c78942", accent: "#b66f3f", obstacle: "#9c6a32" },
   { name: "雪山", line: "Frost Conveyor", start: 3400, runDistance: 1630, sky: ["#9bbbe0", "#f4fbff"], ground: "#d9ecf7", accent: "#48bde7", obstacle: "#60798d" },
   { name: "火山", line: "Lava Belt", start: 5130, runDistance: 1640, sky: ["#4a2530", "#d45d43"], ground: "#53312d", accent: "#ffb238", obstacle: "#2d2527" },
   { name: "未来都市", line: "Neon Loop", start: 6870, runDistance: 1660, sky: ["#17213b", "#246c9d"], ground: "#2c3948", accent: "#7af0d2", obstacle: "#5461b9" },
@@ -132,127 +132,174 @@ const bossGimmicks = [
   { id: "laserGrid", name: "レーザー格子" },
   { id: "gravitySurge", name: "重力反転波" },
   { id: "singularity", name: "特異点吸引" },
-  { id: "aetherRegen", name: "神気再生" },
+  { id: "aetherRegen", name: "保守粒子再生" },
   { id: "infinitePhase", name: "無限位相" }
 ];
 
-const bossSoulModes = [
-  { id: "red", name: "Red Core", color: "#ef5f6b", rule: "通常操作と警告攻撃" },
-  { id: "cyan", name: "Patience Field", color: "#65d6ff", rule: "水色攻撃は動かず耐える" },
-  { id: "orange", name: "Bravery Drive", color: "#ff9f3d", rule: "橙攻撃は動いて突破する" },
-  { id: "blue", name: "Integrity Gravity", color: "#4f8cff", rule: "重力方向が切り替わる" },
-  { id: "purple", name: "Perseverance Rails", color: "#b98cff", rule: "上下レーンだけを移動する" },
-  { id: "green", name: "Kindness Shield", color: "#60d878", rule: "方向入力で攻撃を受け止める" },
-  { id: "yellow", name: "Justice Shot", color: "#f2d24b", rule: "Dキーで弾を撃つ" },
-  { id: "dual", name: "Split Core", color: "#65d6ff", rule: "本体と反転残像を同時に守る" },
-  { id: "rainbow", name: "Rainbow Cycle", color: "#ffffff", rule: "攻撃ごとにルールが変わる" }
+const bossCombatProtocols = [
+  { id: "baseline", name: "Baseline Scan", jaName: "基準走査", color: "#d7a44a", rule: "通常走行のまま警告信号を読む" },
+  { id: "seismicCalibration", name: "Seismic Calibration", jaName: "地盤校正", color: "#9a7652", rule: "検査波の通過時に機体を安定させる" },
+  { id: "coolantFlow", name: "Coolant Flow Audit", jaName: "冷媒循環検査", color: "#c96f86", rule: "検査波の通過時に機体を動作させる" },
+  { id: "polarityShift", name: "Polarity Shift", jaName: "極性切替", color: "#2e9b8f", rule: "天井と床の磁気極性が切り替わる" },
+  { id: "conveyorLanes", name: "Conveyor Routing", jaName: "搬送レーン制御", color: "#c9a227", rule: "3本の搬送レーンを上下に切り替える" },
+  { id: "deflectorArray", name: "Deflector Array", jaName: "偏向板制御", color: "#7668a9", rule: "飛来方向へ偏向板を向ける" },
+  { id: "pulseCannon", name: "Pulse Link", jaName: "パルス砲接続", color: "#9ab8c2", rule: "Dキーで整備パルスを発射する" },
+  { id: "echoRelay", name: "Echo Relay", jaName: "残像中継", color: "#d4a06f", rule: "本体と反転投影の両方を保護する" },
+  { id: "protocolCycle", name: "Archive Sequencer", jaName: "記録再生機構", color: "#b8b1a3", rule: "攻撃工程ごとに過去の制御記録を再生する" }
 ];
+
+const combatProtocolGuideDefs = {
+  baseline: {
+    title: { ja: "制御プロトコル: 基準走査", en: "Control Protocol: Baseline Scan" },
+    text: { ja: "走行操作は通常どおりです。床や空中に出る予告信号から、次に流れる攻撃の高さと順番を読み取ってください。", en: "Running controls remain normal. Read the warning signals on the floor and in the air to judge the height and order of incoming attacks." }
+  },
+  seismicCalibration: {
+    title: { ja: "制御プロトコル: 地盤校正", en: "Control Protocol: Seismic Calibration" },
+    text: { ja: "地盤検査波は接触した瞬間の機体振動を測ります。ジャンプ、スライド、ダッシュを止め、地面で完全に安定している時だけ校正を通過できます。", en: "The survey wave measures chassis vibration on contact. Stop jumping, sliding, and dashing; calibration passes only while the robot is fully stable on the ground." }
+  },
+  coolantFlow: {
+    title: { ja: "制御プロトコル: 冷媒循環検査", en: "Control Protocol: Coolant Flow Audit" },
+    text: { ja: "冷媒検査波は作動中の機構だけを正常と判定します。接触時にジャンプ、スライド、ダッシュのいずれかを続け、機体の循環を止めないでください。", en: "The coolant audit accepts only an active mechanism. Keep jumping, sliding, or dashing when the wave reaches you so the robot's circulation does not stall." }
+  },
+  polarityShift: {
+    title: { ja: "制御プロトコル: 極性切替", en: "Control Protocol: Polarity Shift" },
+    text: { ja: "磁気搬送路の極性が周期的に反転し、床と天井が入れ替わります。ロボットの向きと落下方向も同時に変わるため、次の着地点まで確認してください。", en: "The magnetic route reverses polarity, swapping floor and ceiling. The robot's orientation and fall direction change together, so track the next landing point." }
+  },
+  conveyorLanes: {
+    title: { ja: "制御プロトコル: 搬送レーン制御", en: "Control Protocol: Conveyor Routing" },
+    text: { ja: "自由なジャンプの代わりに3本の搬送レーンへ固定されます。Spaceまたは↑で上のレーン、↓で下のレーンへ移動します。DとQは通常どおり使用できます。", en: "Three fixed conveyor lanes replace free jumping. Use Space or Up to move one lane upward and Down to move one lane downward. D and Q remain available." }
+  },
+  deflectorArray: {
+    title: { ja: "制御プロトコル: 偏向板制御", en: "Control Protocol: Deflector Array" },
+    text: { ja: "飛来物には上・中央・下の方向信号があります。接触時に↑、無入力、↓を対応させると偏向できます。信号と違う向きでは防げません。", en: "Incoming objects carry high, center, or low direction signals. Match them with Up, no direction, or Down on contact to deflect them. A mismatched direction will not block the hit." }
+  },
+  pulseCannon: {
+    title: { ja: "制御プロトコル: パルス砲接続", en: "Control Protocol: Pulse Link" },
+    text: { ja: "保守機のD入力が短射程の整備パルスへ接続されます。パルスは飛来物を消去し、攻撃工程中でも最終管理機へ届きます。研究スキルをセットしている場合は、対応する保守認証ゲートの近くで同時に発動します。", en: "The maintenance unit's D input connects to a short-range service pulse. It clears incoming objects and can reach the final controller during an attack phase. A selected research module also activates near its matching maintenance gate." }
+  },
+  echoRelay: {
+    title: { ja: "制御プロトコル: 残像中継", en: "Control Protocol: Echo Relay" },
+    text: { ja: "保守記録から上下反転した投影体が生成されます。攻撃工程中は本体と投影体のどちらに障害物が触れてもダメージになるため、2つの位置を同時に確認してください。", en: "A vertically mirrored projection is generated from the maintenance log. During attacks, a collision with either the robot or its projection deals damage, so track both positions." }
+  },
+  protocolCycle: {
+    title: { ja: "制御プロトコル: 記録再生機構", en: "Control Protocol: Archive Sequencer" },
+    text: { ja: "無限門は復旧済みラインの制御記録を攻撃工程ごとに読み替えます。画面上部のプロトコル名を確認し、以前に学んだ操作へ切り替えてください。", en: "The Infinite Gate replays restored line-control records on each attack phase. Check the protocol name at the top of the screen and switch to the operation learned earlier." }
+  }
+};
 
 const bossGuideDefs = [
   {
-    title: { ja: "最終ボス: Slime King", en: "Final Boss: Slime King" },
+    title: { ja: "最終管理機: 増殖ゲル群体", en: "Final Controller: Slime King" },
     text: {
-      ja: "工場排液から生まれた増殖ゲルの王です。攻撃のたびに粘液片を分裂させ、踏める位置へ近づく前にも小さな分裂体で足場を乱します。赤い核は通常操作のまま警告攻撃を読む力を試します。核が固まりきらないため、体の一部が勝手に走り出します。",
-      en: "A king born from runaway factory gel. It sheds split bodies between attack phases before moving close. Its red core keeps normal controls and tests how well you read warning attacks. Its core never fully stabilizes, so pieces of it keep running on their own."
+      ja: "草原ラインの浄化槽で、工場排液を処理する増殖ゲルが制御を失って生まれた群体です。攻撃工程では粘液片を分裂させ、警告信号の間へ小型分裂体を流し込みます。固まりきらない核が分裂と再結合を繰り返すため、王のような一体に見えても全身が別々に動きます。",
+      en: "A colony born when the Grassland Line's self-replicating waste-treatment gel escaped control. It sheds smaller bodies into the gaps between warning signals during each attack phase. Its unstable core constantly splits and recombines, so the body only appears to be a single king."
     }
   },
   {
-    title: { ja: "最終ボス: Sand Wyrm", en: "Final Boss: Sand Wyrm" },
+    title: { ja: "最終管理機: 砂潜り搬送機", en: "Final Controller: Sand Wyrm" },
     text: {
-      ja: "砂漠の地下搬送ドリルが野生化した機械竜です。攻撃中は砂の下へ潜って位置をずらし、砂柱や埋設物を押し出します。水色の砂紋は、動かず待つ判断を要求します。熱を逃がすために地中を循環する構造が、そのまま戦闘行動になっています。",
-      en: "A feral transport drill from beneath the dunes. During attacks it burrows, shifts position, and pushes sand spikes and buried debris forward. Its cyan sand rings demand moments of patience. Its cooling route became its combat pattern."
+      ja: "砂漠ラインの地下貨物管を掘り直していた自律搬送ドリルです。過熱を避けるため地中を循環する古い制御が暴走し、砂柱、埋設貨物、通常の地表障害をまとめて押し出します。地盤校正装置は周囲の振動を検査波へ変え、通過する機械を貨物か侵入者か判別しようとします。",
+      en: "An autonomous transport drill once used to reopen the Desert Line's buried freight tubes. Its old cooling loop now runs out of control, pushing sand columns, buried cargo, and ordinary surface hazards forward. Its seismic calibrator turns ground vibration into inspection waves to classify passing machines as cargo or intruders."
     }
   },
   {
-    title: { ja: "最終ボス: Frost Core", en: "Final Boss: Frost Core" },
+    title: { ja: "最終管理機: 凍結炉心", en: "Final Controller: Frost Core" },
     text: {
-      ja: "雪山基地の冷却炉心が自律防衛化した存在です。攻撃中は冷気で動きを鈍らせ、氷塊を生成して進路を狭めます。橙の冷却壁は、止まらず動いて突破する勇気を要求します。炉心保護用の冷媒が過剰循環し、周囲を監獄のように凍らせます。",
-      en: "An autonomous cooling core from a mountain base. It slows the field and forms ice blocks that narrow the route. Its orange coolant walls reward active movement through danger. Its overcirculating coolant turns defense into a frozen prison."
+      ja: "雪山ライン全体へ冷媒を送っていた自律冷却炉心です。破損した温度管理が周囲の機械を熱源として扱い、冷気で動きを鈍らせながら氷塊で搬送路を狭めます。冷媒循環検査は停止した機構を凍結対象として記録する、基地保護用の古い診断工程です。",
+      en: "An autonomous cooling core that once supplied refrigerant across the Snow Mountain Line. Its damaged thermal control treats nearby machines as heat sources, slowing them with cold while ice blocks narrow the route. Its coolant-flow audit is an old base-defense diagnostic that marks stalled mechanisms for freezing."
     }
   },
   {
-    title: { ja: "最終ボス: Lava Golem", en: "Final Boss: Lava Golem" },
+    title: { ja: "最終管理機: 熔鉱巨体", en: "Final Controller: Lava Golem" },
     text: {
-      ja: "火山の精錬炉に残った鉱石が歩き出した巨体です。攻撃中は溶岩弾と焼けた岩を連続で吐き出し、地面近くの圧力も上げます。青い炉心は重力方向を切り替え、足場感覚そのものを崩します。炉内の余熱が逃げ場を失い、噴石としてあふれます。",
-      en: "A giant mass of ore awakened inside a volcanic smelter. It spits lava shots and heated rock in chains while pressure builds near the ground. Its blue furnace core shifts gravity and breaks your footing. Trapped furnace heat erupts as projectiles."
+      ja: "火山ラインの磁気精錬炉で、溶け残った鉱石と搬送磁石が一体化した巨体です。逃げ場を失った余熱を溶岩弾と焼けた岩として排出し、磁気搬送路の極性まで反転させます。天井と床を交互に使う工程は、鉱石を炉内で均等に焼くための機能でした。",
+      en: "A giant formed when unmelted ore fused with the Volcano Line's magnetic smelter conveyors. It vents trapped heat as lava shots and scorched rock while reversing the route's magnetic polarity. Alternating floor and ceiling was once a process for heating ore evenly inside the furnace."
     }
   },
   {
-    title: { ja: "最終ボス: Giant Robot", en: "Final Boss: Giant Robot" },
+    title: { ja: "最終管理機: 区画封鎖機", en: "Final Controller: Giant Robot" },
     text: {
-      ja: "未来都市を守る旧式警備機です。攻撃中はレーザー格子とシールドを交互に展開し、近づく瞬間だけ装甲姿勢を崩します。紫の保安レールは、自由なジャンプではなく上下レーン移動へ操作を変えます。都市封鎖用の防犯網が壊れたまま、自分自身を区画の一部として守っています。",
-      en: "An old security machine guarding the future city. It alternates laser grids and shields, dropping its stance only when it advances. Its purple security rails replace free jumping with lane switching. The broken lockdown network treats the machine as part of the city wall."
+      ja: "未来都市ラインの区画封鎖を担当していた旧式警備機です。レーザー格子と再充電式シールドを展開し、侵入物を3本の貨物レーンへ強制的に仕分けます。都市の防犯網が壊れた後も、自分を閉鎖区画の一部として登録したまま、通過する機械を誤配送品として排除します。",
+      en: "An old security machine once responsible for locking down the Future City Line. It deploys laser grids and rechargeable shields while sorting intruders onto three freight lanes. Even after the security network failed, it remained registered as part of the sealed district and rejects passing machines as misrouted cargo."
     }
   },
   {
-    title: { ja: "最終ボス: Star Dragon", en: "Final Boss: Star Dragon" },
+    title: { ja: "最終管理機: 星間航路竜", en: "Final Controller: Star Dragon" },
     text: {
-      ja: "宇宙航路の重力帆から生まれた竜型AIです。攻撃中は軌道上の敵影と隕石を組み合わせ、重力方向を揺さぶります。緑の防衛帆は、入力方向で攻撃を受け止める盾操作を要求します。星間風を読む帆が乱れ、周囲の上下感覚まで航路補正しようとします。",
-      en: "A dragon-shaped AI grown from orbital gravity sails. It mixes orbital enemies with meteor paths and shakes local gravity. Its green defense sails demand directional shielding. Its star-wind sails try to correct even your sense of up and down."
+      ja: "宇宙ラインの重力帆を束ねるうち、長い船体を竜のように変形させた航路AIです。軌道上の監視機と隕石を同じ交通流として扱い、偏向板で衝突方向を制御します。星間風を読む帆が故障し、保守機まで進路修正対象として航路へ押し戻そうとします。",
+      en: "A route AI that took on a dragon-like hull while linking the Space Line's gravity sails. It treats orbital sentries and meteors as one traffic stream and uses deflector plates to control impact direction. Its star-wind sensors have failed, so it tries to steer even the maintenance unit back onto its assigned route."
     }
   },
   {
-    title: { ja: "最終ボス: Void Engine", en: "Final Boss: Void Engine" },
+    title: { ja: "最終管理機: 虚空推進炉", en: "Final Controller: Void Engine" },
     text: {
-      ja: "ブラックホール縁辺で稼働し続ける古い推進炉です。攻撃中は特異点の吸引で位置を乱し、引き寄せた破片を弾幕に変えます。黄色い照準核の間は、Dキーで弾を撃ち、飛来物や本体へ反撃できます。失われた航路を探し続けるため、空間そのものを燃料のように吸い込みます。",
-      en: "An ancient engine still running at a black-hole rim. It pulls at your position and turns captured fragments into barrages. Its yellow targeting core lets D fire shots at debris and the engine. Searching for a lost route, it burns space itself like fuel."
+      ja: "ブラックホール縁辺で失われた貨物航路を探し続ける古い推進炉です。特異点の吸引で集めた破片を燃料と弾幕の両方に使います。外部保守用のパルス接続口まで攻撃工程へ組み込まれ、近づく機械へ整備権限を一時的に渡してから、その出力を耐久試験に利用します。",
+      en: "An ancient drive still searching for a lost freight route at the edge of a black hole. It uses debris gathered by its singularity as both fuel and ammunition. Even its external service-pulse port has become part of the attack cycle, briefly granting maintenance access before using that output as a stress test."
     }
   },
   {
-    title: { ja: "最終ボス: Aether Lord", en: "Final Boss: Aether Lord" },
+    title: { ja: "最終管理機: 天上保守主", en: "Final Controller: Aether Lord" },
     text: {
-      ja: "神界の保守プログラムが人格を得た管理者です。攻撃中は光杭と再生処理を重ね、傷ついた自分を神気で巻き戻します。青赤分割核は、プレイヤー本体と上下反転した残像の両方を守る戦いに変えます。壊れた世界を修復する使命が、自身の損傷も修理対象として扱っています。",
-      en: "A maintenance program from the aether realm that gained a will. It layers light pillars with regeneration, rewinding damage with aether. Its split core makes you protect both the player and a vertically mirrored echo. Its repair mandate treats itself as part of the world to fix."
+      ja: "神界ラインの保守プログラムが、長い無人稼働の末に人格を得た管理者です。光杭と再生処理を重ね、損傷した自分自身まで修理対象として巻き戻します。残像中継は作業機を上下2系統から監視する安全装置でしたが、今は片方の異常を両方の故障として処理します。",
+      en: "A maintenance program from the Aether Line that developed a will after operating alone for ages. It layers light pylons with restoration routines and rewinds even its own damage as a repair target. The echo relay once monitored workers from two vertical channels, but now treats a fault in either image as a failure of both."
     }
   },
   {
-    title: { ja: "最終ボス: Infinity Gate", en: "Final Boss: Infinity Gate" },
+    title: { ja: "最終管理機: 無限接続門", en: "Final Controller: Infinity Gate" },
     text: {
-      ja: "無限空間を折りたたむ門そのものです。攻撃中は位相を点滅させ、複数の座標から異なる弾幕を重ねます。虹色の中核は、攻撃パターンごとに過去のソウルルールを切り替えます。無限の距離を短く畳む機構が暴走し、同じ瞬間を何度も重ねます。",
-      en: "The gate that folds infinite space. It flickers through phases and stacks barrages from several coordinates. Its rainbow core switches between earlier soul rules on each attack pattern. Its mechanism for folding infinite distance has begun layering the same moment repeatedly."
+      ja: "9本の生産ラインを一つの無限距離へ接続する門そのものです。位相を点滅させ、複数座標の攻撃を同じ時間へ重ねます。記録再生機構には復旧してきた各ラインの制御工程が保存されており、門はそれらを順不同の耐久試験として再実行します。距離を折りたたむ装置の暴走が、過去の工程まで現在へ重ねています。",
+      en: "The gate that joins all nine production lines into one infinite route. It flickers through phases and layers attacks from multiple coordinates into the same moment. Its archive sequencer stores the control processes of every restored line and replays them as an unordered stress test. A mechanism meant to fold distance is now folding past procedures into the present."
     }
   }
 ];
 
 const introGuideSteps = [
   {
+    target: ".title-block",
+    title: { ja: "任務: 無限生産網の再起動", en: "Mission: Restart the Infinite Network" },
+    text: {
+      ja: "旧世界の無限生産網は事故で9本のラインに分断されました。小型保守機K-0は、停止した工場を再起動し、各ラインを封鎖する管理機を解除するために走ります。",
+      en: "An accident split the old Infinite Production Network into nine isolated lines. K-0, a compact maintenance unit, runs to restart dormant factories and release the control machines sealing each route."
+    }
+  },
+  {
     target: ".canvas-frame",
     title: { ja: "ラン画面", en: "Run Field" },
     text: {
-      ja: "ロボットは自動で前へ走ります。コインを集め、障害物を避けながら距離を伸ばしましょう。",
-      en: "Your robot runs forward automatically. Collect coins, avoid hazards, and push the distance farther."
+      ja: "K-0は保守経路を自動で前進します。散らばった整備コインを回収し、壊れた設備や暴走機を避けながら、次のライン中枢を目指します。",
+      en: "K-0 advances automatically along the maintenance route. Recover scattered service coins, avoid broken machinery and rogue units, and reach the next line control center."
     }
   },
   {
     target: ".command-row",
     title: { ja: "操作", en: "Controls" },
     text: {
-      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓で最大14フレーム続き、キーやボタンを離すと途中で解除できます。スキルはDで使い、Qで解放順に切り替えます。拾った特殊アイテムは1個だけストックされ、Eで使えます。",
-      en: "Hold Space/↑ to jump farther. Down starts a slide lasting up to 14 frames; release it to cancel early. Use the selected skill with D and cycle unlocked skills with Q. Picked special items stock one at a time and can be used with E."
+      ja: "PCではSpace/↑長押しでジャンプ距離を伸ばし、↓長押しで最大14フレームのスライドを行います。スマホでは画面を上へスワイプまたはタップでジャンプ、下へスワイプでスライドします。Dで研究スキル、Qで切替、Eでストックアイテムを使います。",
+      en: "On PC, hold Space/Up to extend a jump and hold Down to slide for up to 14 frames. On touch screens, swipe up or tap the field to jump and swipe down to slide. D uses a research skill, Q cycles skills, and E uses the stocked item."
     }
   },
   {
     target: ".hud-grid",
     title: { ja: "ラン情報", en: "Run Stats" },
     text: {
-      ja: "距離、HP、倍率を見ながら走ります。HPが0になるとラン終了です。",
-      en: "Watch distance, HP, and multiplier while running. The run ends when HP reaches 0."
+      ja: "距離、HP、コンボ倍率を確認しながら走ります。HPが0になると一時撤退し、そのランで得た一時効果は失われます。奥のラインほど設備出力が高く、3エリア進むごとに接触ダメージも1ずつ増えます。",
+      en: "Track distance, HP, and combo multiplier while running. At 0 HP, K-0 withdraws and temporary run effects are lost. Equipment output rises deeper in the network, and contact damage increases by 1 every three areas."
     }
   },
   {
     target: ".resource-strip",
     title: { ja: "資源", en: "Resources" },
     text: {
-      ja: "コインは強化に、宝石と研究ポイントは後半の育成に使います。少しずつできることが増えます。",
-      en: "Coins buy upgrades. Gems and research points support later growth. More systems unlock over time."
+      ja: "COINは設備の整備券、GEMは高密度結晶、LABは回収した設計データです。PRはライン中枢の再起動で得る恒久部品です。進行に応じて工場、装備、研究が接続されます。",
+      en: "COIN is a service token, GEM is a high-density crystal, and LAB is recovered design data. PR is permanent hardware recovered by rebooting the line core. Factories, equipment, and research connect as the network is restored."
     }
   },
   {
     target: ".side-panel",
     title: { ja: "育成メニュー", en: "Growth Menus" },
     text: {
-      ja: "右側で強化、工場、装備、任務、研究を管理します。短いランを重ねるほど成長します。",
-      en: "Manage upgrades, factories, equipment, missions, and research here. Short runs steadily build long-term power."
+      ja: "右側で機体強化、再稼働した工場、装備、復旧任務、研究を管理します。工場はゲームを閉じている間も最大8時間生産し、短いランの回収物も長期成長へつながります。",
+      en: "Manage chassis upgrades, restored factories, equipment, recovery missions, and research here. Factories produce for up to eight hours while the game is closed, so every short run contributes to long-term growth."
     }
   },
   {
@@ -267,94 +314,232 @@ const introGuideSteps = [
 
 const hazardGuideDefs = {
   crate: {
-    title: { ja: "箱型障害物", en: "Crate Hazard" },
-    text: { ja: "低めの障害物です。ジャンプで越えましょう。無敵中なら壊せることもあります。", en: "A low obstacle. Jump over it; invincible effects can sometimes smash through." }
+    title: { ja: "放置された貨物箱", en: "Abandoned Cargo Crate" },
+    text: { ja: "搬送停止時に経路へ残された低い貨物箱です。ジャンプで越えられ、無敵またはダッシュ中は衝突して破砕できます。", en: "A low freight crate left behind when the conveyor stopped. Jump over it, or smash through while invincible or dashing." }
   },
   spike: {
-    title: { ja: "トゲ", en: "Spikes" },
-    text: { ja: "触れるとダメージを受けます。早めのジャンプで越えるのが基本です。", en: "Touching these hurts. A clean early jump is the safest answer." }
+    title: { ja: "破損した固定杭", en: "Broken Anchor Spikes" },
+    text: { ja: "床から露出した搬送路の固定杭です。触れるとダメージを受けるため、余裕を持ってジャンプしてください。", en: "Conveyor anchors exposed through the floor. Contact deals damage, so begin the jump with room to spare." }
   },
   laser: {
-    title: { ja: "レーザー", en: "Laser" },
-    text: { ja: "高い位置まで伸びる障害物です。スライドでくぐるタイミングを覚えましょう。", en: "A tall hazard. Learn the timing and slide under it." }
+    title: { ja: "誤作動した検査レーザー", en: "Faulty Inspection Laser" },
+    text: { ja: "貨物検査用の高いレーザーが保守機まで異常品と判定しています。↓を押してスライドし、照射部の下を通過してください。", en: "A tall cargo scanner now classifies the maintenance unit as defective. Hold Down to slide beneath its beam." }
   },
   slime: {
-    title: { ja: "スライム", en: "Slime" },
-    text: { ja: "小さな敵です。上から踏むと倒せますが、横から触れるとダメージになります。", en: "A small enemy. Stomp from above to defeat it; side contact hurts." }
+    title: { ja: "清掃ゲル", en: "Cleaning Gel" },
+    text: { ja: "排液処理用ゲルが小型作業機を取り込んだ姿です。上面へ着地すると核を停止できますが、側面接触はダメージになります。", en: "Waste-treatment gel that absorbed a small work unit. Landing on top shuts down its core, while side contact deals damage." }
   },
   bird: {
-    title: { ja: "空中の敵", en: "Flying Enemy" },
-    text: { ja: "空中を飛ぶ敵です。高さを見てジャンプするか、くぐって避けましょう。", en: "A flying enemy. Read its height, then jump or duck underneath." }
+    title: { ja: "巡回ドローン", en: "Patrol Drone" },
+    text: { ja: "停止命令を受け取れず空中巡回を続ける旧式ドローンです。飛行高度を見て、上を越えるか下をくぐるか判断してください。", en: "An old patrol drone still flying because it never received the shutdown order. Read its altitude and choose whether to pass above or below." }
   },
   bomb: {
-    title: { ja: "爆弾", en: "Bomb" },
-    text: { ja: "接触が危険な敵です。無理に踏まず、余裕を持って避ける判断も大切です。", en: "A risky enemy. Do not force a stomp; giving it space is often wiser." }
+    title: { ja: "過圧タンク", en: "Overpressure Tank" },
+    text: { ja: "内部圧力が限界に達した移送タンクです。踏みつけ位置が狭く側面接触も危険なため、無理に停止させず避ける方が安全です。", en: "A transfer tank at critical internal pressure. Its stomp window is narrow and side contact is dangerous, so avoiding it is often safer." }
   },
   meteor: {
-    title: { ja: "落下物", en: "Falling Hazard" },
-    text: { ja: "上から落ちてくる攻撃です。足元だけでなく、上方向の動きも見て避けましょう。", en: "This attack drops from above. Watch vertical motion, not just the ground line." }
+    title: { ja: "高速搬送破片", en: "High-Speed Route Debris" },
+    text: { ja: "上空の搬送管や軌道から外れた破片です。斜めに落下する場合と空中を横切る場合があるため、足元だけでなく進行方向全体を確認してください。", en: "Debris dislodged from overhead freight tubes or orbital routes. It may fall diagonally or cross the air, so watch the full path ahead rather than only the floor." }
   }
 };
 
 const itemGuideDefs = {
   dash: {
-    title: { ja: "特殊アイテム: ダッシュ", en: "Special Item: Dash" },
-    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。一定時間だけ高速で走り、接触にも強くなります。", en: "Picking this stores one item. Use it with E or the item button. It temporarily boosts speed and contact strength." }
+    title: { ja: "補助モジュール: オーバークロック", en: "Support Module: Overclock" },
+    text: { ja: "最後に拾った補助モジュール1個だけを保持し、Eまたはアイテムボタンで使用します。2.5秒間、走行速度が1.9倍になり、接触ダメージを受けず障害物を破砕します。新しいモジュールを拾うと古いものは置き換わります。", en: "Only the most recently collected support module is stored; use it with E or the item button. For 2.5 seconds, speed is multiplied by 1.9, contact damage is blocked, and obstacles are smashed. A new module replaces the old one." }
   },
   shield: {
-    title: { ja: "特殊アイテム: 無敵", en: "Special Item: Invincible" },
-    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。短い間ダメージを受けにくくなります。", en: "Picking this stores one item. Use it with E or the item button. It briefly protects you from damage." }
+    title: { ja: "補助モジュール: 緊急シールド", en: "Support Module: Emergency Shield" },
+    text: { ja: "Eまたはアイテムボタンで起動すると3秒間、通常の接触ダメージを完全に防ぎます。保守認証ゲートの検査だけはシールドを無視します。新しいモジュールを拾うとストックは置き換わります。", en: "Activate it with E or the item button to block normal contact damage for 3 seconds. Maintenance-gate checks ignore the shield. Collecting a new module replaces the stored one." }
   },
   giant: {
-    title: { ja: "特殊アイテム: 巨大化", en: "Special Item: Giant" },
-    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。ロボットが大きくなり、当たりも強くなります。", en: "Picking this stores one item. Use it with E or the item button. Your robot grows larger and stronger." }
+    title: { ja: "補助モジュール: 重作業フレーム", en: "Support Module: Heavy Work Frame" },
+    text: { ja: "Eまたはアイテムボタンで4秒間、機体と当たり判定が1.55倍になり、同時に通常ダメージを防ぐ重作業シールドが作動します。保守認証ゲートは通過できません。", en: "Activate it with E or the item button for 4 seconds. The robot and its collision area scale to 1.55x while a heavy-work shield blocks normal damage. It cannot bypass maintenance gates." }
   },
   magnet: {
-    title: { ja: "特殊アイテム: 磁石", en: "Special Item: Magnet" },
-    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。近くのコインや報酬を一気に引き寄せます。", en: "Picking this stores one item. Use it with E or the item button. It pulls nearby coins and rewards toward you." }
+    title: { ja: "補助モジュール: 回収磁場", en: "Support Module: Recovery Field" },
+    text: { ja: "Eまたはアイテムボタンで周囲の通常コインとレア資源だけを即座に引き寄せ、0.8秒の接触保護を得ます。宝箱と他の補助モジュールは対象外です。", en: "Use E or the item button to pull in nearby normal coins and rare resources and gain 0.8 seconds of contact protection. Chests and other support modules are not affected." }
   },
   time: {
-    title: { ja: "特殊アイテム: 時間停止", en: "Special Item: Time Stop" },
-    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。一部の敵や障害物の動きを止めます。", en: "Picking this stores one item. Use it with E or the item button. It briefly stops some enemies and hazards." }
+    title: { ja: "補助モジュール: 搬送停止", en: "Support Module: Conveyor Halt" },
+    text: { ja: "Eまたはアイテムボタンで2.5秒間、最終管理機以外の物体更新と通常走行距離を停止します。効果中もK-0のジャンプとスライドは操作できます。", en: "Use E or the item button to halt normal route movement and every object except the final controller for 2.5 seconds. K-0 can still jump and slide during the halt." }
   },
   doubleJump: {
-    title: { ja: "特殊アイテム: 2段ジャンプ", en: "Special Item: Double Jump" },
-    text: { ja: "拾うと1個だけストックされ、Eキーまたはアイテムボタンで使えます。空中で使えるジャンプ回数を少し戻します。", en: "Picking this stores one item. Use it with E or the item button. It restores a bit of jump control in midair." }
+    title: { ja: "補助モジュール: 空中再点火", en: "Support Module: Midair Re-Ignition" },
+    text: { ja: "空中でEまたはアイテムボタンを押すと、使用済みジャンプ回数を1回分だけ戻します。その後にジャンプ入力を行うことで、もう一度だけ上昇できます。", en: "Use E or the item button in midair to restore exactly one spent jump. Press jump afterward to gain one additional ascent." }
   }
 };
 
 const traitGuideDefs = {
   sandArmor: {
     title: { ja: "このエリアの敵: 砂装甲", en: "Area Trait: Sand Armor" },
-    text: { ja: "この先の敵は最初の一撃を砂装甲で受け止め、破壊後に時間を空けると一度だけ装甲を再形成します。踏む・スキルで削った後は間を空けずに本体を狙いましょう。", en: "Enemies absorb the first hit with sand armor and can rebuild it once if left alone. After breaking it, keep pressure on the exposed body." }
+    text: { ja: "砂漠ラインの自動補修材が全敵の外装へ固着しています。最初の一撃は砂装甲が吸収し、破壊後に時間を空けると一度だけ再形成します。装甲を割った後は短い間隔で本体へ続けて攻撃してください。", en: "The Desert Line's automatic repair compound has hardened around every enemy. Sand armor absorbs the first hit and can rebuild once if left alone. Continue attacking the exposed body before it reforms." }
   },
   frostAura: {
     title: { ja: "このエリアの敵: 凍結オーラ", en: "Area Trait: Frost Aura" },
-    text: { ja: "近づくと動きが鈍り、さらに予兆の輪の後で広い凍結パルスが発生します。距離を取り、パルス前にジャンプを早めに入力しましょう。", en: "Nearby enemies slow you and release a wider frost pulse after a warning ring. Keep distance and jump before the pulse." }
+    text: { ja: "破裂した冷媒管から漏れた粒子が全敵へ付着しています。近づくと機体が鈍り、予兆リングの収縮後に広い凍結パルスが発生します。距離とリングの大きさを見て早めに回避してください。", en: "Particles from ruptured coolant pipes coat every enemy. Nearby units slow K-0 and release a wide frost pulse after the warning ring contracts. Use distance and ring size to time an early dodge." }
   },
   burning: {
     title: { ja: "このエリアの敵: 灼熱", en: "Area Trait: Burning" },
-    text: { ja: "接触ダメージが増えるうえ、予兆の後に地面を流れる灼熱弾を放ちます。敵本体と灼熱弾を別々の障害物として読みましょう。", en: "Contact hurts more, and enemies launch ground-skimming embers after a warning. Read the enemy and its ember as separate hazards." }
+    text: { ja: "精錬炉の粉じんが全敵の外装内で燃え続けています。接触時の追加熱ダメージに加え、予兆後には地面を流れる灼熱弾を放ちます。敵本体と排熱弾を別々に追ってください。", en: "Smelter dust keeps burning inside every enemy shell. Contact adds heat damage, and a warning is followed by a ground-skimming exhaust shot. Track the enemy and its exhaust as separate hazards." }
   },
   energyShield: {
     title: { ja: "このエリアの敵: エネルギー盾", en: "Area Trait: Energy Shield" },
-    text: { ja: "盾で攻撃を受け流し、破壊後に時間を空けると再充電して放電します。連続攻撃するか、再充電の予兆を見て放電も避けましょう。", en: "Enemies deflect hits, then recharge and discharge if pressure stops. Continue attacking or read the recharge warning and avoid the discharge." }
+    text: { ja: "都市防犯網が全敵を侵入対処端末として登録しています。エネルギー盾は攻撃を受け流し、破壊後に時間を空けると再充電と同時に放電します。再充電の点滅にも注意してください。", en: "The city security mesh has registered every enemy as an intrusion-response terminal. Their energy shields deflect hits, then recharge and discharge if pressure stops. Watch the recharge flash as well as the body." }
   },
   gravityPulse: {
     title: { ja: "このエリアの敵: 重力波", en: "Area Trait: Gravity Pulse" },
-    text: { ja: "近距離では予兆の輪が縮んだ後に重力が反転します。敵ごとに周期が少し違うため、現在の向きと次の着地点を同時に見て動きましょう。", en: "At close range, a shrinking warning ring precedes a gravity reversal. Each enemy has a slightly different cycle, so track both orientation and landing." }
+    text: { ja: "軌道補正網が全敵を小型の姿勢制御点として利用しています。近距離では予兆リングが縮んだ後に極性が反転し、敵ごとに周期が少し異なります。現在の向きと着地点を同時に確認してください。", en: "The orbital correction mesh uses every enemy as a small attitude-control node. At close range, polarity reverses after a warning ring contracts, with a slightly different cycle for each unit. Track orientation and landing together." }
   },
   voidPull: {
     title: { ja: "このエリアの敵: 吸引", en: "Area Trait: Pull" },
-    text: { ja: "近くの敵は吸引と反発の極性を周期的に切り替えます。輪の色が変わるタイミングを見て、次に上下どちらへ速度が加わるか判断しましょう。", en: "Nearby enemies alternate between pull and repulsion. Read the ring change to judge which vertical direction will gain momentum next." }
+    text: { ja: "特異点燃料の残滓が全敵の周囲へ微小な重力井戸を作っています。近くの敵は吸引と反発を周期的に切り替えるため、リング表示から次に速度が加わる方向を判断してください。", en: "Singularity-fuel residue creates a small gravity well around every enemy. Nearby units alternate between pull and repulsion, so read the ring display to judge the next direction of added momentum." }
   },
   regen: {
     title: { ja: "このエリアの敵: 再生", en: "Area Trait: Regeneration" },
-    text: { ja: "時間をかけると回復し、回復が成立するたびに反撃弾を放ちます。短い間隔で削るか、回復直後の弾まで含めて回避しましょう。", en: "Enemies regenerate and fire a counter-shot whenever healing succeeds. Keep pressure on them or prepare to avoid the shot after each heal." }
+    text: { ja: "神界ラインの保守粒子が敵味方を区別せず全機体を修復します。敵は時間経過で回復し、修復が成立するたびに余剰粒子を反撃弾として放出します。回復表示の直後まで警戒してください。", en: "Aether Line maintenance particles repair every machine without distinguishing sides. Enemies heal over time and vent excess particles as a counter-shot whenever a repair completes. Stay alert after the healing display." }
   },
   phase: {
     title: { ja: "このエリアの敵: 位相化", en: "Area Trait: Phasing" },
-    text: { ja: "周期的に攻撃が通らない位相へ入り、実体へ戻る瞬間に同じ高さへ残像弾を残します。透け方を見て攻撃機会と残像の回避を続けて判断しましょう。", en: "Enemies periodically phase out, then leave an echo shot at their height when returning. Read transparency for both the attack opening and the echo dodge." }
+    text: { ja: "無限門の同期誤差が全敵を隣接座標へ周期的に退避させます。透けている間は攻撃が通らず、実体へ戻る瞬間に同じ高さへ座標残響を残します。透明度から攻撃可能時間と残響位置を判断してください。", en: "Synchronization errors in the Infinite Gate periodically shift every enemy into an adjacent coordinate. Attacks fail while a unit is transparent, and it leaves a coordinate echo at the same height when returning. Use opacity to read both the opening and the echo position." }
+  }
+};
+
+const bossBattleGuideSteps = [
+  {
+    title: { ja: "ライン最終管理機", en: "Final Line Controller" },
+    text: { ja: "各ラインの終端100m手前では走行距離が止まり、最終管理機との解除作業に入ります。画面右からの通常生成も停止し、管理機固有の攻撃だけが流れます。", en: "One hundred meters before each line ends, distance stops for a final controller release procedure. Normal route generation pauses, leaving only that controller's attack sequence." },
+    target: ".canvas-frame"
+  },
+  {
+    title: { ja: "攻撃工程と整備工程", en: "Attack And Service Phases" },
+    text: { ja: "攻撃の最後尾がK-0を通過すると、管理機が障害物と同じように左へ接近します。この整備工程中だけ上面へ着地してダメージを与えられます。側面接触または左端通過ではK-0が損傷し、すぐ攻撃工程へ戻ります。", en: "After the last attack passes K-0, the controller approaches from the right like a route obstacle. Only during this service phase can landing on its top deal damage. Side contact or letting it pass the left edge damages K-0 and immediately restarts the attack phase." },
+    target: ".canvas-frame"
+  }
+];
+
+const rareGuideDefs = {
+  rainbow: {
+    title: { ja: "レア資源: 多層結晶", en: "Rare Resource: Layered Crystal" },
+    text: { ja: "複数の素材層が重なった高密度結晶です。取得するとGEMを1個以上獲得し、永続レア率が高いほど追加量が増えます。", en: "A high-density crystal made from several material layers. It grants at least 1 GEM, with extra units from permanent rarity upgrades." }
+  },
+  diamond: {
+    title: { ja: "レア資源: 圧縮ダイヤ", en: "Rare Resource: Compressed Diamond" },
+    text: { ja: "搬送圧力で固められた精密加工用結晶です。取得するとGEMを3個獲得します。", en: "A precision crystal compressed by freight pressure. Collecting it grants 3 GEM." }
+  },
+  gem: {
+    title: { ja: "レア資源: 設計カプセル", en: "Rare Resource: Design Capsule" },
+    text: { ja: "旧設備の設計ログを結晶封入したカプセルです。取得すると研究に使うLABを2ポイント獲得します。", en: "A crystal capsule containing archived machine schematics. Collecting it grants 2 LAB for research." }
+  }
+};
+
+const chestGuideDef = {
+  title: { ja: "封印された部品コンテナ", en: "Sealed Parts Container" },
+  text: { ja: "部品コンテナは500mごとに経路へ現れます。取得後は装備タブへ保管され、種類ごとの解析時間が0になると開封できます。開封すると装備1個と少量のコインを獲得します。", en: "A parts container appears every 500 meters. After collection it is stored in the Equipment tab; open it when its type-specific analysis timer reaches zero. Each container yields one equipment item and a small coin reward." }
+};
+
+const eventGuideDefs = {
+  coinRain: {
+    title: { ja: "ライン異常: 整備券放出", en: "Line Anomaly: Token Purge" },
+    text: { ja: "詰まった計数機が整備コインを一斉放出しています。イベント中はコイン配置が増え、磁石の吸収範囲も1.35倍になります。", en: "A jammed counter is purging service coins across the route. Coin formations increase during the event and magnet range is multiplied by 1.35." }
+  },
+  meteor: {
+    title: { ja: "ライン異常: 軌道破片流", en: "Line Anomaly: Debris Stream" },
+    text: { ja: "上空の搬送路から高速破片が流入します。このイベントの破片は落下せず、エリアごとの空中障害パターンとして横切ります。", en: "High-speed debris is entering from an overhead route. Event debris does not fall; it crosses the field as area-specific airborne hazard patterns." }
+  },
+  fever: {
+    title: { ja: "ライン異常: 過給運転", en: "Line Anomaly: Supercharged Drive" },
+    text: { ja: "搬送モーターが14秒間だけ過給状態になります。走行速度は1.25倍、取得コインは2倍になるため、障害物の到達も通常より速くなります。", en: "The conveyor motors enter a 14-second supercharged state. Run speed becomes 1.25x and collected coins become 2x, so hazards also arrive faster." }
+  },
+  gravity: {
+    title: { ja: "ライン異常: 極性反転", en: "Line Anomaly: Polarity Reversal" },
+    text: { ja: "磁気床の極性が12秒間反転し、K-0は天井側へ落下します。機体表示も上下反転し、終了時には予測着地点の周囲へ新しい障害物が生成されません。", en: "Magnetic floor polarity reverses for 12 seconds, making K-0 fall toward the ceiling. The robot also flips visually, and no new hazard is generated around the predicted landing point when the event ends." }
+  },
+  clearPath: {
+    title: { ja: "ライン異常: 自動清掃", en: "Line Anomaly: Maintenance Sweep" },
+    text: { ja: "清掃工程が14秒間、経路上の通常障害物を回収対象として扱います。接触した障害物はダメージにならず破砕され、専用の安全な生成パターンへ切り替わります。", en: "For 14 seconds, the maintenance sweep treats normal route hazards as removable waste. Contact destroys them without damage, and generation switches to dedicated clear-route patterns." }
+  },
+  coin3: {
+    title: { ja: "ライン異常: 計数補正", en: "Line Anomaly: Counter Correction" },
+    text: { ja: "故障した計数機が14秒間だけ回収量を補正します。ラン中に直接拾ったコインの獲得量が3倍になります。", en: "A faulty counter corrects its totals for 14 seconds. Coins collected directly during the run are multiplied by 3." }
+  }
+};
+
+const systemGuideDefs = {
+  researchDiscovery: {
+    title: { ja: "新しい設計データ", en: "New Design Data" },
+    text: { ja: "解除した最終管理機の部品解析から、次ライン向けの研究が見つかりました。研究タブでLABを使って強化できます。研究は元になった管理機を一度解除した後だけ表示されます。", en: "Analyzing the released controller has revealed research for the next line. Spend LAB in the Research tab to upgrade it. Research appears only after its source controller has been released once." },
+    target: 'button[data-tab="research"]'
+  },
+  activeSkillUnlocked: {
+    title: { ja: "研究アクティブ接続", en: "Active Research Connected" },
+    text: { ja: "アクティブ研究をLv1にしました。強化タブ上部でセットし、ラン中にDで発動できます。Qは解放順にセット中スキルを切り替えます。", en: "An active research module reached Lv1. Equip it at the top of the Upgrades tab, use it with D during a run, and press Q to cycle unlocked modules in discovery order." },
+    target: ".command-row"
+  },
+  idleProduction: {
+    title: { ja: "工場の再稼働", en: "Factory Restored" },
+    text: { ja: "施設がLv1になり自動生産を開始しました。ゲームを閉じている間も最大8時間まで生産し、同じカテゴリの上位施設が順番に表示されます。ロボット工場系だけは生産せず、直接回収したコイン倍率を増やします。", en: "A Lv1 facility has begun automatic production for up to eight hours while the game is closed. Higher facilities in the same category now appear in order. Robot factories do not produce resources; they multiply coins collected directly." },
+    target: 'button[data-tab="factory"]'
+  },
+  equipmentAcquired: {
+    title: { ja: "交換部品を獲得", en: "Replacement Part Acquired" },
+    text: { ja: "装備タブで頭、靴、胴、アクセサリーの各部位へ装着できます。部位ごとの所持上限は10個で、超えた場合は未装備品から低レア度・低性能の順に自動廃棄されます。手動廃棄では少量のコインを回収します。", en: "Equip parts to Head, Boots, Body, or Accessory slots from the Equipment tab. Each slot stores up to 10 items; excess unequipped items are automatically discarded from lowest rarity and value upward. Manual discard recovers a small coin amount." },
+    target: 'button[data-tab="equipment"]'
+  },
+  autoDiscard: {
+    title: { ja: "部品棚の自動整理", en: "Automatic Parts Sorting" },
+    text: { ja: "1部位の装備が10個を超えたため、装備中ではない部品から低レア度・低性能の順に整理しました。自動整理ではコインを獲得しません。", en: "A slot exceeded its 10-item capacity, so unequipped parts were removed from lowest rarity and value upward. Automatic sorting does not grant coins." },
+    target: 'button[data-tab="equipment"]'
+  },
+  prestigeReady: {
+    title: { ja: "ライン中枢を再起動可能", en: "Line Core Ready To Reboot" },
+    text: { ja: "1000万コインを再起動燃料として使える状態になりました。Prestigeではコイン、GEM、LAB、通常強化、装備、部品コンテナ、現在のライン進行を初期化し、恒久部品PRを回収します。工場、研究Lv、実績、恒久強化は残り、通常強化・工場・研究の上限が1上がります。", en: "Ten million coins are now available as reboot fuel. Prestige resets coins, GEM, LAB, chassis upgrades, equipment, parts containers, and current line progress while recovering permanent PR components. Factories, research levels, achievements, and permanent upgrades remain, and the shared upgrade, factory, and research cap rises by 1." },
+    target: 'button[data-tab="prestige"]'
+  },
+  offlineIncome: {
+    title: { ja: "無人稼働レポート", en: "Unattended Operation Report" },
+    text: { ja: "閉じていた時間のうち最大8時間分について、工場生産と宝箱解析が進みました。今回の増加量は画面下のシステムログへ記録されています。", en: "Factory production and chest analysis advanced for up to eight hours while the game was closed. This session's gains are recorded in the system log below the controls." },
+    target: ".resource-strip"
+  },
+  damageEscalation: {
+    title: { ja: "高出力ライン", en: "High-Output Line" },
+    text: { ja: "火山ライン以降は設備出力が上がり、3エリア進むごとに1回の接触で失うHPが1増えます。敵固有の灼熱追加ダメージはこの基礎ダメージへさらに加算されます。", en: "From the Volcano Line onward, higher equipment output increases base contact damage by 1 every three areas. Enemy-specific burning damage is added on top of that base amount." },
+    target: ".hud-grid"
+  },
+  comboStarted: {
+    title: { ja: "連続回収記録", en: "Recovery Chain" },
+    text: { ja: "コイン回収や危険物処理を途切れず続けるとCOMBOが上がり、直接回収するコイン量が少しずつ増えます。接触ダメージで0へ戻り、通常強化のコンボ倍率で上限が伸びます。", en: "Collecting coins and clearing hazards without interruption raises COMBO and gradually increases direct coin gains. Taking contact damage resets it to zero; the Combo upgrade raises its limit." },
+    target: "#comboStat"
+  },
+  levelUp: {
+    title: { ja: "機体経験レベル上昇", en: "Chassis Level Increased" },
+    text: { ja: "敵や最終管理機の処理、ラン終了時の走行記録からXPを獲得します。必要XPに達するとK-0のレベルが上がり、整備報奨としてコインを受け取ります。", en: "K-0 earns XP from clearing enemies and final controllers and from the distance recorded at run end. Reaching the requirement raises the chassis level and grants a service-coin bonus." },
+    target: "#levelStat"
+  },
+  missionReady: {
+    title: { ja: "復旧指令を達成", en: "Recovery Order Completed" },
+    text: { ja: "デイリーまたは週間の復旧指令が完了しました。ミッションタブで達成済みの項目から報酬を回収してください。指令内容は日次・週次で更新されます。", en: "A daily or weekly recovery order is complete. Collect its reward from the Missions tab. Order lists refresh on daily and weekly schedules." },
+    target: 'button[data-tab="missions"]'
+  },
+  achievementReady: {
+    title: { ja: "長期整備記録を達成", en: "Service Record Completed" },
+    text: { ja: "累計記録が実績条件へ到達しました。ミッションタブの実績一覧から一度だけ報酬を回収できます。実績と回収状況はライン中枢の再起動後も残ります。", en: "A lifetime record has reached an achievement requirement. Its one-time reward is available in the Achievements list under Missions. Achievements and claim status survive line-core reboots." },
+    target: 'button[data-tab="missions"]'
+  },
+  levelCapReached: {
+    title: { ja: "現行設計の強化上限", en: "Current Design Limit" },
+    text: { ja: "通常強化、工場、研究の初期上限はLv5です。ライン中枢を再起動するたび、3系統すべての上限が1ずつ増えます。恒久強化にはこの共通上限はありません。", en: "Chassis upgrades, factories, and research initially cap at Lv5. Every line-core reboot raises all three caps by 1. Permanent upgrades do not use this shared cap." },
+    target: "#panelContent"
+  },
+  runFailure: {
+    title: { ja: "保守走行を中断", en: "Maintenance Run Interrupted" },
+    text: { ja: "HPが0になると今回の走行を終了します。ストック中の補助モジュール、2段ジャンプを含む一時効果、アクティブのクールタイムはリセットされます。再走時は現在ラインの入口距離から再開し、獲得済み資源と恒久的な進行は残ります。", en: "When HP reaches zero, the current run ends. The stocked support module, all temporary effects including double jump, and active cooldowns are reset. A retry starts at the current line entrance while collected resources and permanent progress remain." },
+    target: "#runOverlay"
+  },
+  rewardAds: {
+    title: { ja: "任意の外部支援通信", en: "Optional External Support" },
+    text: { ja: "GitHub Pages版では、転生タブ上部から任意で外部のリワードリンクを開けます。利用した時だけ報酬を受け取り、強制表示はありません。itch.io版ではこの機能自体が表示されません。", en: "In the GitHub Pages build, optional reward links are available at the top of the Prestige tab. Rewards are granted only when you choose to use them; there are no forced ads. This feature is hidden entirely in the itch.io build." },
+    target: "#panelContent"
   }
 };
 
@@ -423,8 +608,8 @@ const chestDefs = {
   wood: { name: "木", seconds: 30, color: "#a97942", weight: 76 },
   silver: { name: "銀", seconds: 300, color: "#aeb7c2", weight: 20 },
   gold: { name: "金", seconds: 1800, color: "#e7b84d", weight: 3.3 },
-  rainbow: { name: "虹", seconds: 28800, color: "#b98cff", weight: 0.6 },
-  god: { name: "神", seconds: 28800, color: "#fff1a5", weight: 0.1 }
+  rainbow: { name: "積層", seconds: 28800, color: "#b6a06f", weight: 0.6 },
+  god: { name: "中枢", seconds: 28800, color: "#d9d4c2", weight: 0.1 }
 };
 
 const rarityDefs = [
@@ -482,9 +667,8 @@ const englishAreaNames = {
 };
 
 const englishTextPairs = [
-  ["ラン中の宝箱、ボス報酬、リワードから入手できます。", "Get chests from runs, boss rewards, and rewards."],
-  ["コイン、通常強化、装備、宝箱、宝石、研究ポイントをリセットし、永続強化用のPRを得ます。転生ごとに通常強化・放置施設・研究上限が+1されます。", "Reset coins, normal upgrades, equipment, chests, gems, and research points to gain PR for permanent upgrades. Each prestige raises upgrade, facility, and research caps by +1."],
-  ["コインと通常強化をリセットし、永続強化用のPRを得ます。", "Reset coins and normal upgrades to gain PR for permanent upgrades."],
+  ["ラン中の部品コンテナ、最終管理機の解除報酬、リワードから入手できます。", "Get parts from run containers, final-controller release rewards, and optional rewards."],
+  ["コイン、通常強化、装備、宝箱、宝石、研究ポイント、現在のライン進行をリセットし、永続強化用のPRを得ます。工場、研究Lv、実績、永続強化は残り、転生ごとに通常強化・放置施設・研究上限が+1されます。", "Reset coins, normal upgrades, equipment, chests, gems, research points, and current line progress to gain PR for permanent upgrades. Factories, research levels, achievements, and permanent upgrades remain, and each prestige raises upgrade, facility, and research caps by +1."],
   ["5分間、獲得と放置のコインが2倍になります。", "Earned and idle coins are doubled for 5 minutes."],
   ["待機中の宝箱を1個だけ準備完了にします。", "Finish one waiting chest instantly."],
   ["銀宝箱相当の装備を1つ獲得します。", "Get one equipment item equal to a Silver Chest."],
@@ -500,15 +684,15 @@ const englishTextPairs = [
   ["長距離用の自動ランナーで、ロボット工場より高収入。", "Long-distance auto runners that earn more than the Robot Factory."],
   ["超小型ロボットを製造し、直接獲得コイン倍率を増やす施設。", "Build micro robots that follow the player and increase direct coin gains."],
   ["高性能な超小型ロボットで、直接獲得コイン倍率をさらに伸ばす施設。", "Build advanced micro robots that further increase direct coin gains."],
-  ["草原ボスの粘液核を圧縮した近距離破砕スキルです。砂漠ボスの砂装甲に特攻し、発動時は範囲内の敵すべてに衝撃を与えます。通常敵には1ダメージ、ボスには装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力が少しずつ上がります。", "A short-range breaking skill made from compressed Grassland boss slime core. It is specialized against the Desert boss sand armor and shocks every enemy in range. Normal enemies take 1 damage; bosses only lose armor or shields until Lv5 adds 1 damage, then Lv6+ gradually increases damage."],
-  ["対ボス", "vs Boss"],
-  ["砂漠ボスの発熱器官を応用し、雪山ボスの凍結オーラの持続をわずかに短くします。", "Apply the Desert boss heat organ to slightly shorten the Snow Mountain boss freeze aura."],
-  ["雪山ボスの冷却コアから耐熱装甲を作り、火山ボスの追加ダメージを低確率で抑えます。", "Build heat plating from the Snow Mountain boss cooling core to rarely reduce Volcano boss bonus damage."],
-  ["火山ボスの硬質外殻解析から、未来都市ボスのエネルギー盾を少しだけ貫通しやすくします。", "Analyze the Volcano boss shell to slightly improve pierce chance against Future City energy shields."],
-  ["未来都市ボスの脚部固定杭を再現します。発動中だけ重力反転波を受け流しますが、Lv5でも持続は短めです。", "Recreates the Future City boss leg anchor. It deflects gravity waves only while active, and even Lv5 lasts briefly."],
-  ["宇宙ボスの軌道データから、ブラックホールボスの吸引をほんの少し弱めます。", "Use Space boss orbital data to slightly reduce Black Hole boss pull."],
-  ["ブラックホールボスの特異点残滓で、神界ボスの再生間隔をわずかに遅らせます。", "Use Black Hole singularity residue to slightly delay Aether boss regeneration."],
-  ["神界ボスの光杭を模した位相固定スキルです。発動中だけ位相化を短く止め、Lv5でも一瞬の攻撃機会を作る程度です。", "A phase-lock skill modeled after the Aether boss light pin. It briefly stops phasing only while active, and Lv5 merely creates a short opening."],
+  ["草原の増殖ゲル群体から回収した核を圧縮した近距離破砕モジュールです。砂潜り搬送機の砂装甲に特効があり、発動時は範囲内の敵すべてへ衝撃を与えます。通常敵には1ダメージ、最終管理機には装甲や盾削りを与え、Lv5でようやく1ダメージ分の追撃が入り、Lv6以降は威力だけが少しずつ上がります。", "A short-range breaker made from a core recovered from the Grassland gel colony. It is specialized against the Burrowing Transporter's sand armor and shocks every enemy in range. Normal enemies take 1 damage; final controllers lose armor or shields until Lv5 adds 1 follow-up damage, and Lv6+ increases damage only."],
+  ["対管理機", "vs Controller"],
+  ["砂潜り搬送機の放熱器官を応用し、凍結炉心が放つ凍結オーラの持続をわずかに短くします。", "Apply the Burrowing Transporter's heat-dissipation organ to slightly shorten the Frost Core's freezing aura."],
+  ["凍結炉心の冷却コアから耐熱装甲を作り、熔鉱巨体による追加ダメージを低確率で抑えます。", "Build heat plating from the Frost Core to rarely suppress bonus damage from the Smelter Mass."],
+  ["熔鉱巨体の硬質外殻を解析し、区画封鎖機と未来都市の敵が持つエネルギー盾を少しだけ貫通しやすくします。", "Analyze the Smelter Mass shell to slightly improve piercing against energy shields used by the Lockdown Unit and Future City enemies."],
+  ["区画封鎖機の脚部固定杭を再現します。発動中だけ星間航路竜の重力反転波を受け流しますが、Lv5でも持続は短めです。", "Recreate the Lockdown Unit's leg anchor to deflect the Star Route Dragon's polarity wave only while active; even Lv5 lasts briefly."],
+  ["星間航路竜の軌道データを使い、虚空推進炉とブラックホールの敵による吸引をほんの少し弱めます。", "Use Star Route Dragon orbital data to slightly reduce pull from the Void Drive and Black Hole enemies."],
+  ["虚空推進炉の特異点残滓で、天上保守主と神界の敵が使う保守粒子の再生間隔をわずかに遅らせます。", "Use Void Drive singularity residue to slightly delay maintenance-particle regeneration used by the Aether Overseer and Aether enemies."],
+  ["天上保守主の光杭を模した位相固定モジュールです。発動中だけ無限接続門の位相化を短く止め、Lv5でも一瞬の保守機会を作る程度です。", "A phase-lock module modeled after the Aether Overseer's light pylons. It briefly stops the Infinity Junction's phasing only while active, and Lv5 creates only a short service opening."],
   ["宝箱から装備を獲得できます。", "Open chests to get equipment."],
   ["待機時間が終わった宝箱", "Ready chests"],
   ["開封可能な宝箱を全開封", "Open All Ready Chests"],
@@ -547,12 +731,12 @@ const englishTextPairs = [
   ["シールド解析", "Shield Analysis"],
   ["巨兵アンカー", "Giant Anchor"],
   ["虚空テザー", "Void Tether"],
-  ["神気封印", "Aether Seal"],
+  ["再生粒子封止", "Regeneration Particle Seal"],
   ["位相ピン", "Phase Pin"],
   ["研究ツリー", "Research Tree"],
   ["研究アクティブ", "Research Active"],
   ["アクティブスキル冷却", "Active Skill Cooldown"],
-  ["研究で解放したボス由来スキルを画面下のスキルボタンにセットします。", "Set a boss-derived skill unlocked by research to the skill button below."],
+  ["解除した最終管理機の部品から研究したモジュールを画面下のスキルボタンにセットします。", "Set a module researched from released final-controller parts to the skill button below."],
   ["スキルなし", "No Skill"],
   ["未解放", "Locked"],
   ["解放", "Unlocked"],
@@ -582,8 +766,8 @@ const englishTextPairs = [
   ["木宝箱", "Wood Chest"],
   ["銀宝箱", "Silver Chest"],
   ["金宝箱", "Gold Chest"],
-  ["虹宝箱", "Rainbow Chest"],
-  ["神宝箱", "God Chest"],
+  ["積層宝箱", "Layered Chest"],
+  ["中枢宝箱", "Core Chest"],
   ["宝箱なし", "No Chests"],
   ["なし", "None"],
   ["開封できます。", "Ready to open."],
@@ -599,7 +783,7 @@ const englishTextPairs = [
   ["本格研究まで", "Research core in"],
   ["粘液破砕", "Slime Break"],
   ["研究候補なし", "No Research Candidates"],
-  ["エリア最終ボスを撃破すると、そのボスをもとにした次エリア攻略用の研究が見つかります。", "Defeat an area final boss to discover research based on that boss for the next area."],
+  ["ライン最終管理機を解除すると、その部品をもとにした次ライン用の研究が見つかります。", "Release a final line controller to discover research based on its parts for the next line."],
   ["凍結時間", "Freeze Time"],
   ["灼熱軽減", "Heat Reduction"],
   ["盾対策", "Shield Counter"],
@@ -610,10 +794,10 @@ const englishTextPairs = [
   ["初ジャンプ", "First Jump"],
   ["500m走る", "Run 500m"],
   ["コイン1000枚", "Collect 1,000 coins"],
-  ["宝箱1個", "Open 1 chest"],
+  ["部品コンテナを1個回収", "Collect 1 parts container"],
   ["敵20体", "Defeat 20 enemies"],
   ["100000m走る", "Run 100,000m"],
-  ["ボス20体", "Defeat 20 bosses"],
+  ["最終管理機20体", "Release 20 final controllers"],
   ["転生1回", "Prestige once"],
   ["アンテナ", "Antenna"],
   ["ブーツ", "Boots"],
@@ -688,13 +872,13 @@ const englishTextPairs = [
 const dailyMissionDefs = [
   { id: "dailyDistance", name: "500m走る", target: 500, reward: { coins: 300 } },
   { id: "dailyCoins", name: "コイン1000枚", target: 1000, reward: { gems: 1 } },
-  { id: "dailyChest", name: "宝箱1個", target: 1, reward: { coins: 750 } },
+  { id: "dailyChest", name: "部品コンテナを1個回収", target: 1, reward: { coins: 750 } },
   { id: "dailyEnemies", name: "敵20体", target: 20, reward: { coins: 600 } }
 ];
 
 const weeklyMissionDefs = [
   { id: "weeklyDistance", name: "100000m走る", target: 100000, reward: { gems: 15, research: 5 } },
-  { id: "weeklyBoss", name: "ボス20体", target: 20, reward: { gems: 10, research: 8 } },
+  { id: "weeklyBoss", name: "最終管理機20体", target: 20, reward: { gems: 10, research: 8 } },
   { id: "weeklyPrestige", name: "転生1回", target: 1, reward: { research: 20 } }
 ];
 
@@ -860,7 +1044,7 @@ const run = {
   bossPhase: "attack",
   bossPatternIndex: 0,
   bossVolley: 0,
-  bossSoulMode: "red",
+  bossCombatProtocol: "baseline",
   bossModeTimer: 0,
   bossModePulse: 0,
   bossResearchCounters: {},
@@ -872,7 +1056,7 @@ const run = {
   tasAreaIndex: null,
   tasDisabledResearchIds: [],
   webLane: 1,
-  justiceCooldown: 0,
+  pulseShotCooldown: 0,
   echoActive: false,
   event: null,
   eventTimer: 0,
@@ -899,6 +1083,8 @@ const guideState = {
   targetElement: null,
   currentTarget: null
 };
+
+const pendingSystemGuideIds = new Set();
 
 const inputState = {
   jumpHolding: false,
@@ -947,6 +1133,8 @@ function init() {
   initDebugMode();
   logEvent("RUN START");
   maybeStartIntroGuide();
+  queueProgressContextGuides();
+  flushPendingSystemGuides();
   if (DEBUG_MODE) window.setInterval(runTasAnimationFallback, 50);
   requestAnimationFrame(loop);
 }
@@ -985,6 +1173,7 @@ function setLanguage(language, options = {}) {
     updateHud();
     logEvent("RUN START");
     maybeStartIntroGuide({ force: shouldStartIntro });
+    flushPendingSystemGuides();
   }
 }
 
@@ -1404,7 +1593,7 @@ function prepareAssetSceneBase(index = 0) {
     bossPhase: "attack",
     bossPatternIndex: 0,
     bossVolley: 0,
-    bossSoulMode: "red",
+    bossCombatProtocol: "baseline",
     bossModeTimer: 0,
     bossModePulse: 0,
     event: null,
@@ -1448,7 +1637,7 @@ function prepareAssetSceneEntry(entry) {
   else if (entry.section === "アイテム・スキル") prepareAssetItemScene(entry.item);
   else if (entry.section === "障害物") prepareAssetObstacleScene(entry.item);
   else if (entry.section === "敵") prepareAssetEnemyScene(entry.item);
-  else if (entry.section === "ボス") prepareAssetBossScene(assetSceneBossIndex(entry.item));
+  else if (entry.section === "ボス" || entry.section === "最終管理機") prepareAssetBossScene(assetSceneBossIndex(entry.item));
   else if (entry.section === "宝箱") prepareAssetChestScene(entry.item);
   else if (entry.section === "装備") prepareAssetEquipmentScene(entry.item);
   else if (entry.section === "エリア背景") prepareAssetBackgroundScene(assetSceneAreaIndex(entry));
@@ -1501,10 +1690,10 @@ function prepareAssetRewardScene(item) {
     assetSceneState.description = `${value}コインが通常ランの回避ルート上へ出現した場面です。`;
     return;
   }
-  if (item === "虹コイン") assetPushRare("rainbow", 430);
+  if (item === "多層結晶") assetPushRare("rainbow", 430);
   if (item === "ダイヤ") assetPushRare("diamond", 430);
   if (item === "宝石") assetPushRare("gem", 430);
-  if (["虹コイン", "ダイヤ", "宝石"].includes(item)) {
+  if (["多層結晶", "ダイヤ", "宝石"].includes(item)) {
     assetSceneState.description = `通常コイン列の先へ${item}がレア報酬として出現した場面です。`;
     return;
   }
@@ -1512,7 +1701,7 @@ function prepareAssetRewardScene(item) {
     state.research = 89;
     setAssetSceneTab("research");
     assetSceneState.focusSelector = "#researchStat";
-    assetSceneState.description = "ボス報酬や施設生産で得た研究ポイントがHUDへ反映された場面です。";
+    assetSceneState.description = "最終管理機の解除報酬や施設生産で得た研究ポイントがHUDへ反映された場面です。";
   } else {
     state.prestigePoints = 12;
     setAssetSceneTab("prestige");
@@ -1537,6 +1726,11 @@ function prepareAssetItemScene(item) {
 }
 
 function prepareAssetObstacleScene(item) {
+  const protocol = bossCombatProtocols.find((entry) => item.startsWith(entry.jaName));
+  if (protocol) {
+    prepareAssetProtocolScene(protocol);
+    return;
+  }
   const areaIndexValue = item.includes("エリア別") ? 4 : item.includes("隕石") ? 1 : 0;
   prepareAssetSceneBase(areaIndexValue);
   const kind = item.includes("トゲ") ? "spike"
@@ -1547,6 +1741,35 @@ function prepareAssetObstacleScene(item) {
   assetPushObstacle(kind, 455, item.includes("エリア別") ? { color: currentArea().accent, destructible: true } : {});
   assetPushCoin(10, 560, groundY - 150);
   assetSceneState.description = `${item}が通常ランの進行方向に現れ、回避か破壊を判断する場面です。`;
+}
+
+function prepareAssetProtocolScene(protocol) {
+  const index = Math.max(0, bossCombatProtocols.findIndex((entry) => entry.id === protocol.id));
+  prepareAssetSceneBase(index);
+  run.bossBattle = true;
+  run.bossAreaIndex = index;
+  run.bossPhase = "attack";
+  run.bossCombatProtocol = protocol.id;
+  run.gravityFlip = protocol.id === "polarityShift";
+  run.echoActive = protocol.id === "echoRelay";
+  run.webLane = 1;
+  assetPushObstacle("laser", 470, { color: protocol.color, y: groundY - 116, h: 76 });
+  const obj = objects[objects.length - 1];
+  obj.bossAttack = true;
+  obj.combatProtocol = protocol.id;
+  if (protocol.id === "seismicCalibration") obj.protocolRule = "stabilityCheck";
+  if (protocol.id === "coolantFlow") obj.protocolRule = "flowCheck";
+  if (protocol.id === "deflectorArray") {
+    obj.protocolRule = "directionalDeflect";
+    obj.shieldLane = "mid";
+  }
+  if (protocol.id === "pulseCannon") obj.shootable = true;
+  if (protocol.id === "echoRelay") obj.echoHazard = true;
+  if (protocol.id === "conveyorLanes") {
+    obj.webLane = 0;
+    obj.y = webLaneY(0) + getPlayerHeight() / 2 - obj.h / 2;
+  }
+  assetSceneState.description = `${protocol.jaName}中に、制御手順「${protocol.rule}」が必要な攻撃を確認する場面です。`;
 }
 
 function prepareAssetEnemyScene(item) {
@@ -1568,18 +1791,18 @@ function prepareAssetBossScene(index) {
   run.bossBattle = true;
   run.bossAreaIndex = index;
   run.bossPhase = "attack";
-  run.bossSoulMode = bossSoulModeForArea(index);
+  run.bossCombatProtocol = bossCombatProtocolForArea(index);
   const boss = spawnBoss(index, { x: 555, finalBoss: true, hp: FINAL_BOSS_HIT_POINT_TARGETS[index] || 20 });
   boss.vulnerable = false;
   assetPushBossAttackPreview(index);
-  assetSceneState.description = `${bossName(index)}が固有ギミックの攻撃フェーズを開始した場面です。`;
+  assetSceneState.description = `${localizedBossName(index)}が固有の設備検査工程を開始した場面です。`;
 }
 
 function prepareAssetChestScene(item) {
   const type = item.startsWith("銀") ? "silver"
     : item.startsWith("金") ? "gold"
-      : item.startsWith("虹") ? "rainbow"
-        : item.startsWith("神") ? "god"
+      : item.startsWith("積層") ? "rainbow"
+        : item.startsWith("中枢") ? "god"
           : "wood";
   assetPushChest(type, 445);
   if (item.includes("開封エフェクト")) {
@@ -1659,7 +1882,7 @@ function prepareAssetEffectScene(item) {
     assetPushRare("diamond", player.x + 68, player.y);
   } else if (item === "敵撃破") {
     burst(450, groundY - 48, "#75d05e", 30);
-  } else if (item === "ボス撃破") {
+  } else if (item === "最終管理機解除") {
     prepareAssetBossScene(0);
     const boss = objects.find((obj) => obj.type === "boss");
     if (boss) boss.hp = 0;
@@ -1743,8 +1966,8 @@ function prepareAssetJingleScene(item) {
   else if (item.includes("宝箱入手")) prepareAssetChestScene("金宝箱");
   else if (item.includes("宝箱開封")) prepareAssetChestScene("宝箱開封エフェクト");
   else if (item.includes("レア装備")) prepareAssetEquipmentScene("アクセサリーアイコン N/R/SR/SSR/UR/LR");
-  else if (item.includes("ボス出現")) prepareAssetBossScene(0);
-  else if (item.includes("ボス撃破")) prepareAssetEffectScene("ボス撃破");
+  else if (item.includes("最終管理機出現")) prepareAssetBossScene(0);
+  else if (item.includes("最終管理機解除")) prepareAssetEffectScene("最終管理機解除");
   else if (item.includes("ミッション")) prepareAssetCompletedMissionScene(false);
   else if (item.includes("実績")) prepareAssetCompletedMissionScene(true);
   else if (item.includes("転生")) prepareAssetEffectScene("転生");
@@ -1804,7 +2027,7 @@ function prepareAssetResearchCompleteScene() {
   state.research = Math.max(200, state.research);
   setAssetSceneTab("research");
   assetSceneState.focusSelector = "#panelContent";
-  assetSceneState.description = "エリア最終ボス由来の研究を完了し、スキル効果が反映された場面です。";
+  assetSceneState.description = "解除した最終管理機の部品を使う研究が完了し、モジュール効果が反映された場面です。";
 }
 
 function assetPushCoin(value, x, y = groundY - 112) {
@@ -2345,7 +2568,7 @@ function setupTasBossScenario(option) {
   run.bossPhase = option.phase;
   run.bossPatternIndex = option.patternIndex;
   run.bossVolley = 0;
-  run.bossSoulMode = bossSoulModeForArea(option.areaIndex);
+  run.bossCombatProtocol = bossCombatProtocolForArea(option.areaIndex);
   run.bossModeTimer = 0;
   run.bossModePulse = 0.85;
   run.bossResearchCounters = {};
@@ -2417,7 +2640,7 @@ function prepareTasScenarioRun(areaIndexValue, distance) {
   run.bossPhase = "attack";
   run.bossPatternIndex = 0;
   run.bossVolley = 0;
-  run.bossSoulMode = "red";
+  run.bossCombatProtocol = "baseline";
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
   run.bossResearchCounters = {};
@@ -2428,7 +2651,7 @@ function prepareTasScenarioRun(areaIndexValue, distance) {
   run.lastBossResearchAudit = null;
   run.tasDisabledResearchIds = [];
   run.webLane = 1;
-  run.justiceCooldown = 0;
+  run.pulseShotCooldown = 0;
   run.echoActive = false;
   run.event = null;
   run.eventTimer = 0;
@@ -2969,19 +3192,19 @@ function applyTasInputFrame(frame) {
   const wantsJump = Boolean(frame.jump);
   const wantsSlide = Boolean(frame.slide) && !wantsJump;
   inputState.tasWantsJump = wantsJump;
-  const purpleLaneMode = run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple";
-  if (purpleLaneMode) {
-    if (wantsJump && !inputState.tasPurpleJumpHeld) shiftWebLane(-1);
-    if (wantsSlide && !inputState.tasPurpleSlideHeld) shiftWebLane(1);
-    inputState.tasPurpleJumpHeld = wantsJump;
-    inputState.tasPurpleSlideHeld = wantsSlide;
+  const conveyorLaneMode = run.bossBattle && run.bossPhase === "attack" && activeBossCombatProtocol() === "conveyorLanes";
+  if (conveyorLaneMode) {
+    if (wantsJump && !inputState.tasLaneUpHeld) shiftWebLane(-1);
+    if (wantsSlide && !inputState.tasLaneDownHeld) shiftWebLane(1);
+    inputState.tasLaneUpHeld = wantsJump;
+    inputState.tasLaneDownHeld = wantsSlide;
     inputState.blockDirection = frame.block || "mid";
     if (frame.cycle) cycleActiveSkill();
     if (frame.skill) activateActiveSkill();
     return;
   }
-  inputState.tasPurpleJumpHeld = false;
-  inputState.tasPurpleSlideHeld = false;
+  inputState.tasLaneUpHeld = false;
+  inputState.tasLaneDownHeld = false;
   if (wantsSlide && !inputState.slideHolding) startSlideHold();
   if (!wantsSlide && inputState.slideHolding) cancelSlideHold();
   if (wantsJump && !inputState.jumpHolding) {
@@ -3437,8 +3660,32 @@ function maybeStartIntroGuide(options = {}) {
       state.tutorial.introComplete = true;
       persistStateQuiet();
       maybeExplainAreaTrait(areaIndex());
+      flushPendingSystemGuides();
     }
   });
+}
+
+function flushPendingSystemGuides() {
+  if (languageSelectionActive || !state.tutorial?.introComplete) return;
+  const ids = [...pendingSystemGuideIds];
+  pendingSystemGuideIds.clear();
+  ids.forEach((id) => maybeExplainSystem(id));
+}
+
+function queueProgressContextGuides() {
+  if (Object.values(state.factories || {}).some((level) => level > 0)) maybeExplainSystem("idleProduction");
+  if ((state.equipment || []).length > 0) maybeExplainSystem("equipmentAcquired");
+  if (state.level > 1) maybeExplainSystem("levelUp");
+  if (state.coins >= PRESTIGE_COIN_REQUIREMENT) maybeExplainSystem("prestigeReady");
+  if (areaIndexForDistance(state.currentPrestigeDistance || 0) >= 3) maybeExplainSystem("damageEscalation");
+  if (researchDefs.some((def) => state.defeatedAreaBosses?.[def.sourceAreaIndex])) maybeExplainSystem("researchDiscovery");
+  if (activeSkillDefs.some((def) => researchLevel(def.id) > 0 && isResearchDiscovered(def))) {
+    maybeExplainSystem("activeSkillUnlocked");
+  }
+  const sharedCap = BASE_UPGRADE_CAP + Number(state.prestigeCount || 0);
+  const atSharedCap = [state.upgrades, state.factories, state.researchTree]
+    .some((group) => Object.values(group || {}).some((level) => Number(level || 0) >= sharedCap));
+  if (atSharedCap) maybeExplainSystem("levelCapReached");
 }
 
 function queueGuide(steps, options = {}) {
@@ -3597,6 +3844,21 @@ function tagItemForGuide(obj, kind) {
   obj.itemGuidePending = true;
 }
 
+function tagRareForGuide(obj, kind) {
+  if (!obj || obj.type !== "rare" || !rareGuideDefs[kind] || state.tutorial?.seenRares?.[kind]) return;
+  obj.rareGuideKind = kind;
+  obj.rareGuidePending = true;
+}
+
+function tagLatestRareForGuide(kind) {
+  tagRareForGuide(objects[objects.length - 1], kind);
+}
+
+function tagChestForGuide(obj) {
+  if (!obj || obj.type !== "chest" || state.tutorial?.seenSystems?.partsContainer) return;
+  obj.chestGuidePending = true;
+}
+
 function checkHazardGuideTrigger(obj) {
   if (!obj?.guidePending || state.tutorial?.seenHazards?.[obj.guideKind]) return;
   const centerX = obj.x + obj.w / 2;
@@ -3612,6 +3874,25 @@ function checkItemGuideTrigger(obj) {
   if (centerX <= canvasWidth * 0.52 && centerX >= 0) {
     maybeExplainItem(obj.itemGuideKind, obj);
     obj.itemGuidePending = false;
+  }
+}
+
+function checkRareGuideTrigger(obj) {
+  if (!obj?.rareGuidePending || state.tutorial?.seenRares?.[obj.rareGuideKind]) return;
+  const centerX = obj.x + obj.w / 2;
+  if (centerX <= canvasWidth * 0.52 && centerX >= 0) {
+    maybeExplainRare(obj.rareGuideKind, obj);
+    obj.rareGuidePending = false;
+  }
+}
+
+function checkChestGuideTrigger(obj) {
+  if (!obj?.chestGuidePending || state.tutorial?.seenSystems?.partsContainer) return;
+  const centerX = obj.x + obj.w / 2;
+  if (centerX <= canvasWidth * 0.52 && centerX >= 0) {
+    markTutorialSeen("seenSystems", "partsContainer");
+    queueGuide([{ ...chestGuideDef, target: { canvasObject: obj } }]);
+    obj.chestGuidePending = false;
   }
 }
 
@@ -3631,15 +3912,15 @@ function maybeExplainResearchTrial(id, obj) {
   const active = Boolean(def.active);
   queueGuide([{
     title: {
-      ja: `研究防壁: ${def.name}`,
-      en: `Research Gate: ${translateText(def.name)}`
+      ja: `保守認証ゲート: ${def.name}`,
+      en: `Maintenance Gate: ${translateText(def.name)}`
     },
     text: active ? {
-      ja: "この防壁は表示されたアクティブ研究でのみ破壊できます。Qでスキルを切り替え、防壁が近づいた時にDで発動してください。無敵やアイテムでは通過できません。",
-      en: "Only the displayed active research can break this gate. Cycle skills with Q, then press D when the gate is close. Invincibility and items cannot bypass it."
+      ja: "停止したラインが、表示中のアクティブ研究を保守権限として要求しています。Qでモジュールを切り替え、ゲートが近づいた時にDで応答してください。無敵化や補助モジュールでは認証を代用できません。",
+      en: "The stalled line requires the displayed active research as maintenance authorization. Cycle modules with Q and respond with D when the gate is close. Invincibility and support modules cannot substitute for authorization."
     } : {
-      ja: "この防壁は表示されたパッシブ研究の習得状況を検査します。研究Lvが1以上なら接触時に自動で無効化され、未研究では必ずダメージを受けます。",
-      en: "This gate checks the displayed passive research. At Lv1 or higher it is neutralized automatically on contact; without it, the gate always deals damage."
+      ja: "停止したラインが、表示中のパッシブ研究を機体の耐性記録から検査します。研究Lvが1以上なら接触時に自動認証され、未研究では安全遮断により必ずダメージを受けます。",
+      en: "The stalled line checks the displayed passive research in K-0's resistance record. At Lv1 or higher it authorizes automatically on contact; without it, the safety cutoff always deals damage."
     },
     target: { canvasObject: obj }
   }]);
@@ -3659,13 +3940,51 @@ function maybeExplainItem(kind, obj = null) {
   queueGuide([{ ...def, target: obj ? { canvasObject: obj } : ".canvas-frame" }]);
 }
 
+function maybeExplainRare(kind, obj = null) {
+  const def = rareGuideDefs[kind];
+  if (!def || state.tutorial?.seenRares?.[kind]) return;
+  markTutorialSeen("seenRares", kind);
+  queueGuide([{ ...def, target: obj ? { canvasObject: obj } : ".canvas-frame" }]);
+}
+
+function maybeExplainEvent(id) {
+  const def = eventGuideDefs[id];
+  if (!def || state.tutorial?.seenEvents?.[id]) return;
+  markTutorialSeen("seenEvents", id);
+  queueGuide([{ ...def, target: ".canvas-frame" }]);
+}
+
+function maybeExplainCombatProtocol(id) {
+  const def = combatProtocolGuideDefs[id];
+  if (!def || state.tutorial?.seenProtocols?.[id]) return;
+  markTutorialSeen("seenProtocols", id);
+  queueGuide([{ ...def, target: ".canvas-frame" }]);
+}
+
+function maybeExplainBossBattleBasics() {
+  if (state.tutorial?.seenSystems?.bossBattleBasics) return;
+  markTutorialSeen("seenSystems", "bossBattleBasics");
+  queueGuide(bossBattleGuideSteps);
+}
+
+function maybeExplainSystem(id) {
+  const def = systemGuideDefs[id];
+  if (!def || state.tutorial?.seenSystems?.[id]) return;
+  if (languageSelectionActive || !state.tutorial?.introComplete) {
+    pendingSystemGuideIds.add(id);
+    return;
+  }
+  markTutorialSeen("seenSystems", id);
+  queueGuide([def]);
+}
+
 function maybeExplainBoss(index) {
   const id = String(index);
   if (state.tutorial?.seenBosses?.[id]) return;
   markTutorialSeen("seenBosses", id);
   const def = bossGuideDefs[index] || {
-    title: { ja: `最終ボス: ${bossName(index)}`, en: `Final Boss: ${bossName(index)}` },
-    text: { ja: "このエリアの最深部を守る特異な存在です。周囲の環境を取り込んだ専用ギミックでランを乱します。", en: "A strange guardian of this area. It disrupts the run with a gimmick shaped by its environment." }
+    title: { ja: `最終管理機: ${localizedBossName(index)}`, en: `Final Controller: ${bossName(index)}` },
+    text: { ja: "このライン中枢を閉鎖している旧式管理機です。周囲の設備を独自の検査工程へ組み込み、K-0を未登録機として排除しようとします。", en: "An old controller sealing this line core. It incorporates nearby equipment into its own inspection cycle and tries to reject K-0 as an unregistered unit." }
   };
   queueGuide([{ ...def, target: ".canvas-frame" }]);
 }
@@ -3723,6 +4042,10 @@ function defaultState() {
       introComplete: false,
       seenHazards: {},
       seenItems: {},
+      seenRares: {},
+      seenEvents: {},
+      seenProtocols: {},
+      seenSystems: {},
       seenBosses: {},
       seenTraits: {},
       seenResearchTrials: {}
@@ -3748,7 +4071,7 @@ function buildFactoryDefs() {
       const def = {
         ...template,
         id,
-        name: tierIndex === 0 ? template.name : `${tier.name}${template.name}`,
+        name: tierIndex === 0 ? template.name : `${tier.name} ${template.name}`,
         base: Math.ceil(template.base * currencyScale),
         growth: Number((template.growth + tierIndex * 0.004).toFixed(3)),
         areaIndex: tierIndex,
@@ -3901,6 +4224,10 @@ function normalizeTutorialState(targetState = state) {
   targetState.tutorial.introComplete = Boolean(targetState.tutorial.introComplete);
   targetState.tutorial.seenHazards = targetState.tutorial.seenHazards || {};
   targetState.tutorial.seenItems = targetState.tutorial.seenItems || {};
+  targetState.tutorial.seenRares = targetState.tutorial.seenRares || {};
+  targetState.tutorial.seenEvents = targetState.tutorial.seenEvents || {};
+  targetState.tutorial.seenProtocols = targetState.tutorial.seenProtocols || {};
+  targetState.tutorial.seenSystems = targetState.tutorial.seenSystems || {};
   targetState.tutorial.seenBosses = targetState.tutorial.seenBosses || {};
   targetState.tutorial.seenTraits = targetState.tutorial.seenTraits || {};
   targetState.tutorial.seenResearchTrials = targetState.tutorial.seenResearchTrials || {};
@@ -3964,7 +4291,10 @@ function applyOfflineProgress() {
   tickChestTimers(elapsed);
   state.boosts.coinDouble = Math.max(0, state.boosts.coinDouble - elapsed);
   const gained = state.coins - before.coins;
-  if (gained > 0) logEvent(`OFFLINE +${formatNumber(gained)} COIN`);
+  if (gained > 0) {
+    logEvent(`OFFLINE +${formatNumber(gained)} COIN`);
+    maybeExplainSystem("offlineIncome");
+  }
 }
 
 function loadSpriteAssets() {
@@ -4047,11 +4377,11 @@ function bindEvents() {
     } else if (event.code === "ArrowDown") {
       inputState.blockDirection = "low";
     }
-    if (run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple") {
+    if (run.bossBattle && run.bossPhase === "attack" && activeBossCombatProtocol() === "conveyorLanes") {
       if ((!isTasEnabled() && event.code === "Space") || event.code === "ArrowUp") shiftWebLane(-1);
       if (event.code === "ArrowDown") shiftWebLane(1);
-      const allowedPurpleAction = event.code === "KeyD" || event.code === "KeyQ" || (!isTasEnabled() && event.code === "KeyE");
-      if (!allowedPurpleAction) return;
+      const allowedConveyorAction = event.code === "KeyD" || event.code === "KeyQ" || (!isTasEnabled() && event.code === "KeyE");
+      if (!allowedConveyorAction) return;
     }
     if (event.code === "KeyQ") {
       markTasAction("cycle");
@@ -4178,6 +4508,7 @@ function bindEvents() {
       tab.classList.toggle("active", tab.dataset.tab === activeTab);
     });
     renderPanel();
+    if (activeTab === "prestige" && ADS_ENABLED) maybeExplainSystem("rewardAds");
   });
 
   panelContent.addEventListener("click", (event) => {
@@ -4346,6 +4677,7 @@ function runLoopFrame(now) {
     update(rawDt);
   }
   draw();
+  if (guideState.active) updateGuideHighlight(guideState.currentTarget);
 }
 
 function runTasAnimationFallback() {
@@ -4505,6 +4837,7 @@ function updateRun(dt) {
   syncPlayerAnimationState();
   state.bestDistance = Math.max(state.bestDistance, run.distance);
   state.currentPrestigeDistance = Math.max(state.currentPrestigeDistance || 0, run.distance);
+  if (state.coins >= PRESTIGE_COIN_REQUIREMENT) maybeExplainSystem("prestigeReady");
 }
 
 function advanceRunDistance(delta) {
@@ -4526,6 +4859,7 @@ function advanceRunDistance(delta) {
   const newArea = areaIndexForDistance(run.distance);
   if (newArea !== previousArea) {
     maybeExplainAreaTrait(newArea);
+    if (newArea >= 3) maybeExplainSystem("damageEscalation");
   }
   if (shouldFight && nextDistance >= bossMark) {
     run.distance = bossMark;
@@ -4541,7 +4875,7 @@ function maybeSpawnScheduledChest() {
 }
 
 function updatePlayer(dt, stats) {
-  if (run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple") {
+  if (run.bossBattle && run.bossPhase === "attack" && activeBossCombatProtocol() === "conveyorLanes") {
     updateWebLanePlayer(dt);
     return;
   }
@@ -4608,6 +4942,8 @@ function updateObjects(dt, scrollSpeed, stats) {
     }
     checkHazardGuideTrigger(obj);
     checkItemGuideTrigger(obj);
+    checkRareGuideTrigger(obj);
+    checkChestGuideTrigger(obj);
     checkResearchTrialGuideTrigger(obj);
     if (obj.hitCooldown > 0) obj.hitCooldown -= dt;
     if (!frozen && (obj.type === "enemy" || obj.type === "boss")) {
@@ -4624,7 +4960,7 @@ function updateObjects(dt, scrollSpeed, stats) {
       handlePlayerShotCollision(obj, removed);
       continue;
     }
-    if (run.echoActive && obj.dualHazard && (obj.type === "obstacle" || obj.type === "enemy")) {
+    if (run.echoActive && obj.echoHazard && (obj.type === "obstacle" || obj.type === "enemy")) {
       const echoRect = getPlayerEchoRect();
       if (echoRect && rectsOverlap(echoRect, obj)) {
         damagePlayer({ source: obj });
@@ -4640,13 +4976,13 @@ function updateObjects(dt, scrollSpeed, stats) {
         obj.x = canvasWidth + 120;
         obj.y = groundY - obj.h;
         player.invulnerable = Math.max(player.invulnerable, 0.8);
-        logEvent("BOSS ESCAPED");
+        logEvent("CONTROLLER PASSED");
         continue;
       }
       obj.x = canvasWidth + 120;
       obj.y = groundY - obj.h;
       player.invulnerable = Math.max(player.invulnerable, 0.8);
-      logEvent("BOSS ESCAPED");
+      logEvent("CONTROLLER PASSED");
       continue;
     }
 
@@ -4660,13 +4996,13 @@ function updateObjects(dt, scrollSpeed, stats) {
       }
     }
 
-    const separatedPurpleLane = run.bossBattle
+    const separatedConveyorLane = run.bossBattle
       && run.bossPhase === "attack"
-      && activeBossSoulMode() === "purple"
+      && activeBossCombatProtocol() === "conveyorLanes"
       && obj.bossAttack
       && Number.isInteger(obj.webLane)
       && obj.webLane !== run.webLane;
-    if (separatedPurpleLane) continue;
+    if (separatedConveyorLane) continue;
 
     if (rectsOverlap(playerRect, obj)) {
       if ((obj.type === "enemy" || obj.type === "boss") && obj.phased) continue;
@@ -4685,8 +5021,8 @@ function updateObjects(dt, scrollSpeed, stats) {
       } else if (obj.type === "obstacle") {
         if (obj.kind === "researchGate" && handleResearchTrialCollision(obj, removed)) {
           // Research trial handled this collision.
-        } else if (handleSoulObstacleCollision(obj, removed)) {
-          // Soul-mode rule handled this collision.
+        } else if (handleProtocolObstacleCollision(obj, removed)) {
+          // Combat protocol rule handled this collision.
         } else if (isInvincible() || run.event === "clearPath") {
           burst(obj.x, obj.y, "#f2b84b", 9);
           removed.add(obj);
@@ -4696,8 +5032,8 @@ function updateObjects(dt, scrollSpeed, stats) {
           obj.x -= 80;
         }
       } else if (obj.type === "enemy") {
-        if (handleSoulEnemyCollision(obj, removed)) {
-          // Soul-mode rule handled this collision.
+        if (handleProtocolEnemyCollision(obj, removed)) {
+          // Combat protocol rule handled this collision.
         } else if (canStomp(obj) || isInvincible()) {
           if (damageEnemy(obj, isInvincible() ? 2 : 1)) {
             defeatEnemy(obj);
@@ -4784,7 +5120,7 @@ function handlePlayerShotCollision(shot, removed) {
     gainCombo(1);
     return;
   }
-  const canDamageBoss = target.type !== "boss" || activeBossSoulMode() === "yellow" || target.vulnerable;
+  const canDamageBoss = target.type !== "boss" || activeBossCombatProtocol() === "pulseCannon" || target.vulnerable;
   if (!canDamageBoss) return;
   if (damageEnemy(target, 1)) {
     if (target.type === "boss") defeatBoss(target);
@@ -4793,11 +5129,11 @@ function handlePlayerShotCollision(shot, removed) {
   }
 }
 
-function handleSoulObstacleCollision(obj, removed) {
-  if (obj.soulRule === "patience") {
-    if (isPlayerStillForPatience()) {
+function handleProtocolObstacleCollision(obj, removed) {
+  if (obj.protocolRule === "stabilityCheck") {
+    if (isPlayerStableForCalibration()) {
       removed.add(obj);
-      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#65d6ff", 7);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#9a7652", 7);
       gainCombo(1);
     } else {
       damagePlayer({ source: obj });
@@ -4805,10 +5141,10 @@ function handleSoulObstacleCollision(obj, removed) {
     }
     return true;
   }
-  if (obj.soulRule === "bravery") {
-    if (isPlayerActingForBravery()) {
+  if (obj.protocolRule === "flowCheck") {
+    if (isPlayerFlowingForCoolant()) {
       removed.add(obj);
-      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#ff9f3d", 8);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#c96f86", 8);
       gainCombo(1);
     } else {
       damagePlayer({ source: obj });
@@ -4816,10 +5152,10 @@ function handleSoulObstacleCollision(obj, removed) {
     }
     return true;
   }
-  if (obj.soulRule === "shield") {
+  if (obj.protocolRule === "directionalDeflect") {
     if (shieldDirection() === obj.shieldLane) {
       removed.add(obj);
-      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#60d878", 8);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#7668a9", 8);
       if (run.hp < getStats().maxHp && shouldShieldBlockHeal()) run.hp += 1;
       gainCombo(1);
     } else {
@@ -4831,11 +5167,11 @@ function handleSoulObstacleCollision(obj, removed) {
   return false;
 }
 
-function handleSoulEnemyCollision(obj, removed) {
-  if (obj.soulRule === "patience") {
-    if (isPlayerStillForPatience()) {
+function handleProtocolEnemyCollision(obj, removed) {
+  if (obj.protocolRule === "stabilityCheck") {
+    if (isPlayerStableForCalibration()) {
       removed.add(obj);
-      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#65d6ff", 7);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#9a7652", 7);
       gainCombo(1);
     } else {
       damagePlayer({ source: obj });
@@ -4843,8 +5179,8 @@ function handleSoulEnemyCollision(obj, removed) {
     }
     return true;
   }
-  if (obj.soulRule === "bravery") {
-    if (isPlayerActingForBravery()) {
+  if (obj.protocolRule === "flowCheck") {
+    if (isPlayerFlowingForCoolant()) {
       defeatEnemy(obj);
       removed.add(obj);
     } else {
@@ -4853,10 +5189,10 @@ function handleSoulEnemyCollision(obj, removed) {
     }
     return true;
   }
-  if (obj.soulRule === "shield") {
+  if (obj.protocolRule === "directionalDeflect") {
     if (shieldDirection() === obj.shieldLane) {
       removed.add(obj);
-      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#60d878", 8);
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#7668a9", 8);
       gainCombo(1);
     } else {
       damagePlayer({ source: obj });
@@ -4867,11 +5203,11 @@ function handleSoulEnemyCollision(obj, removed) {
   return false;
 }
 
-function isPlayerStillForPatience() {
+function isPlayerStableForCalibration() {
   return Math.abs(player.vy) < 12 && player.slideTimer <= 0 && !inputState.jumpHolding && player.jumpsUsed === 0;
 }
 
-function isPlayerActingForBravery() {
+function isPlayerFlowingForCoolant() {
   return Math.abs(player.vy) > 35 || player.slideTimer > 0 || run.dashTimer > 0 || inputState.jumpHolding;
 }
 
@@ -5059,7 +5395,7 @@ function spawnEnemyTraitHazard(source, kind, options = {}) {
   };
   const finalBoss = objects.find((obj) => obj.type === "boss" && obj.finalBoss);
   if (run.bossBattle && finalBoss) {
-    applyBossSoulRule(hazard, finalBoss, {});
+    applyBossProtocolRule(hazard, finalBoss, {});
     applyBossWebLaneRule(hazard, finalBoss);
   }
   objects.push(hazard);
@@ -5098,7 +5434,7 @@ function updateBossGimmick(obj, dt, distance) {
       player.vy *= -0.35;
     }
     obj.bossTimer = 5.2;
-    logEvent("BOSS GRAVITY SURGE");
+    logEvent("CONTROLLER POLARITY SURGE");
   }
   if (obj.bossGimmick === "singularity" && distance < 250) {
     player.vy += (run.gravityFlip ? -1 : 1) * 95 * researchReduction("voidTether") * dt;
@@ -5197,7 +5533,7 @@ function updateFinalBossGimmick(boss, dt) {
       player.vy *= -0.25;
     }
     boss.gimmickUsed = true;
-    logEvent("BOSS GRAVITY SURGE");
+    logEvent("CONTROLLER POLARITY SURGE");
   }
 
   if (boss.bossGimmick === "singularity") {
@@ -5553,18 +5889,20 @@ function spawnPatternCoinLine(startX, entry = {}) {
 
   const rareChance = (entry.rareChance ?? 0.015) + state.permanent.rarity * 0.008;
   if (rng() < rareChance) {
+    const kind = weightedPick([
+      { value: "rainbow", weight: 72 },
+      { value: "diamond", weight: 21 },
+      { value: "gem", weight: 7 }
+    ]);
     objects.push({
       type: "rare",
-      kind: weightedPick([
-        { value: "rainbow", weight: 72 },
-        { value: "diamond", weight: 21 },
-        { value: "gem", weight: 7 }
-      ]),
+      kind,
       x: startX + count * spacing + 18,
       y: coinLaneY("high") + random(-12, 20),
       w: 24,
       h: 24
     });
+    tagLatestRareForGuide(kind);
   }
 }
 
@@ -5701,18 +6039,20 @@ function spawnCoinLine(startX, arc) {
   }
 
   if (rng() < 0.025 + state.permanent.rarity * 0.01) {
+    const kind = weightedPick([
+      { value: "rainbow", weight: 65 },
+      { value: "diamond", weight: 25 },
+      { value: "gem", weight: 10 }
+    ]);
     objects.push({
       type: "rare",
-      kind: weightedPick([
-        { value: "rainbow", weight: 65 },
-        { value: "diamond", weight: 25 },
-        { value: "gem", weight: 10 }
-      ]),
+      kind,
       x: startX + count * 38 + 18,
       y: groundY - random(120, 210),
       w: 24,
       h: 24
     });
+    tagLatestRareForGuide(kind);
   }
 }
 
@@ -5922,6 +6262,7 @@ function spawnChest(x) {
     w: 40,
     h: 32
   });
+  tagChestForGuide(objects[objects.length - 1]);
 }
 
 function pickChestType() {
@@ -5973,14 +6314,14 @@ function spawnBoss(index = areaIndex(), options = {}) {
     bossTimer: 1.8,
     hitCooldown: 0,
     finalBoss: Boolean(options.finalBoss),
-    soulMode: bossSoulModeForArea(index),
+    combatProtocol: bossCombatProtocolForArea(index),
     chargePhase: "approach",
     attackPattern: 0,
     attackVolley: 0,
     vulnerable: false
   }, index);
   objects.push(boss);
-  logEvent(`BOSS ${bossName(index).toUpperCase()}`);
+  logEvent(`CONTROLLER ${bossName(index).toUpperCase()}`);
   return boss;
 }
 
@@ -5996,7 +6337,7 @@ function startAreaBossBattle(index) {
   run.bossPhase = "attack";
   run.bossPatternIndex = 0;
   run.bossVolley = 0;
-  run.bossSoulMode = bossSoulModeForArea(index);
+  run.bossCombatProtocol = bossCombatProtocolForArea(index);
   run.bossModeTimer = 0;
   run.bossModePulse = 0.85;
   run.bossResearchCounters = {};
@@ -6006,7 +6347,7 @@ function startAreaBossBattle(index) {
   run.bossResearchUsage = {};
   run.lastBossResearchAudit = null;
   run.webLane = 1;
-  run.justiceCooldown = 0;
+  run.pulseShotCooldown = 0;
   run.echoActive = false;
   run.event = null;
   run.eventTimer = 0;
@@ -6020,8 +6361,11 @@ function startAreaBossBattle(index) {
   if (tasState.autoEnabled) tasState.autoTracks = [];
   startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   restartPlayerAnimation("running");
-  logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
+  logEvent(`FINAL CONTROLLER ${bossName(index).toUpperCase()}`);
+  maybeExplainBossBattleBasics();
   maybeExplainBoss(index);
+  maybeExplainCombatProtocol(run.bossCombatProtocol);
+  maybeExplainCombatProtocol(activeBossCombatProtocol());
 }
 
 function finalBossHitPoints(index) {
@@ -6039,7 +6383,7 @@ function updateBossBattle(dt) {
   const vulnerable = run.bossPhase === "vulnerable";
   boss.vulnerable = vulnerable;
   boss.attackPattern = run.bossPatternIndex % FINAL_BOSS_ATTACK_PATTERNS;
-  updateBossSoulMode(boss, dt);
+  updateBossCombatProtocol(boss, dt);
 
   run.bossChargeTimer -= dt;
   if (vulnerable) {
@@ -6069,7 +6413,7 @@ function updateBossBattle(dt) {
 
 function switchBossPhase(boss, phase) {
   const index = boss.areaIndex || 0;
-  const mode = activeBossSoulMode();
+  const mode = activeBossCombatProtocol();
   run.bossPhase = phase;
   run.bossRetreating = phase === "attack";
   run.bossVolley = 0;
@@ -6086,7 +6430,7 @@ function switchBossPhase(boss, phase) {
   inputState.slideHolding = false;
   player.slideTimer = 0;
   player.jumpsUsed = 0;
-  resetBossSoulModeMovement(mode);
+  resetBossCombatProtocolMovement(mode);
   if (phase === "attack") {
     clearBossAttackObjects();
     boss.x = canvasWidth - 170;
@@ -6099,6 +6443,7 @@ function switchBossPhase(boss, phase) {
     spawnBossResearchTrialsForPattern(boss, index, run.bossPatternIndex);
     logEvent(`${bossName(index).toUpperCase()} PATTERN ${boss.attackPattern + 1}`);
     startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
+    maybeExplainCombatProtocol(activeBossCombatProtocol());
   } else {
     clearBossAttackObjects();
     run.bossModePulse = 0.4;
@@ -6108,33 +6453,33 @@ function switchBossPhase(boss, phase) {
     boss.y = finalBossVulnerableY(boss);
     boss.vx = finalBossApproachVelocity(boss, index);
     burst(boss.x + boss.w / 2, boss.y + 12, boss.color, 12);
-    logEvent("BOSS OPEN");
+    logEvent("SERVICE PHASE");
     startTasAutoReplayForScenario(tasBossScenarioId(index, "vulnerable", run.bossPatternIndex));
   }
 }
 
-function updateBossSoulMode(boss, dt) {
-  const mode = activeBossSoulMode();
-  run.bossSoulMode = mode;
+function updateBossCombatProtocol(boss, dt) {
+  const mode = activeBossCombatProtocol();
+  run.bossCombatProtocol = mode;
   run.bossModeTimer += dt;
-  run.echoActive = mode === "dual" && run.bossPhase === "attack";
-  if (run.justiceCooldown > 0) run.justiceCooldown -= dt;
+  run.echoActive = mode === "echoRelay" && run.bossPhase === "attack";
+  if (run.pulseShotCooldown > 0) run.pulseShotCooldown -= dt;
 
-  if (mode !== "purple") {
+  if (mode !== "conveyorLanes") {
     run.webLane = 1;
   }
 
-  if (mode === "blue" && run.bossPhase === "attack" && run.bossChargeTimer > 0) {
+  if (mode === "polarityShift" && run.bossPhase === "attack" && run.bossChargeTimer > 0) {
     run.bossModePulse -= dt;
     if (run.bossModePulse <= 0) {
       run.gravityFlip = !run.gravityFlip;
       player.vy *= -0.25;
       run.bossModePulse = 1.45;
-      logEvent("BLUE GRAVITY SHIFT");
+      logEvent("POLARITY SHIFT");
     }
   }
 
-  if (mode === "purple" && run.bossPhase === "attack") {
+  if (mode === "conveyorLanes" && run.bossPhase === "attack") {
     boss.phased = false;
   }
 }
@@ -6181,7 +6526,7 @@ function clearBossAttackObjects() {
   objects = objects.filter((obj) => obj.type === "boss" || !obj.bossAttack);
 }
 
-function resetBossSoulModeMovement(mode) {
+function resetBossCombatProtocolMovement(mode) {
   run.echoActive = false;
   run.gravityFlip = false;
   run.gravityLandingGuard = false;
@@ -6451,7 +6796,7 @@ function addBossObstacle(kind, boss, options = {}) {
     color: options.color || boss.color,
     attackVolley: Math.max(0, (boss.attackVolley || 1) - 1)
   };
-  applyBossSoulRule(obj, boss, options);
+  applyBossProtocolRule(obj, boss, options);
   applyBossWebLaneRule(obj, boss);
   objects.push(obj);
   tagLatestHazardForGuide(kind);
@@ -6476,42 +6821,42 @@ function addBossEnemy(kind, boss, options = {}) {
     bounceFactor: options.bounceFactor ?? 0.72,
     color: options.color || (kind === "slime" ? "#75d05e" : boss.color)
   }, boss.areaIndex || 0);
-  applyBossSoulRule(obj, boss, options);
+  applyBossProtocolRule(obj, boss, options);
   applyBossWebLaneRule(obj, boss);
   objects.push(obj);
   tagLatestHazardForGuide(kind);
   return obj;
 }
 
-function applyBossSoulRule(obj, boss, options = {}) {
-  if (options.ignoreSoulRule) {
-    obj.soulMode = "normal";
-    obj.soulRule = null;
+function applyBossProtocolRule(obj, boss, options = {}) {
+  if (options.ignoreProtocolRule) {
+    obj.combatProtocol = "normal";
+    obj.protocolRule = null;
     return;
   }
-  const mode = activeBossSoulMode();
-  obj.soulMode = mode;
-  if (mode === "cyan") obj.soulRule = "patience";
-  if (mode === "orange") obj.soulRule = "bravery";
-  if (mode === "green") {
-    obj.soulRule = "shield";
+  const mode = activeBossCombatProtocol();
+  obj.combatProtocol = mode;
+  if (mode === "seismicCalibration") obj.protocolRule = "stabilityCheck";
+  if (mode === "coolantFlow") obj.protocolRule = "flowCheck";
+  if (mode === "deflectorArray") {
+    obj.protocolRule = "directionalDeflect";
     obj.shieldLane = options.shieldLane || inferShieldLane(obj);
   }
-  if (mode === "yellow") obj.shootable = true;
-  if (mode === "dual") {
-    obj.dualHazard = true;
+  if (mode === "pulseCannon") obj.shootable = true;
+  if (mode === "echoRelay") {
+    obj.echoHazard = true;
     if (obj.kind === "laser") {
       obj.h = Math.min(obj.h || 28, 28);
       obj.y = (PLAYER_CEILING_Y + groundY) / 2 - obj.h / 2;
     }
   }
-  if ((boss?.soulMode || run.bossSoulMode) === "rainbow") {
-    obj.rainbowRule = mode;
+  if ((boss?.combatProtocol || run.bossCombatProtocol) === "protocolCycle") {
+    obj.cycleProtocolRule = mode;
   }
 }
 
 function applyBossWebLaneRule(obj, boss) {
-  if (activeBossSoulMode() !== "purple") return;
+  if (activeBossCombatProtocol() !== "conveyorLanes") return;
   const offsetBucket = Math.abs(Math.round(((obj.x || 0) - (boss.x || 0)) / 52));
   const kindCode = String(obj.kind || "").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
   const volley = Math.max(0, Number(obj.attackVolley || 0));
@@ -6586,7 +6931,7 @@ function addSandWyrmNormalHazard(boss, offset) {
     h: 36,
     vx: bossSpeed(1, 56),
     color: "#5f3c24",
-    ignoreSoulRule: true
+    ignoreProtocolRule: true
   });
 }
 
@@ -6693,13 +7038,14 @@ function collectCoin(value, x, y) {
   addMissionProgress("dailyCoins", gained);
   gainCombo(1);
   burst(x, y, "#f2b84b", 4);
+  if (state.coins >= PRESTIGE_COIN_REQUIREMENT) maybeExplainSystem("prestigeReady");
 }
 
 function collectRare(kind, x, y) {
   if (kind === "rainbow") {
     const gained = 1 + Math.floor(state.permanent.rarity / 3);
     state.gems += gained;
-    logEvent(`RAINBOW +${gained} GEM`);
+    logEvent(`LAYERED CRYSTAL +${gained} GEM`);
   } else if (kind === "diamond") {
     state.gems += 3;
     logEvent("DIAMOND +3 GEM");
@@ -6708,7 +7054,8 @@ function collectRare(kind, x, y) {
     logEvent("JEWEL +2 LAB");
   }
   gainCombo(2);
-  burst(x, y, "#b98cff", 10);
+  const color = kind === "diamond" ? "#9ab8c2" : kind === "gem" ? "#2e9b8f" : "#b6a06f";
+  burst(x, y, color, 10);
 }
 
 function addChest(chestType) {
@@ -6805,7 +7152,7 @@ function defeatBoss(obj) {
   if (obj.finalBoss) {
     completeAreaBoss(obj.areaIndex || 0);
   }
-  logEvent(`BOSS CLEAR +${formatNumber(coinReward)} COIN`);
+  logEvent(`CONTROLLER RELEASED +${formatNumber(coinReward)} COIN`);
 }
 
 function completeAreaBoss(index) {
@@ -6813,6 +7160,9 @@ function completeAreaBoss(index) {
   state.defeatedAreaBosses = state.defeatedAreaBosses || {};
   state.areaBossClears[index] = true;
   state.defeatedAreaBosses[index] = true;
+  if (researchDefs.some((def) => def.sourceAreaIndex === index)) {
+    maybeExplainSystem("researchDiscovery");
+  }
   run.lastBossResearchAudit = {
     areaIndex: index,
     required: [...(run.bossResearchRequired || [])],
@@ -6827,12 +7177,12 @@ function completeAreaBoss(index) {
   run.bossPhase = "attack";
   run.bossPatternIndex = 0;
   run.bossVolley = 0;
-  run.bossSoulMode = "red";
+  run.bossCombatProtocol = "baseline";
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
   run.bossResearchCounters = {};
   run.webLane = 1;
-  run.justiceCooldown = 0;
+  run.pulseShotCooldown = 0;
   run.echoActive = false;
   run.gravityFlip = false;
   run.gravityLandingGuard = false;
@@ -6881,7 +7231,7 @@ function damagePlayer(options = {}) {
         vx: source.vx || 0,
         vy: source.vy || 0,
         bossAttack: Boolean(source.bossAttack),
-        soulRule: source.soulRule || null,
+        protocolRule: source.protocolRule || null,
         researchTrialId: source.researchTrialId || null,
         attackVolley: Number.isFinite(source.attackVolley) ? source.attackVolley : null,
         webLane: Number.isFinite(source.webLane) ? source.webLane : null
@@ -6948,6 +7298,7 @@ function endRun() {
   overlayTitle.textContent = "RUN END";
   overlayText.textContent = `${formatNumber(run.distance)}m / XP +${formatNumber(xp)}`;
   runOverlay.classList.remove("hidden");
+  maybeExplainSystem("runFailure");
   logEvent(`RUN END ${formatNumber(run.distance)}m`);
   if (tasState.autoEnabled) {
     debugMessage(`TAS AUTO END ${tasAutoScenarioElapsedSeconds().toFixed(1)}s ${formatNumber(run.distance)}m`);
@@ -6993,7 +7344,7 @@ function resetRun() {
   run.bossPhase = "attack";
   run.bossPatternIndex = 0;
   run.bossVolley = 0;
-  run.bossSoulMode = "red";
+  run.bossCombatProtocol = "baseline";
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
   run.bossResearchCounters = {};
@@ -7005,7 +7356,7 @@ function resetRun() {
   run.tasAreaIndex = null;
   run.tasDisabledResearchIds = [];
   run.webLane = 1;
-  run.justiceCooldown = 0;
+  run.pulseShotCooldown = 0;
   run.echoActive = false;
   run.event = null;
   run.eventTimer = 0;
@@ -7233,17 +7584,17 @@ function activateActiveSkill() {
   if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
-  const justiceMode = run.bossBattle && activeBossSoulMode() === "yellow";
-  if (justiceMode) {
-    fireJusticeShot();
+  const pulseShotMode = run.bossBattle && activeBossCombatProtocol() === "pulseCannon";
+  if (pulseShotMode) {
+    firePulseShot();
   }
   if (run.gameOver) return;
   const def = selectedActiveSkillDef();
   if (!def) {
-    if (!justiceMode) logEvent("NO ACTIVE SKILL");
+    if (!pulseShotMode) logEvent("NO ACTIVE SKILL");
     return;
   }
-  if (justiceMode && !hasResolvableActiveResearchTrial(def.id)) return;
+  if (pulseShotMode && !hasResolvableActiveResearchTrial(def.id)) return;
   if (activeSkillCooldownRemaining(def.id) > 0) return;
   const level = researchLevel(def.id);
   if (def.id === "sandBreaker") activateSandBreaker(level);
@@ -7262,8 +7613,8 @@ function dash() {
   activateActiveSkill();
 }
 
-function fireJusticeShot() {
-  if (run.justiceCooldown > 0 || run.gameOver) return;
+function firePulseShot() {
+  if (run.pulseShotCooldown > 0 || run.gameOver) return;
   const rect = getPlayerRect();
   objects.push({
     type: "playerShot",
@@ -7272,12 +7623,12 @@ function fireJusticeShot() {
     w: 18,
     h: 8,
     vx: 620,
-    color: "#f2d24b",
+    color: "#9ab8c2",
     life: 1.2
   });
-  run.justiceCooldown = 0.28;
-  burst(rect.x + rect.w, rect.y + rect.h / 2, "#f2d24b", 5);
-  logEvent("JUSTICE SHOT");
+  run.pulseShotCooldown = 0.28;
+  burst(rect.x + rect.w, rect.y + rect.h / 2, "#9ab8c2", 5);
+  logEvent("SERVICE PULSE");
 }
 
 function activateSandBreaker(level) {
@@ -7485,10 +7836,13 @@ function canStomp(obj) {
 }
 
 function gainCombo(amount) {
+  const chainStarted = run.combo <= 0 && amount > 0;
   run.combo = Math.min(180, run.combo + amount);
+  if (chainStarted) maybeExplainSystem("comboStarted");
 }
 
 function gainXp(amount) {
+  const levelBefore = state.level;
   state.xp += amount;
   let needed = xpForLevel(state.level);
   while (state.xp >= needed) {
@@ -7498,6 +7852,7 @@ function gainXp(amount) {
     needed = xpForLevel(state.level);
     logEvent(`LEVEL ${state.level}`);
   }
+  if (state.level > levelBefore) maybeExplainSystem("levelUp");
 }
 
 function xpForLevel(level) {
@@ -7741,6 +8096,7 @@ function buyUpgrade(id) {
   if (!spend(def.currency, cost)) return;
   state.upgrades[id] = level + 1;
   logEvent(`${def.name} Lv${level + 1}`);
+  if (level + 1 >= cap) maybeExplainSystem("levelCapReached");
 }
 
 function buyFactory(id) {
@@ -7756,6 +8112,8 @@ function buyFactory(id) {
   if (!spend(def.currency, cost)) return;
   state.factories[id] = level + 1;
   logEvent(`${def.name} Lv${level + 1}`);
+  if (level === 0) maybeExplainSystem("idleProduction");
+  if (level + 1 >= cap) maybeExplainSystem("levelCapReached");
 }
 
 function buyPermanent(id) {
@@ -7788,6 +8146,8 @@ function buyResearch(id) {
   state.research -= cost;
   state.researchTree[id] = level + 1;
   logEvent(`${def.name} Lv${level + 1}`);
+  if (level === 0 && def.active) maybeExplainSystem("activeSkillUnlocked");
+  if (level + 1 >= cap) maybeExplainSystem("levelCapReached");
 }
 
 function prestigeGain() {
@@ -7891,8 +8251,10 @@ function generateEquipment(chestType) {
 }
 
 function addEquipment(item) {
+  const firstEquipment = state.equipment.length === 0;
   state.equipment.push(item);
   enforceEquipmentSlotLimit(item.slot);
+  if (firstEquipment) maybeExplainSystem("equipmentAcquired");
 }
 
 function enforceEquipmentLimits() {
@@ -7917,6 +8279,7 @@ function enforceEquipmentSlotLimit(slot) {
   if (removeIds.size === 0) return;
   state.equipment = state.equipment.filter((item) => !removeIds.has(item.id));
   logEvent(`${slot} AUTO DISCARD ${removeIds.size}`);
+  maybeExplainSystem("autoDiscard");
 }
 
 function equipmentName(slot, rarity) {
@@ -8003,12 +8366,20 @@ function weekStamp(date) {
 
 function addMissionProgress(id, amount) {
   ensureMissions();
+  let completedNow = false;
   if (state.missions.daily[id]) {
+    const before = state.missions.daily[id].progress;
     state.missions.daily[id].progress += amount;
+    const def = dailyMissionDefs.find((entry) => entry.id === id);
+    completedNow ||= Boolean(def && before < def.target && state.missions.daily[id].progress >= def.target);
   }
   if (state.missions.weekly[id]) {
+    const before = state.missions.weekly[id].progress;
     state.missions.weekly[id].progress += amount;
+    const def = weeklyMissionDefs.find((entry) => entry.id === id);
+    completedNow ||= Boolean(def && before < def.target && state.missions.weekly[id].progress >= def.target);
   }
+  if (completedNow) maybeExplainSystem("missionReady");
 }
 
 function claimMission(group, id) {
@@ -8032,6 +8403,7 @@ function checkAchievements() {
     if (!state.achievements[def.id] && def.condition(state)) {
       state.achievements[def.id] = { unlocked: true, claimed: false };
       logEvent(`ACHIEVEMENT ${def.name}`);
+      maybeExplainSystem("achievementReady");
     }
   }
 }
@@ -8092,18 +8464,19 @@ function startEvent(event, options = {}) {
   if (options.resetCooldown) run.eventCooldown = random(55, 100);
   run.nextSpawn = Math.min(run.nextSpawn, 0.15);
   logEvent(`${eventName(event)} START`);
+  maybeExplainEvent(event);
 }
 
 function eventName(event) {
-  return {
-    coinRain: "COIN RAIN",
-    meteor: "METEOR",
-    fever: "FEVER",
-    chestRush: "CHEST RUSH",
-    gravity: "GRAVITY FLIP",
-    clearPath: "CLEAR PATH",
-    coin3: "COIN x3"
-  }[event] || "EVENT";
+  const names = {
+    coinRain: { ja: "整備券放出", en: "TOKEN PURGE" },
+    meteor: { ja: "軌道破片流", en: "DEBRIS STREAM" },
+    fever: { ja: "過給運転", en: "SUPERCHARGED DRIVE" },
+    gravity: { ja: "極性反転", en: "POLARITY REVERSAL" },
+    clearPath: { ja: "自動清掃", en: "MAINTENANCE SWEEP" },
+    coin3: { ja: "計数補正", en: "COUNTER CORRECTION" }
+  };
+  return names[event]?.[currentLanguage] || (currentLanguage === "en" ? "LINE ANOMALY" : "ライン異常");
 }
 
 function currentArea() {
@@ -8143,20 +8516,25 @@ function bossName(index) {
   return ["Slime King", "Sand Wyrm", "Frost Core", "Lava Golem", "Giant Robot", "Star Dragon", "Void Engine", "Aether Lord", "Infinity Gate"][index] || "Infinity Gate";
 }
 
-function bossSoulModeForArea(index) {
-  return bossSoulModes[index]?.id || "rainbow";
+function localizedBossName(index) {
+  if (currentLanguage === "en") return bossName(index);
+  return ["増殖ゲル群体", "砂潜り搬送機", "凍結炉心", "熔鉱巨体", "区画封鎖機", "星間航路竜", "虚空推進炉", "天上保守主", "無限接続門"][index] || "無限接続門";
 }
 
-function bossSoulModeDef(id = activeBossSoulMode()) {
-  return bossSoulModes.find((entry) => entry.id === id) || bossSoulModes[0];
+function bossCombatProtocolForArea(index) {
+  return bossCombatProtocols[index]?.id || "protocolCycle";
 }
 
-function activeBossSoulMode() {
+function bossCombatProtocolDef(id = activeBossCombatProtocol()) {
+  return bossCombatProtocols.find((entry) => entry.id === id) || bossCombatProtocols[0];
+}
+
+function activeBossCombatProtocol() {
   const boss = objects.find((obj) => obj.type === "boss" && obj.finalBoss);
-  const baseMode = boss?.soulMode || run.bossSoulMode || "red";
-  if (baseMode !== "rainbow") return baseMode;
-  const cycle = ["cyan", "orange", "blue", "purple", "green", "yellow", "dual"];
-  return cycle[run.bossPatternIndex % cycle.length] || "red";
+  const baseMode = boss?.combatProtocol || run.bossCombatProtocol || "baseline";
+  if (baseMode !== "protocolCycle") return baseMode;
+  const cycle = ["seismicCalibration", "coolantFlow", "polarityShift", "conveyorLanes", "deflectorArray", "pulseCannon", "echoRelay"];
+  return cycle[run.bossPatternIndex % cycle.length] || "baseline";
 }
 
 function renderPanel() {
@@ -8214,7 +8592,7 @@ function renderActiveSkillSelector() {
   return `<div class="row-item">
     <div>
       <h3>研究アクティブ</h3>
-      <p>研究で解放したボス由来スキルを画面下のスキルボタンにセットします。 現在: ${activeSkillName(current)}</p>
+      <p>解除した最終管理機の部品から研究したモジュールを画面下のスキルボタンにセットします。 現在: ${activeSkillName(current)}</p>
       <div class="meta"><span class="pill">解放 ${unlocked.length}/${activeSkillDefs.length}</span><span class="pill">クールダウン ${activeSkillCooldown(current) || "-"}${activeSkillCooldown(current) ? "s" : ""}</span></div>
     </div>
     <div class="filter-row skill-picker">${buttons}</div>
@@ -8284,7 +8662,7 @@ function renderPrestige() {
       <div class="row-item">
         <div>
           <h3>1000万コインで転生</h3>
-          <p>コイン、通常強化、装備、宝箱、宝石、研究ポイントをリセットし、永続強化用のPRを得ます。転生ごとに通常強化・放置施設・研究上限が+1されます。</p>
+          <p>コイン、通常強化、装備、宝箱、宝石、研究ポイント、現在のライン進行をリセットし、永続強化用のPRを得ます。工場、研究Lv、実績、永続強化は残り、転生ごとに通常強化・放置施設・研究上限が+1されます。</p>
           <div class="meta"><span class="pill">現在上限 Lv${normalUpgradeCap()}</span><span class="pill">転生後 Lv${normalUpgradeCap() + 1}</span></div>
           <div class="progress"><i style="width:${progress * 100}%"></i></div>
         </div>
@@ -8376,7 +8754,7 @@ function renderEquipment() {
 function renderChestList(chests) {
   const readyCount = chests.filter((chest) => chest.remaining <= 0).length;
   const openAllDescription = currentLanguage === "en"
-    ? `Open ${readyCount} ready chests together.`
+    ? readyCount === 1 ? "Open 1 ready chest." : `Open ${readyCount} ready chests together.`
     : `待機時間が終わった宝箱 ${readyCount}個をまとめて開封します。`;
   const openAll = `<div class="row-item">
     <div>
@@ -8399,7 +8777,7 @@ function renderChestList(chests) {
         disabled: chest.remaining > 0,
         label: "開封"
       });
-    }).join("") : `<div class="row-item"><div><h3>宝箱なし</h3><p>ラン中の宝箱、ボス報酬、リワードから入手できます。</p></div></div>`}
+    }).join("") : `<div class="row-item"><div><h3>宝箱なし</h3><p>ラン中の部品コンテナ、最終管理機の解除報酬、リワードから入手できます。</p></div></div>`}
   </div>`;
 }
 
@@ -8517,7 +8895,7 @@ function renderResearch() {
           disabled: isTasEnabled() || capped || state.research < cost,
           label: isTasEnabled() ? "TAS" : (capped ? "上限" : "研究")
         });
-      }).join("") : `<div class="row-item"><div><h3>研究候補なし</h3><p>エリア最終ボスを撃破すると、そのボスをもとにした次エリア攻略用の研究が見つかります。</p></div></div>`}
+      }).join("") : `<div class="row-item"><div><h3>研究候補なし</h3><p>ライン最終管理機を解除すると、その部品をもとにした次ライン用の研究が見つかります。</p></div></div>`}
       </div>
     </div>`
   ].join("");
@@ -8593,18 +8971,18 @@ function updateHud() {
   document.getElementById("areaName").textContent = `${localizedAreaName(area)} / ${area.line}`;
   const dashButton = document.getElementById("dashBtn");
   const cycleSkillButton = document.getElementById("cycleSkillBtn");
-  const justiceMode = run.bossBattle && activeBossSoulMode() === "yellow";
+  const pulseShotMode = run.bossBattle && activeBossCombatProtocol() === "pulseCannon";
   const selectedSkill = selectedActiveSkillDef();
   const selectedCooldown = selectedSkill ? activeSkillCooldownRemaining(selectedSkill.id) : 0;
-  const justiceTrialReady = justiceMode && selectedSkill && hasResolvableActiveResearchTrial(selectedSkill.id);
-  dashButton.disabled = run.gameOver || (justiceMode
-    ? run.justiceCooldown > 0 && (!justiceTrialReady || selectedCooldown > 0)
+  const pulseTrialReady = pulseShotMode && selectedSkill && hasResolvableActiveResearchTrial(selectedSkill.id);
+  dashButton.disabled = run.gameOver || (pulseShotMode
+    ? run.pulseShotCooldown > 0 && (!pulseTrialReady || selectedCooldown > 0)
     : !selectedSkill || selectedCooldown > 0);
-  dashButton.textContent = justiceMode
+  dashButton.textContent = pulseShotMode
     ? `${currentLanguage === "en" ? "Shot" : "ショット"}\nD`
     : run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s\nD` : `${translateText(activeSkillName())}\nD`;
-  if (!justiceMode && selectedCooldown > 0) dashButton.textContent = `${Math.ceil(selectedCooldown)}s\nD`;
-  if (justiceTrialReady) dashButton.textContent = `${currentLanguage === "en" ? "Shot + Skill" : "SHOT + SKILL"}\nD`;
+  if (!pulseShotMode && selectedCooldown > 0) dashButton.textContent = `${Math.ceil(selectedCooldown)}s\nD`;
+  if (pulseTrialReady) dashButton.textContent = `${currentLanguage === "en" ? "Shot + Skill" : "SHOT + SKILL"}\nD`;
   if (cycleSkillButton) {
     const unlockedSkills = unlockedActiveSkillDefs();
     cycleSkillButton.disabled = unlockedSkills.length === 0;
@@ -8688,10 +9066,10 @@ function assetSceneCanvasText(text, maxWidth) {
 
 function drawBossModeGuides() {
   if (!run.bossBattle) return;
-  const mode = activeBossSoulMode();
-  if (mode === "purple" && run.bossPhase === "attack") {
+  const mode = activeBossCombatProtocol();
+  if (mode === "conveyorLanes" && run.bossPhase === "attack") {
     ctx.save();
-    ctx.strokeStyle = "rgba(185,140,255,0.52)";
+    ctx.strokeStyle = "rgba(201,162,39,0.52)";
     ctx.lineWidth = 2;
     for (let lane = 0; lane < 3; lane += 1) {
       const y = webLaneY(lane) + getPlayerHeight() / 2;
@@ -8801,9 +9179,14 @@ function drawForeground(area) {
     ctx.fillStyle = area.accent;
     ctx.fillText(`${eventName(run.event)} ${Math.ceil(run.eventTimer)}s`, canvasWidth - 190, 14);
   } else if (run.bossBattle) {
-    ctx.fillStyle = area.accent;
-    const mode = bossSoulModeDef();
-    ctx.fillText(`FINAL BOSS ${bossName(run.bossAreaIndex)} / ${mode.name}`, Math.max(130, canvasWidth - 360), 14);
+    const mode = bossCombatProtocolDef();
+    const bossLabel = currentLanguage === "en" ? "FINAL CONTROLLER" : "最終管理機";
+    const protocolName = currentLanguage === "en" ? mode.name : mode.jaName;
+    const labelX = Math.max(142, canvasWidth - 408);
+    ctx.fillStyle = mode.color;
+    ctx.fillRect(labelX - 12, 7, 5, 14);
+    ctx.fillStyle = "#f5f1e8";
+    ctx.fillText(`${bossLabel} ${localizedBossName(run.bossAreaIndex)} / ${protocolName}`, labelX, 14);
   }
 }
 
@@ -8851,8 +9234,8 @@ function drawPlayerEcho() {
   if (!echo) return;
   ctx.save();
   ctx.globalAlpha = 0.46;
-  ctx.fillStyle = "rgba(239,95,107,0.22)";
-  ctx.strokeStyle = "#65d6ff";
+  ctx.fillStyle = "rgba(132,86,48,0.22)";
+  ctx.strokeStyle = "#d4a06f";
   roundRect(echo.x, echo.y, echo.w, echo.h, 7);
   ctx.fill();
   ctx.lineWidth = 2;
@@ -9043,7 +9426,7 @@ function drawCoin(obj) {
 }
 
 function drawRare(obj) {
-  ctx.fillStyle = obj.kind === "diamond" ? "#7cf1ff" : obj.kind === "gem" ? "#4cc38a" : "#b98cff";
+  ctx.fillStyle = obj.kind === "diamond" ? "#9ab8c2" : obj.kind === "gem" ? "#2e9b8f" : "#b6a06f";
   ctx.beginPath();
   ctx.moveTo(obj.x + obj.w / 2, obj.y);
   ctx.lineTo(obj.x + obj.w, obj.y + obj.h / 2);
@@ -9051,6 +9434,16 @@ function drawRare(obj) {
   ctx.lineTo(obj.x, obj.y + obj.h / 2);
   ctx.closePath();
   ctx.fill();
+  if (obj.kind === "rainbow") {
+    ctx.strokeStyle = "#6d6049";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(obj.x + 5, obj.y + obj.h * 0.42);
+    ctx.lineTo(obj.x + obj.w - 5, obj.y + obj.h * 0.42);
+    ctx.moveTo(obj.x + 5, obj.y + obj.h * 0.62);
+    ctx.lineTo(obj.x + obj.w - 5, obj.y + obj.h * 0.62);
+    ctx.stroke();
+  }
 }
 
 function drawChest(obj) {
@@ -9092,10 +9485,10 @@ function drawObstacle(obj) {
     drawResearchTrialGate(obj);
     return;
   }
-  if (obj.soulRule === "patience") obj.color = "#65d6ff";
-  if (obj.soulRule === "bravery") obj.color = "#ff9f3d";
-  if (obj.soulRule === "shield") obj.color = "#60d878";
-  if (obj.shootable) obj.color = "#f2d24b";
+  if (obj.protocolRule === "stabilityCheck") obj.color = "#9a7652";
+  if (obj.protocolRule === "flowCheck") obj.color = "#c96f86";
+  if (obj.protocolRule === "directionalDeflect") obj.color = "#7668a9";
+  if (obj.shootable) obj.color = "#9ab8c2";
   if (obj.kind === "spike") {
     ctx.fillStyle = obj.color;
     ctx.beginPath();
