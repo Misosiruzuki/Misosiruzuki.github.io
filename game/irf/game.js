@@ -34,7 +34,9 @@ const FINAL_BOSS_OFFSET = 100;
 const FINAL_BOSS_ATTACK_PATTERNS = 3;
 const AREA_TARGET_RUN_SECONDS = 300;
 const FINAL_BOSS_TARGET_SECONDS = 300;
-const FINAL_BOSS_HIT_POINT_TARGETS = [37, 33, 30, 43, 34, 39, 57, 41, 35];
+const FINAL_BOSS_HIT_POINT_TARGETS = [37, 33, 30, 43, 34, 39, 86, 41, 35];
+const RESEARCH_TRIAL_GATE_WIDTH = 34;
+const RESEARCH_TRIAL_GATE_SPEED = 224;
 const LEGACY_AREA_STARTS = [0, 1000, 3000, 7000, 15000, 30000, 60000, 100000, 160000];
 const RUN_PATTERN_LENGTH_METERS = 30;
 const RUN_PATTERN_WIDTH = RUN_PATTERN_LENGTH_METERS * 48;
@@ -821,6 +823,7 @@ const run = {
   combo: 0,
   dashTimer: 0,
   dashCooldown: 0,
+  activeSkillCooldowns: {},
   skillShield: 0,
   giantTimer: 0,
   timeStop: 0,
@@ -842,7 +845,13 @@ const run = {
   bossModeTimer: 0,
   bossModePulse: 0,
   bossResearchCounters: {},
+  bossResearchRequired: [],
+  bossResearchScheduled: {},
+  bossResearchPassed: {},
+  bossResearchUsage: {},
+  lastBossResearchAudit: null,
   tasAreaIndex: null,
+  tasDisabledResearchIds: [],
   webLane: 1,
   justiceCooldown: 0,
   echoActive: false,
@@ -1564,6 +1573,13 @@ function setupTasRunScenario(option) {
 function setupTasBossScenario(option) {
   const distance = tasBossScenarioDistance(option.areaIndex);
   prepareTasScenarioRun(option.areaIndex, distance);
+  if (option.patternIndex === 1 && researchLevel("sandBreaker") > 0) {
+    state.settings.activeSkill = "sandBreaker";
+  }
+  if (option.patternIndex === 2) {
+    if (researchLevel("gravityAnchor") > 0) state.settings.activeSkill = "gravityAnchor";
+    else if (researchLevel("sandBreaker") > 0) state.settings.activeSkill = "sandBreaker";
+  }
   run.bossBattle = true;
   run.bossAreaIndex = option.areaIndex;
   run.bossPhase = option.phase;
@@ -1573,6 +1589,11 @@ function setupTasBossScenario(option) {
   run.bossModeTimer = 0;
   run.bossModePulse = 0.85;
   run.bossResearchCounters = {};
+  run.bossResearchRequired = requiredResearchDefsForArea(option.areaIndex).map((def) => def.id);
+  run.bossResearchScheduled = {};
+  run.bossResearchPassed = {};
+  run.bossResearchUsage = {};
+  run.lastBossResearchAudit = null;
   run.nextSpawn = 999;
   objects = [];
   const hp = finalBossHitPoints(option.areaIndex);
@@ -1598,11 +1619,18 @@ function setupTasBossScenario(option) {
     boss.x = canvasWidth - 170;
     boss.y = groundY - boss.h;
     spawnBossAttack(boss);
+    spawnBossResearchTrialsForPattern(boss, option.areaIndex, option.patternIndex);
   }
 }
 
 function prepareTasScenarioRun(areaIndexValue, distance) {
   const areaIndexSafe = Math.max(0, Math.min(areas.length - 1, Number(areaIndexValue) || 0));
+  state.areaBossClears = {};
+  state.defeatedAreaBosses = {};
+  for (let index = 0; index < areaIndexSafe; index += 1) {
+    state.areaBossClears[index] = true;
+    state.defeatedAreaBosses[index] = true;
+  }
   run.tasAreaIndex = areaIndexSafe;
   run.active = true;
   run.gameOver = false;
@@ -1610,6 +1638,7 @@ function prepareTasScenarioRun(areaIndexValue, distance) {
   run.combo = 0;
   run.dashTimer = 0;
   run.dashCooldown = 0;
+  run.activeSkillCooldowns = {};
   run.skillShield = 0;
   run.giantTimer = 0;
   run.timeStop = 0;
@@ -1632,6 +1661,12 @@ function prepareTasScenarioRun(areaIndexValue, distance) {
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
   run.bossResearchCounters = {};
+  run.bossResearchRequired = requiredResearchDefsForArea(areaIndexSafe).map((def) => def.id);
+  run.bossResearchScheduled = {};
+  run.bossResearchPassed = {};
+  run.bossResearchUsage = {};
+  run.lastBossResearchAudit = null;
+  run.tasDisabledResearchIds = [];
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
@@ -1667,6 +1702,7 @@ function prepareTasScenarioRun(areaIndexValue, distance) {
   inputState.tasWantsJump = false;
   inputState.tasJumpRetry = false;
   inputState.blockDirection = "mid";
+  state.settings.activeSkill = "none";
   run.hp = getStats().maxHp;
   runOverlay.classList.add("hidden");
   musicScene = "run";
@@ -2819,6 +2855,36 @@ function checkItemGuideTrigger(obj) {
   }
 }
 
+function checkResearchTrialGuideTrigger(obj) {
+  if (!obj?.researchTrialGuidePending || state.tutorial?.seenResearchTrials?.[obj.researchTrialId]) return;
+  const centerX = obj.x + obj.w / 2;
+  if (centerX <= canvasWidth * 0.58 && centerX >= 0) {
+    maybeExplainResearchTrial(obj.researchTrialId, obj);
+    obj.researchTrialGuidePending = false;
+  }
+}
+
+function maybeExplainResearchTrial(id, obj) {
+  const def = researchDefs.find((entry) => entry.id === id);
+  if (!def || state.tutorial?.seenResearchTrials?.[id]) return;
+  markTutorialSeen("seenResearchTrials", id);
+  const active = Boolean(def.active);
+  queueGuide([{
+    title: {
+      ja: `研究防壁: ${def.name}`,
+      en: `Research Gate: ${translateText(def.name)}`
+    },
+    text: active ? {
+      ja: "この防壁は表示されたアクティブ研究でのみ破壊できます。Qでスキルを切り替え、防壁が近づいた時にDで発動してください。無敵やアイテムでは通過できません。",
+      en: "Only the displayed active research can break this gate. Cycle skills with Q, then press D when the gate is close. Invincibility and items cannot bypass it."
+    } : {
+      ja: "この防壁は表示されたパッシブ研究の習得状況を検査します。研究Lvが1以上なら接触時に自動で無効化され、未研究では必ずダメージを受けます。",
+      en: "This gate checks the displayed passive research. At Lv1 or higher it is neutralized automatically on contact; without it, the gate always deals damage."
+    },
+    target: { canvasObject: obj }
+  }]);
+}
+
 function maybeExplainHazard(kind, obj = null) {
   const def = hazardGuideDefs[kind];
   if (!def || state.tutorial?.seenHazards?.[kind]) return;
@@ -2898,7 +2964,8 @@ function defaultState() {
       seenHazards: {},
       seenItems: {},
       seenBosses: {},
-      seenTraits: {}
+      seenTraits: {},
+      seenResearchTrials: {}
     },
     lastSavedAt: Date.now()
   };
@@ -3076,6 +3143,7 @@ function normalizeTutorialState(targetState = state) {
   targetState.tutorial.seenItems = targetState.tutorial.seenItems || {};
   targetState.tutorial.seenBosses = targetState.tutorial.seenBosses || {};
   targetState.tutorial.seenTraits = targetState.tutorial.seenTraits || {};
+  targetState.tutorial.seenResearchTrials = targetState.tutorial.seenResearchTrials || {};
 }
 
 function enforceLevelCaps(targetState = state) {
@@ -3634,6 +3702,7 @@ function updateRun(dt) {
 
   if (run.dashTimer > 0) run.dashTimer -= dt;
   if (run.dashCooldown > 0) run.dashCooldown -= dt;
+  updateActiveSkillCooldowns(dt);
   if (run.skillShield > 0) run.skillShield -= dt;
   if (run.giantTimer > 0) run.giantTimer -= dt;
   if (run.timeStop > 0) run.timeStop -= dt;
@@ -3758,6 +3827,7 @@ function updateObjects(dt, scrollSpeed, stats) {
     }
     checkHazardGuideTrigger(obj);
     checkItemGuideTrigger(obj);
+    checkResearchTrialGuideTrigger(obj);
     if (obj.hitCooldown > 0) obj.hitCooldown -= dt;
     if (!frozen && (obj.type === "enemy" || obj.type === "boss")) {
       updateEnemyTrait(obj, dt, playerRect);
@@ -3832,7 +3902,9 @@ function updateObjects(dt, scrollSpeed, stats) {
         stockItem(obj.kind);
         removed.add(obj);
       } else if (obj.type === "obstacle") {
-        if (handleSoulObstacleCollision(obj, removed)) {
+        if (obj.kind === "researchGate" && handleResearchTrialCollision(obj, removed)) {
+          // Research trial handled this collision.
+        } else if (handleSoulObstacleCollision(obj, removed)) {
           // Soul-mode rule handled this collision.
         } else if (isInvincible() || run.event === "clearPath") {
           burst(obj.x, obj.y, "#f2b84b", 9);
@@ -3920,6 +3992,7 @@ function handlePlayerShotCollision(shot, removed) {
   const target = objects.find((obj) => {
     if (obj === shot || removed.has(obj)) return false;
     if (obj.type !== "obstacle" && obj.type !== "enemy" && obj.type !== "boss") return false;
+    if (obj.kind === "researchGate") return false;
     return rectsOverlap(shot, obj);
   });
   if (!target) return;
@@ -5132,6 +5205,8 @@ function spawnBoss(index = areaIndex(), options = {}) {
 
 function startAreaBossBattle(index) {
   if (run.bossBattle || isAreaBossCleared(index)) return;
+  run.dashCooldown = 0;
+  run.activeSkillCooldowns = {};
   run.bossBattle = true;
   run.bossAreaIndex = index;
   run.bossAttackTimer = 0.7;
@@ -5144,6 +5219,11 @@ function startAreaBossBattle(index) {
   run.bossModeTimer = 0;
   run.bossModePulse = 0.85;
   run.bossResearchCounters = {};
+  run.bossResearchRequired = requiredResearchDefsForArea(index).map((def) => def.id);
+  run.bossResearchScheduled = {};
+  run.bossResearchPassed = {};
+  run.bossResearchUsage = {};
+  run.lastBossResearchAudit = null;
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
@@ -5154,7 +5234,8 @@ function startAreaBossBattle(index) {
   run.nextSpawn = 999;
   objects = [];
   const hp = finalBossHitPoints(index);
-  spawnBoss(index, { finalBoss: true, x: canvasWidth - 170, hp });
+  const boss = spawnBoss(index, { finalBoss: true, x: canvasWidth - 170, hp });
+  spawnBossResearchTrialsForPattern(boss, index, run.bossPatternIndex);
   if (tasState.autoEnabled) tasState.autoTracks = [];
   startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   restartPlayerAnimation("running");
@@ -5234,6 +5315,7 @@ function switchBossPhase(boss, phase) {
     run.bossModePulse = 0.85;
     run.bossChargeTimer = finalBossAttackDuration(index);
     run.bossAttackTimer = 0.7;
+    spawnBossResearchTrialsForPattern(boss, index, run.bossPatternIndex);
     logEvent(`${bossName(index).toUpperCase()} PATTERN ${boss.attackPattern + 1}`);
     startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   } else {
@@ -5359,6 +5441,127 @@ function spawnFinalBossPattern(boss, index, pattern, volley) {
   else if (index === 6) spawnVoidEnginePattern(boss, pattern, volley);
   else if (index === 7) spawnAetherLordPattern(boss, pattern, volley);
   else spawnInfinityGatePattern(boss, pattern, volley);
+}
+
+function requiredResearchDefsForArea(index) {
+  const safeIndex = Math.max(0, Math.min(areas.length - 1, Number(index) || 0));
+  return researchDefs.filter((def) => Number.isFinite(def.sourceAreaIndex) && def.sourceAreaIndex < safeIndex);
+}
+
+function researchTrialPattern(def) {
+  if (def.id === "sandBreaker") return 0;
+  if (def.id === "gravityAnchor") return 1;
+  if (def.id === "phaseAnchor") return 2;
+  return Math.max(0, Number(def.sourceAreaIndex || 0)) % FINAL_BOSS_ATTACK_PATTERNS;
+}
+
+function spawnBossResearchTrialsForPattern(boss, index, pattern) {
+  if (!boss?.finalBoss || index <= 0) return;
+  run.bossResearchRequired = run.bossResearchRequired?.length
+    ? run.bossResearchRequired
+    : requiredResearchDefsForArea(index).map((def) => def.id);
+  run.bossResearchScheduled = run.bossResearchScheduled || {};
+  const trials = requiredResearchDefsForArea(index).filter((def) => (
+    researchTrialPattern(def) === pattern && !run.bossResearchScheduled[def.id]
+  ));
+  trials.forEach((def, order) => {
+    run.bossResearchScheduled[def.id] = true;
+    const gate = {
+      type: "obstacle",
+      kind: "researchGate",
+      researchTrialId: def.id,
+      researchTrialActive: Boolean(def.active),
+      researchTrialResolved: false,
+      researchTrialGuidePending: !state.tutorial?.seenResearchTrials?.[def.id],
+      bossAttack: true,
+      x: canvasWidth + 26 + order * 196,
+      y: -64,
+      w: RESEARCH_TRIAL_GATE_WIDTH,
+      h: canvasHeight + 128,
+      vx: -(RESEARCH_TRIAL_GATE_SPEED + index * 4),
+      color: researchTrialColor(def.id),
+      attackVolley: -1
+    };
+    objects.push(gate);
+  });
+  if (trials.length > 0) logEvent(`RESEARCH TRIAL: ${trials.map((def) => def.name).join(" / ")}`);
+}
+
+function researchTrialColor(id) {
+  return {
+    sandBreaker: "#d7b878",
+    frostInsulation: "#9fd9ff",
+    heatPlating: "#ff8b38",
+    shieldPiercer: "#48bde7",
+    gravityAnchor: "#b98cff",
+    voidTether: "#8d73d6",
+    aetherSeal: "#fff1a5",
+    phaseAnchor: "#8fffc6"
+  }[id] || "#eef3f7";
+}
+
+function researchTrialActivationRange(id, level = researchLevel(id)) {
+  if (id === "sandBreaker") return sandBreakerRange(level);
+  return 206 + Math.min(12, Math.max(0, Number(level || 0))) * 4;
+}
+
+function hasResolvableActiveResearchTrial(id) {
+  const range = researchTrialActivationRange(id);
+  const playerCenterX = player.x + player.w / 2;
+  return objects.some((obj) => {
+    if (obj.kind !== "researchGate" || obj.researchTrialResolved || obj.researchTrialId !== id) return false;
+    const gateCenterX = obj.x + obj.w / 2;
+    return gateCenterX >= playerCenterX - 12 && gateCenterX - playerCenterX <= range;
+  });
+}
+
+function resolveActiveResearchTrials(id, range = researchTrialActivationRange(id)) {
+  const playerCenterX = player.x + player.w / 2;
+  let resolved = 0;
+  for (const obj of objects) {
+    if (obj.kind !== "researchGate" || obj.researchTrialResolved || obj.researchTrialId !== id) continue;
+    const gateCenterX = obj.x + obj.w / 2;
+    if (gateCenterX < playerCenterX - 12 || gateCenterX - playerCenterX > range) continue;
+    obj.researchTrialResolved = true;
+    obj.life = 0.12;
+    obj.vx = 0;
+    passBossResearchTrial(id);
+    burst(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.color, 14);
+    resolved += 1;
+  }
+  return resolved;
+}
+
+function passBossResearchTrial(id) {
+  run.bossResearchPassed = run.bossResearchPassed || {};
+  run.bossResearchPassed[id] = true;
+  logEvent(`RESEARCH PASS: ${researchTrialName(id)}`);
+}
+
+function researchTrialName(id) {
+  const def = researchDefs.find((entry) => entry.id === id);
+  return def ? translateText(def.name) : id;
+}
+
+function handleResearchTrialCollision(obj, removed) {
+  const id = obj.researchTrialId;
+  if (obj.researchTrialResolved) {
+    removed.add(obj);
+    return true;
+  }
+  const def = researchDefs.find((entry) => entry.id === id);
+  if (def && !def.active && researchLevel(id) > 0) {
+    passBossResearchTrial(id);
+    burst(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.color, 12);
+    removed.add(obj);
+    return true;
+  }
+  run.bossResearchPassed = run.bossResearchPassed || {};
+  run.bossResearchPassed[id] = false;
+  damagePlayer({ force: true, amount: 1, source: obj });
+  logEvent(`RESEARCH FAILED: ${researchTrialName(id)}`);
+  removed.add(obj);
+  return true;
 }
 
 function bossSpeed(index, add = 0) {
@@ -5829,6 +6032,12 @@ function completeAreaBoss(index) {
   state.defeatedAreaBosses = state.defeatedAreaBosses || {};
   state.areaBossClears[index] = true;
   state.defeatedAreaBosses[index] = true;
+  run.lastBossResearchAudit = {
+    areaIndex: index,
+    required: [...(run.bossResearchRequired || [])],
+    passed: { ...(run.bossResearchPassed || {}) },
+    activeUsage: { ...(run.bossResearchUsage || {}) }
+  };
   run.bossBattle = false;
   run.bossAreaIndex = -1;
   run.bossAttackTimer = 0;
@@ -5892,6 +6101,7 @@ function damagePlayer(options = {}) {
         vy: source.vy || 0,
         bossAttack: Boolean(source.bossAttack),
         soulRule: source.soulRule || null,
+        researchTrialId: source.researchTrialId || null,
         attackVolley: Number.isFinite(source.attackVolley) ? source.attackVolley : null,
         webLane: Number.isFinite(source.webLane) ? source.webLane : null
       } : null
@@ -5919,6 +6129,8 @@ function incomingDamageAmount(options = {}) {
 
 function clearTemporaryEffects() {
   run.dashTimer = 0;
+  run.dashCooldown = 0;
+  run.activeSkillCooldowns = {};
   run.skillShield = 0;
   run.giantTimer = 0;
   run.timeStop = 0;
@@ -5981,6 +6193,7 @@ function resetRun() {
   run.combo = 0;
   run.dashTimer = 0;
   run.dashCooldown = 0;
+  run.activeSkillCooldowns = {};
   run.skillShield = 0;
   run.giantTimer = 0;
   run.timeStop = 0;
@@ -6003,7 +6216,13 @@ function resetRun() {
   run.bossModeTimer = 0;
   run.bossModePulse = 0;
   run.bossResearchCounters = {};
+  run.bossResearchRequired = [];
+  run.bossResearchScheduled = {};
+  run.bossResearchPassed = {};
+  run.bossResearchUsage = {};
+  run.lastBossResearchAudit = null;
   run.tasAreaIndex = null;
+  run.tasDisabledResearchIds = [];
   run.webLane = 1;
   run.justiceCooldown = 0;
   run.echoActive = false;
@@ -6204,6 +6423,20 @@ function activeSkillCooldown(id = state.settings.activeSkill) {
   return Number((baseCooldown * (1 - reduction)).toFixed(2));
 }
 
+function activeSkillCooldownRemaining(id = state.settings.activeSkill) {
+  const skillCooldown = Number(run.activeSkillCooldowns?.[id] || 0);
+  return Math.max(0, Number(run.dashCooldown || 0), skillCooldown);
+}
+
+function updateActiveSkillCooldowns(dt) {
+  run.activeSkillCooldowns = run.activeSkillCooldowns || {};
+  for (const [id, remaining] of Object.entries(run.activeSkillCooldowns)) {
+    const next = Math.max(0, Number(remaining || 0) - dt);
+    if (next > 0) run.activeSkillCooldowns[id] = next;
+    else delete run.activeSkillCooldowns[id];
+  }
+}
+
 function activeSkillCooldownReduction(level) {
   const safeLevel = Math.max(0, Number(level || 0));
   return ACTIVE_SKILL_COOLDOWN_MAX_REDUCTION * safeLevel / (safeLevel + ACTIVE_SKILL_COOLDOWN_CURVE);
@@ -6219,21 +6452,28 @@ function activateActiveSkill() {
   if (isGameplayPaused()) return;
   musicScene = "run";
   unlockAudio();
-  if (run.bossBattle && activeBossSoulMode() === "yellow") {
+  const justiceMode = run.bossBattle && activeBossSoulMode() === "yellow";
+  if (justiceMode) {
     fireJusticeShot();
-    return;
   }
-  if (run.gameOver || run.dashCooldown > 0) return;
+  if (run.gameOver) return;
   const def = selectedActiveSkillDef();
   if (!def) {
-    logEvent("NO ACTIVE SKILL");
+    if (!justiceMode) logEvent("NO ACTIVE SKILL");
     return;
   }
+  if (justiceMode && !hasResolvableActiveResearchTrial(def.id)) return;
+  if (activeSkillCooldownRemaining(def.id) > 0) return;
   const level = researchLevel(def.id);
   if (def.id === "sandBreaker") activateSandBreaker(level);
   if (def.id === "gravityAnchor") activateGravityAnchor(level);
   if (def.id === "phaseAnchor") activatePhasePin(level);
-  run.dashCooldown = activeSkillCooldown(def.id);
+  run.activeSkillCooldowns = run.activeSkillCooldowns || {};
+  run.activeSkillCooldowns[def.id] = activeSkillCooldown(def.id);
+  if (run.bossBattle) {
+    run.bossResearchUsage = run.bossResearchUsage || {};
+    run.bossResearchUsage[def.id] = Number(run.bossResearchUsage[def.id] || 0) + 1;
+  }
   updateHud();
 }
 
@@ -6261,6 +6501,7 @@ function fireJusticeShot() {
 
 function activateSandBreaker(level) {
   const range = sandBreakerRange(level);
+  const resolvedTrials = resolveActiveResearchTrials("sandBreaker", range);
   const playerCenter = {
     x: player.x + player.w / 2,
     y: player.y + getPlayerHeight() / 2
@@ -6273,7 +6514,7 @@ function activateSandBreaker(level) {
   });
   if (targets.length === 0) {
     burst(player.x + player.w + range * 0.35, player.y + getPlayerHeight() / 2, "#d7b878", 8);
-    logEvent("CORE BREAK MISS");
+    logEvent(resolvedTrials > 0 ? "CORE BREAK TRIAL" : "CORE BREAK MISS");
     return;
   }
   const defeated = [];
@@ -6312,6 +6553,7 @@ function sandBreakerRange(level) {
 
 function activateGravityAnchor(level) {
   run.gravityGuardTimer = Math.max(run.gravityGuardTimer, 0.35 + level * 0.09);
+  resolveActiveResearchTrials("gravityAnchor", researchTrialActivationRange("gravityAnchor", level));
   if (run.gravityFlip) {
     run.gravityFlip = false;
     run.gravityLandingGuard = shouldGuardGravityLanding();
@@ -6323,6 +6565,7 @@ function activateGravityAnchor(level) {
 
 function activatePhasePin(level) {
   run.phasePinTimer = Math.max(run.phasePinTimer, 0.3 + level * 0.08);
+  resolveActiveResearchTrials("phaseAnchor", researchTrialActivationRange("phaseAnchor", level));
   for (const obj of objects) {
     if (obj.type === "boss" || obj.type === "enemy") obj.phased = false;
   }
@@ -6558,6 +6801,7 @@ function effectiveUpgradeLevel(id) {
 
 function researchLevel(id) {
   if (isTasEnabled()) {
+    if (Array.isArray(run.tasDisabledResearchIds) && run.tasDisabledResearchIds.includes(id)) return 0;
     const def = researchDefs.find((entry) => entry.id === id);
     if (!def || !isResearchDiscovered(def)) return 0;
     return researchLevelCap();
@@ -7569,10 +7813,17 @@ function updateHud() {
   const dashButton = document.getElementById("dashBtn");
   const cycleSkillButton = document.getElementById("cycleSkillBtn");
   const justiceMode = run.bossBattle && activeBossSoulMode() === "yellow";
-  dashButton.disabled = run.gameOver || (justiceMode ? run.justiceCooldown > 0 : (run.dashCooldown > 0 || !selectedActiveSkillDef()));
+  const selectedSkill = selectedActiveSkillDef();
+  const selectedCooldown = selectedSkill ? activeSkillCooldownRemaining(selectedSkill.id) : 0;
+  const justiceTrialReady = justiceMode && selectedSkill && hasResolvableActiveResearchTrial(selectedSkill.id);
+  dashButton.disabled = run.gameOver || (justiceMode
+    ? run.justiceCooldown > 0 && (!justiceTrialReady || selectedCooldown > 0)
+    : !selectedSkill || selectedCooldown > 0);
   dashButton.textContent = justiceMode
     ? `${currentLanguage === "en" ? "Shot" : "ショット"}\nD`
     : run.dashCooldown > 0 ? `${Math.ceil(run.dashCooldown)}s\nD` : `${translateText(activeSkillName())}\nD`;
+  if (!justiceMode && selectedCooldown > 0) dashButton.textContent = `${Math.ceil(selectedCooldown)}s\nD`;
+  if (justiceTrialReady) dashButton.textContent = `${currentLanguage === "en" ? "Shot + Skill" : "SHOT + SKILL"}\nD`;
   if (cycleSkillButton) {
     const unlockedSkills = unlockedActiveSkillDefs();
     cycleSkillButton.disabled = unlockedSkills.length === 0;
@@ -8020,6 +8271,10 @@ function drawItem(obj) {
 }
 
 function drawObstacle(obj) {
+  if (obj.kind === "researchGate") {
+    drawResearchTrialGate(obj);
+    return;
+  }
   if (obj.soulRule === "patience") obj.color = "#65d6ff";
   if (obj.soulRule === "bravery") obj.color = "#ff9f3d";
   if (obj.soulRule === "shield") obj.color = "#60d878";
@@ -8046,6 +8301,45 @@ function drawObstacle(obj) {
   ctx.fill();
   ctx.fillStyle = "rgba(0,0,0,0.18)";
   ctx.fillRect(obj.x + 6, obj.y + 9, obj.w - 12, 5);
+}
+
+function drawResearchTrialGate(obj) {
+  const pulse = 0.48 + Math.sin(gameNow() / 120) * 0.16;
+  const active = Boolean(obj.researchTrialActive);
+  ctx.save();
+  ctx.globalAlpha = obj.researchTrialResolved ? 0.22 : 1;
+  ctx.fillStyle = `rgba(8, 12, 18, ${Math.max(0.22, pulse)})`;
+  ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+  ctx.strokeStyle = obj.color || "#eef3f7";
+  ctx.lineWidth = 3;
+  ctx.strokeRect(obj.x + 1.5, obj.y + 1.5, obj.w - 3, obj.h - 3);
+  for (let y = obj.y + 12; y < obj.y + obj.h; y += 28) {
+    ctx.fillStyle = obj.color || "#eef3f7";
+    ctx.fillRect(obj.x + 6, y, obj.w - 12, 5);
+  }
+  ctx.translate(obj.x + obj.w / 2, obj.y + obj.h / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = "#101217";
+  ctx.fillRect(-78, -10, 156, 20);
+  ctx.fillStyle = obj.color || "#eef3f7";
+  ctx.font = "700 10px Segoe UI, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${active ? "D" : "P"} / ${researchTrialShortLabel(obj.researchTrialId)}`, 0, 0);
+  ctx.restore();
+}
+
+function researchTrialShortLabel(id) {
+  return {
+    sandBreaker: "CORE",
+    frostInsulation: "FROST",
+    heatPlating: "HEAT",
+    shieldPiercer: "SHIELD",
+    gravityAnchor: "ANCHOR",
+    voidTether: "TETHER",
+    aetherSeal: "SEAL",
+    phaseAnchor: "PHASE"
+  }[id] || "RESEARCH";
 }
 
 function drawEnemy(obj) {
