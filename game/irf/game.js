@@ -3719,7 +3719,7 @@ function handleSoulObstacleCollision(obj, removed) {
       burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#65d6ff", 7);
       gainCombo(1);
     } else {
-      damagePlayer();
+      damagePlayer({ source: obj });
       obj.x -= 80;
     }
     return true;
@@ -3730,7 +3730,7 @@ function handleSoulObstacleCollision(obj, removed) {
       burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#ff9f3d", 8);
       gainCombo(1);
     } else {
-      damagePlayer();
+      damagePlayer({ source: obj });
       obj.x -= 80;
     }
     return true;
@@ -3742,7 +3742,7 @@ function handleSoulObstacleCollision(obj, removed) {
       if (run.hp < getStats().maxHp && shouldShieldBlockHeal()) run.hp += 1;
       gainCombo(1);
     } else {
-      damagePlayer();
+      damagePlayer({ source: obj });
       obj.x -= 80;
     }
     return true;
@@ -4180,9 +4180,9 @@ const RUN_EVENT_PATTERN_TEMPLATES = {
     { id: "laser_gap", entries: [{ type: "hazard", kind: "meteor", offset: 230, lane: "low" }, { type: "hazard", kind: "meteor", offset: 620, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1120, lane: "mid" }] },
     { id: "double_ground", entries: [{ type: "hazard", kind: "meteor", offset: 380, lane: "mid" }, { type: "hazard", kind: "meteor", offset: 980, lane: "high" }] },
     { id: "fall_lane", entries: [{ type: "hazard", kind: "meteor", offset: 220, lane: "high" }, { type: "hazard", kind: "meteor", offset: 620, lane: "mid" }, { type: "hazard", kind: "meteor", offset: 1060, lane: "low" }] },
-    { id: "reward_thread", entries: [{ type: "coins", offset: 140, count: 5, lane: "low" }, { type: "hazard", kind: "meteor", offset: 520, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1040, lane: "mid" }] },
+    { id: "reward_thread", entries: [{ type: "coins", offset: 140, count: 5, lane: "low" }, { type: "hazard", kind: "meteor", offset: 520, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1160, lane: "mid" }] },
     { id: "stagger_wall", entries: [{ type: "hazard", kind: "meteor", offset: 330, lane: "low" }, { type: "hazard", kind: "meteor", offset: 780, lane: "high" }, { type: "coins", offset: 1040, count: 4, lane: "mid" }] },
-    { id: "high_low", entries: [{ type: "hazard", kind: "meteor", offset: 260, lane: "high" }, { type: "hazard", kind: "meteor", offset: 860, lane: "low" }] },
+    { id: "high_low", entries: [{ type: "hazard", kind: "meteor", offset: 260, lane: "high" }, { type: "hazard", kind: "meteor", offset: 760, lane: "low" }] },
     { id: "mixed_end", entries: [{ type: "hazard", kind: "meteor", offset: 320, lane: "mid" }, { type: "hazard", kind: "meteor", offset: 720, lane: "high" }, { type: "hazard", kind: "meteor", offset: 1180, lane: "low" }] }
   ],
   fever: [
@@ -4764,7 +4764,7 @@ function startAreaBossBattle(index) {
   if (run.bossBattle || isAreaBossCleared(index)) return;
   run.bossBattle = true;
   run.bossAreaIndex = index;
-  run.bossAttackTimer = 0.55;
+  run.bossAttackTimer = 0.7;
   run.bossChargeTimer = finalBossAttackDuration(index);
   run.bossRetreating = true;
   run.bossPhase = "attack";
@@ -4784,7 +4784,7 @@ function startAreaBossBattle(index) {
   run.nextSpawn = 999;
   objects = [];
   const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor(effectivePrestigeCount() / 4);
-  spawnBoss(index, { finalBoss: true, x: canvasWidth + 90, hp });
+  spawnBoss(index, { finalBoss: true, x: canvasWidth - 170, hp });
   if (tasState.autoEnabled) tasState.autoTracks = [];
   startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   restartPlayerAnimation("running");
@@ -4912,6 +4912,7 @@ function finalBossVulnerableDuration(index) {
 
 function finalBossAttackInterval(index, pattern) {
   if (index === 0 && pattern === 2) return 1.28;
+  if (index === 1 && pattern === 2) return 1.55;
   return Math.max(0.58, 1.02 - index * 0.025 - pattern * 0.03);
 }
 
@@ -5091,7 +5092,8 @@ function addBossObstacle(kind, boss, options = {}) {
     bounceOnGround: Boolean(options.bounceOnGround),
     bounceVelocity: options.bounceVelocity || 0,
     bounceFactor: options.bounceFactor ?? 0.72,
-    color: options.color || boss.color
+    color: options.color || boss.color,
+    attackVolley: Math.max(0, (boss.attackVolley || 1) - 1)
   };
   applyBossSoulRule(obj, boss, options);
   objects.push(obj);
@@ -5184,15 +5186,15 @@ function spawnSandWyrmPattern(boss, pattern, volley) {
   if (pattern === 0) {
     addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 52, h: 44, vx: bossSpeed(1, 18), color: "#d6a15c" });
     addBossObstacle("spike", boss, { x: bossSpawnX(boss, 105), w: 40, h: 34, vx: bossSpeed(1, 4), color: "#d6a15c" });
-    addSandWyrmNormalHazard(boss, 196 + (volley % 2) * 26);
+    addSandWyrmNormalHazard(boss, 156 + (volley % 2) * 26);
   } else if (pattern === 1) {
     addBossEnemy("bomb", boss, { x: bossSpawnX(boss), y: groundY - 38, vx: bossSpeed(1, 24), color: "#6b5640" });
     addBossObstacle("crate", boss, { x: bossSpawnX(boss, 120), w: 48, h: 60, vx: bossSpeed(1, 8), color: "#9c6a32" });
-    addSandWyrmNormalHazard(boss, 218);
+    addSandWyrmNormalHazard(boss, 178);
   } else {
     addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 128, w: 24, h: 92, vx: bossSpeed(1, 20), color: "#f2b84b" });
     if (volley % 2 === 0) addBossObstacle("spike", boss, { x: bossSpawnX(boss, 108), w: 48, h: 42, vx: bossSpeed(1, 28), color: "#d6a15c" });
-    addSandWyrmNormalHazard(boss, volley % 2 === 0 ? 188 : 104);
+    addSandWyrmNormalHazard(boss, 348);
   }
 }
 
@@ -5492,7 +5494,9 @@ function damagePlayer(options = {}) {
         h: source.h,
         vx: source.vx || 0,
         vy: source.vy || 0,
-        bossAttack: Boolean(source.bossAttack)
+        bossAttack: Boolean(source.bossAttack),
+        soulRule: source.soulRule || null,
+        attackVolley: Number.isFinite(source.attackVolley) ? source.attackVolley : null
       } : null
     };
   }
