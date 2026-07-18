@@ -20,6 +20,8 @@ const MIN_JUMP_HOLD_SECONDS = 0.1;
 const BASE_JUMP_VELOCITY = 380;
 const JUMP_UPGRADE_VELOCITY = 26;
 const BASE_UPGRADE_CAP = 5;
+const ACTIVE_SKILL_COOLDOWN_MAX_REDUCTION = 0.5;
+const ACTIVE_SKILL_COOLDOWN_CURVE = 20;
 const PRESTIGE_COIN_REQUIREMENT = 10000000;
 const CHEST_DISTANCE_INTERVAL = 500;
 const HAZARD_MIN_GAP = 190;
@@ -39,7 +41,7 @@ const upgradeDefs = [
   { id: "hp", name: "HP", base: 50, growth: 2.1, currency: "coins", effect: (lv) => `最大HP ${1 + lv}` },
   { id: "coin", name: "コイン倍率", base: 25, growth: 2, currency: "coins", effect: (lv) => `獲得 +${Math.round(lv * 8)}%` },
   { id: "magnet", name: "磁石", base: 80, growth: 1.95, currency: "coins", effect: (lv) => `吸収範囲 +${lv * 8}` },
-  { id: "dash", name: "ダッシュ", base: 120, growth: 2.05, currency: "coins", effect: (lv) => `持続 +${(lv * 0.18).toFixed(1)}秒` },
+  { id: "skillCooldown", name: "アクティブスキル冷却", base: 120, growth: 2.05, currency: "coins", effect: (lv) => `クールタイム -${(activeSkillCooldownReduction(lv) * 100).toFixed(1)}%` },
   { id: "regen", name: "自動回復", base: 200, growth: 2.15, currency: "coins", effect: (lv) => lv ? `${Math.max(10, 32 - lv * 0.5).toFixed(1)}秒ごと` : "未開放" },
   { id: "combo", name: "コンボ倍率", base: 160, growth: 2, currency: "coins", effect: (lv) => `上限 x${(2 + lv * 0.08).toFixed(2)}` },
   { id: "item", name: "アイテム出現率", base: 250, growth: 2.05, currency: "coins", effect: (lv) => `出現 +${(lv * 2).toFixed(1)}%` }
@@ -541,6 +543,7 @@ const englishTextPairs = [
   ["位相ピン", "Phase Pin"],
   ["研究ツリー", "Research Tree"],
   ["研究アクティブ", "Research Active"],
+  ["アクティブスキル冷却", "Active Skill Cooldown"],
   ["研究で解放したボス由来スキルを画面下のスキルボタンにセットします。", "Set a boss-derived skill unlocked by research to the skill button below."],
   ["スキルなし", "No Skill"],
   ["未解放", "Locked"],
@@ -549,6 +552,7 @@ const englishTextPairs = [
   ["パッシブ", "Passive"],
   ["現在:", "Current:"],
   ["クールダウン", "Cooldown"],
+  ["クールタイム", "Cooldown"],
   ["通常強化", "Upgrades"],
   ["放置施設", "Idle Facilities"],
   ["放置倍率", "Idle Multiplier"],
@@ -2806,7 +2810,11 @@ function normalizeResearchTree(targetState = state) {
 }
 
 function normalizeUpgradeTree(targetState = state) {
-  targetState.upgrades = normalizeDefObject(targetState.upgrades, upgradeDefs);
+  const source = targetState.upgrades || {};
+  if (Object.prototype.hasOwnProperty.call(source, "dash")) {
+    source.skillCooldown = Math.max(Number(source.skillCooldown || 0), Number(source.dash || 0));
+  }
+  targetState.upgrades = normalizeDefObject(source, upgradeDefs);
 }
 
 function normalizeDefObject(source, defs) {
@@ -5346,7 +5354,7 @@ function addChest(chestType) {
 
 function activateItem(kind) {
   if (kind === "dash") {
-    run.dashTimer = Math.max(run.dashTimer, 2.5 + effectiveUpgradeLevel("dash") * 0.18);
+    run.dashTimer = Math.max(run.dashTimer, 2.5);
     run.dashCooldown = Math.max(run.dashCooldown, 3);
     logEvent("DASH ITEM");
   } else if (kind === "shield") {
@@ -5806,7 +5814,15 @@ function activeSkillName(id = state.settings.activeSkill) {
 
 function activeSkillCooldown(id = state.settings.activeSkill) {
   const def = activeSkillDefs.find((entry) => entry.id === id);
-  return def?.cooldown || 0;
+  const baseCooldown = def?.cooldown || 0;
+  if (!baseCooldown) return 0;
+  const reduction = activeSkillCooldownReduction(effectiveUpgradeLevel("skillCooldown"));
+  return Number((baseCooldown * (1 - reduction)).toFixed(2));
+}
+
+function activeSkillCooldownReduction(level) {
+  const safeLevel = Math.max(0, Number(level || 0));
+  return ACTIVE_SKILL_COOLDOWN_MAX_REDUCTION * safeLevel / (safeLevel + ACTIVE_SKILL_COOLDOWN_CURVE);
 }
 
 function selectedActiveSkillDef() {
