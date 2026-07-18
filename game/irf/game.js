@@ -17,6 +17,7 @@ const GAME_WIDTH = 790;
 const GAME_HEIGHT = 424;
 const MAX_JUMP_HOLD_SECONDS = 1;
 const MIN_JUMP_HOLD_SECONDS = 0.1;
+const SLIDE_DURATION_FRAMES = 14;
 const BASE_JUMP_VELOCITY = 380;
 const JUMP_UPGRADE_VELOCITY = 26;
 const BASE_UPGRADE_CAP = 5;
@@ -224,8 +225,8 @@ const introGuideSteps = [
     target: ".command-row",
     title: { ja: "操作", en: "Controls" },
     text: {
-      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓長押しで、キーやボタンを離すと早めに解除できます。スキルはDで使い、Qで解放順に切り替えます。拾った特殊アイテムは1個だけストックされ、Eで使えます。",
-      en: "Hold Space/↑ to jump farther. Hold ↓ to slide, then release to cancel early. Use the selected skill with D and cycle unlocked skills with Q. Picked special items stock one at a time and can be used with E."
+      ja: "ジャンプはSpace/↑長押しで飛距離が伸びます。スライドは↓で最大14フレーム続き、キーやボタンを離すと途中で解除できます。スキルはDで使い、Qで解放順に切り替えます。拾った特殊アイテムは1個だけストックされ、Eで使えます。",
+      en: "Hold Space/↑ to jump farther. Down starts a slide lasting up to 14 frames; release it to cancel early. Use the selected skill with D and cycle unlocked skills with Q. Picked special items stock one at a time and can be used with E."
     }
   },
   {
@@ -5626,8 +5627,8 @@ function spawnLavaGolemPattern(boss, pattern, volley) {
     addBossObstacle("spike", boss, { x: bossSpawnX(boss), w: 56, h: 46, vx: bossSpeed(3, 22), color: "#ef6b65" });
     addBossEnemy("bomb", boss, { x: bossSpawnX(boss, 116), y: groundY - 40, vx: bossSpeed(3, 38), color: "#53312d" });
   } else {
-    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 142, w: 26, h: 100, vx: bossSpeed(3, 16), color: "#ff7b44" });
-    addBossMeteor(boss, { w: 32, h: 32, color: "#ffb238", startOffset: 70 });
+    addBossObstacle("laser", boss, { x: bossSpawnX(boss), y: groundY - 142, w: 26, h: 100, vx: bossSpeed(3, 44), color: "#ff7b44" });
+    addBossMeteor(boss, { w: 32, h: 32, color: "#ffb238", startOffset: 70, travelTime: 1.4 });
   }
 }
 
@@ -6143,7 +6144,7 @@ function startSlideHold() {
   unlockAudio();
   if (run.gameOver) return;
   inputState.slideHolding = true;
-  player.slideTimer = 0.55;
+  player.slideTimer = SLIDE_DURATION_FRAMES * TAS_STEP_SECONDS;
   restartPlayerAnimation("sliding");
   if (Math.abs(player.vy) < 1) {
     player.vy = run.gravityFlip ? -110 : 110;
@@ -6151,12 +6152,7 @@ function startSlideHold() {
 }
 
 function cancelSlideHold() {
-  const wasSliding = inputState.slideHolding || player.slideTimer > 0;
   inputState.slideHolding = false;
-  if (isTasEnabled() && wasSliding) {
-    player.slideTimer = Math.max(player.slideTimer, TAS_STEP_SECONDS * 2);
-    return;
-  }
   player.slideTimer = 0;
 }
 
