@@ -221,6 +221,52 @@ button:disabled {
   gap: 6px;
 }
 
+.debug-asset-scene-controls {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: auto minmax(260px, 1fr) repeat(4, auto);
+  align-items: center;
+  gap: 6px;
+  padding-top: 7px;
+  border-top: 1px solid rgba(242, 184, 75, 0.28);
+}
+
+.debug-asset-scene-controls label {
+  font-size: 0.74rem;
+  color: #e8cf9a;
+}
+
+.debug-asset-scene-controls select {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  border: 1px solid rgba(242, 184, 75, 0.55);
+  border-radius: 4px;
+  background: #17130c;
+  color: #ffe3a8;
+  font: inherit;
+}
+
+.debug-asset-scene-controls > span {
+  grid-column: 1 / -1;
+  min-height: 18px;
+  font-family: Consolas, "Courier New", monospace;
+}
+
+body.asset-scene-active .app-shell {
+  pointer-events: none;
+}
+
+body.asset-scene-active .guide-overlay {
+  display: none;
+}
+
+.asset-scene-focus {
+  outline: 3px solid #f2b84b !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px rgba(242, 184, 75, 0.2) !important;
+}
+
 .debug-tas-controls {
   display: flex;
   flex-wrap: wrap;
@@ -740,6 +786,16 @@ button:disabled {
   .debug-panel {
     align-items: stretch;
     flex-wrap: wrap;
+  }
+
+  .debug-asset-scene-controls {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .debug-asset-scene-controls label,
+  .debug-asset-scene-controls select,
+  .debug-asset-scene-controls > span {
+    grid-column: 1 / -1;
   }
 
   .app-shell {

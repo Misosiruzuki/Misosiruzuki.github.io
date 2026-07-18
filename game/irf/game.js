@@ -726,6 +726,13 @@ const debugMaxUpgrades = document.getElementById("debugMaxUpgrades");
 const debugSkipGuides = document.getElementById("debugSkipGuides");
 const debugTasControls = document.getElementById("debugTasControls");
 const debugEventButtons = document.getElementById("debugEventButtons");
+const debugAssetSceneControls = document.getElementById("debugAssetSceneControls");
+const debugAssetSceneSelect = document.getElementById("debugAssetSceneSelect");
+const debugAssetScenePrevious = document.getElementById("debugAssetScenePrevious");
+const debugAssetSceneShow = document.getElementById("debugAssetSceneShow");
+const debugAssetSceneNext = document.getElementById("debugAssetSceneNext");
+const debugAssetSceneClose = document.getElementById("debugAssetSceneClose");
+const debugAssetSceneInfo = document.getElementById("debugAssetSceneInfo");
 const debugStatus = document.getElementById("debugStatus");
 const debugHudFields = {
   coinsStat: "coins",
@@ -798,6 +805,18 @@ const tasState = {
   rngCalls: 0,
   rngLast: 0,
   rngState: ((Date.now() ^ 0x9e3779b9) >>> 0) || 0x12345678
+};
+
+const assetSceneState = {
+  active: false,
+  catalog: [],
+  selectedIndex: 0,
+  snapshot: null,
+  originalEventLogText: "",
+  entry: null,
+  description: "",
+  focusElement: null,
+  musicAvailable: false
 };
 
 const player = {
@@ -996,6 +1015,7 @@ function localizeElement(root) {
 }
 
 function persistStateQuiet() {
+  if (isAssetSceneActive()) return;
   state.lastSavedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
@@ -1011,6 +1031,7 @@ function initDebugMode() {
   renderDebugTasControls();
   window.setTimeout(renderDebugTasControls, 0);
   renderDebugEventButtons();
+  initDebugAssetSceneViewer();
   updateDebugSkipGuidesButton();
   configureDebugHudInputs();
   exposeTasDeterminismTools();
@@ -1186,6 +1207,745 @@ function forceDebugEvent(event) {
   if (!DEBUG_MODE) return;
   startEvent(event, { resetCooldown: true });
   debugMessage(`EVENT: ${eventName(event)}`);
+}
+
+async function initDebugAssetSceneViewer() {
+  if (!DEBUG_MODE || !debugAssetSceneControls) return;
+  debugAssetSceneSelect?.addEventListener("change", () => {
+    showDebugAssetScene(Number(debugAssetSceneSelect.value || 0));
+  });
+  debugAssetSceneShow?.addEventListener("click", () => {
+    showDebugAssetScene(Number(debugAssetSceneSelect?.value || assetSceneState.selectedIndex || 0));
+  });
+  debugAssetScenePrevious?.addEventListener("click", () => stepDebugAssetScene(-1));
+  debugAssetSceneNext?.addEventListener("click", () => stepDebugAssetScene(1));
+  debugAssetSceneClose?.addEventListener("click", closeDebugAssetScene);
+  exposeDebugAssetSceneTools();
+
+  try {
+    const response = await fetch("ASSET_LIST.md", { cache: "no-store" });
+    if (!response.ok) throw new Error(`ASSET_LIST.md ${response.status}`);
+    assetSceneState.catalog = parseAssetSceneCatalog(await response.text());
+    renderDebugAssetSceneCatalog();
+    debugMessage(`ASSET SCENE ${assetSceneState.catalog.length}項目 READY`);
+  } catch (error) {
+    console.warn(error);
+    if (debugAssetSceneInfo) debugAssetSceneInfo.textContent = `ASSET_LIST.md 読込失敗: ${error.message}`;
+  }
+}
+
+function parseAssetSceneCatalog(markdown) {
+  const entries = [];
+  let section = "";
+  for (const rawLine of String(markdown || "").split(/\r?\n/)) {
+    const heading = rawLine.match(/^#{2,3}\s+(.+?)\s*$/);
+    if (heading) {
+      section = heading[1];
+      continue;
+    }
+    const bullet = rawLine.match(/^\s*-\s+(.+?)\s*$/);
+    if (!bullet || !section) continue;
+    entries.push({
+      id: `asset_${entries.length}`,
+      index: entries.length,
+      section,
+      item: bullet[1]
+    });
+  }
+  return entries;
+}
+
+function renderDebugAssetSceneCatalog() {
+  if (!debugAssetSceneSelect) return;
+  debugAssetSceneSelect.textContent = "";
+  const groups = new Map();
+  for (const entry of assetSceneState.catalog) {
+    if (!groups.has(entry.section)) {
+      const group = document.createElement("optgroup");
+      group.label = entry.section;
+      groups.set(entry.section, group);
+      debugAssetSceneSelect.appendChild(group);
+    }
+    const option = document.createElement("option");
+    option.value = String(entry.index);
+    option.textContent = entry.item;
+    groups.get(entry.section).appendChild(option);
+  }
+  const ready = assetSceneState.catalog.length > 0;
+  debugAssetSceneSelect.disabled = !ready;
+  for (const button of [debugAssetScenePrevious, debugAssetSceneShow, debugAssetSceneNext]) {
+    if (button) button.disabled = !ready;
+  }
+  if (debugAssetSceneClose) debugAssetSceneClose.disabled = true;
+  if (debugAssetSceneInfo) {
+    debugAssetSceneInfo.textContent = ready
+      ? `${assetSceneState.catalog.length}項目 READY / 項目名を選ぶと実ゲーム場面を静止表示します`
+      : "ASSET_LIST.md に項目がありません";
+  }
+}
+
+function exposeDebugAssetSceneTools() {
+  if (!DEBUG_MODE) return;
+  window.__irfAssetSceneDebug = Object.freeze({
+    catalog: () => clonePlain(assetSceneState.catalog),
+    show: (indexOrName) => {
+      const index = typeof indexOrName === "number"
+        ? indexOrName
+        : assetSceneState.catalog.findIndex((entry) => entry.item === indexOrName);
+      return showDebugAssetScene(index);
+    },
+    close: closeDebugAssetScene,
+    state: () => ({
+      active: assetSceneState.active,
+      selectedIndex: assetSceneState.selectedIndex,
+      entry: clonePlain(assetSceneState.entry),
+      description: assetSceneState.description,
+      musicAvailable: assetSceneState.musicAvailable,
+      frozenGameClockMs: gameClockMs,
+      objectCount: objects.length
+    })
+  });
+}
+
+function stepDebugAssetScene(direction) {
+  const count = assetSceneState.catalog.length;
+  if (!count) return false;
+  const current = Number(debugAssetSceneSelect?.value || assetSceneState.selectedIndex || 0);
+  const next = (current + direction + count) % count;
+  if (debugAssetSceneSelect) debugAssetSceneSelect.value = String(next);
+  return showDebugAssetScene(next);
+}
+
+function showDebugAssetScene(index) {
+  if (!DEBUG_MODE || !assetSceneState.catalog.length) return false;
+  const normalizedIndex = Math.max(0, Math.min(assetSceneState.catalog.length - 1, Math.floor(Number(index) || 0)));
+  const entry = assetSceneState.catalog[normalizedIndex];
+  if (!assetSceneState.snapshot) {
+    assetSceneState.snapshot = captureTasSnapshot();
+    assetSceneState.originalEventLogText = eventLog?.textContent || "";
+  }
+  else restoreTasSnapshot(assetSceneState.snapshot);
+
+  assetSceneState.active = true;
+  assetSceneState.selectedIndex = normalizedIndex;
+  assetSceneState.entry = entry;
+  assetSceneState.description = "";
+  assetSceneState.musicAvailable = false;
+  assetSceneState.musicKeyOverride = "";
+  document.body.classList.add("asset-scene-active");
+  if (debugAssetSceneSelect) debugAssetSceneSelect.value = String(normalizedIndex);
+  if (debugAssetSceneClose) debugAssetSceneClose.disabled = false;
+
+  prepareAssetSceneBase(assetSceneAreaIndex(entry));
+  prepareAssetSceneEntry(entry);
+  if (eventLog) eventLog.textContent = `ASSET SCENE: ${entry.item}`;
+  updateHud();
+  renderPanel();
+  syncAssetSceneTabState();
+  applyAssetSceneFocus();
+  syncBgm();
+  draw();
+  updateDebugAssetSceneInfo();
+  debugMessage(`ASSET ${normalizedIndex + 1}/${assetSceneState.catalog.length}: ${entry.item}`);
+  return true;
+}
+
+function closeDebugAssetScene() {
+  if (!assetSceneState.active && !assetSceneState.snapshot) return false;
+  const snapshot = assetSceneState.snapshot;
+  const originalEventLogText = assetSceneState.originalEventLogText;
+  clearAssetSceneFocus();
+  assetSceneState.active = false;
+  assetSceneState.snapshot = null;
+  assetSceneState.originalEventLogText = "";
+  assetSceneState.entry = null;
+  assetSceneState.description = "";
+  assetSceneState.musicAvailable = false;
+  assetSceneState.musicKeyOverride = "";
+  document.body.classList.remove("asset-scene-active");
+  if (snapshot) restoreTasSnapshot(snapshot);
+  if (eventLog) eventLog.textContent = originalEventLogText;
+  if (debugAssetSceneClose) debugAssetSceneClose.disabled = true;
+  if (debugAssetSceneInfo) {
+    debugAssetSceneInfo.textContent = `${assetSceneState.catalog.length}項目 READY / 元のゲーム状態へ戻りました`;
+  }
+  debugMessage("ASSET SCENE CLOSED");
+  return true;
+}
+
+function isAssetSceneActive() {
+  return DEBUG_MODE && assetSceneState.active;
+}
+
+function prepareAssetSceneBase(index = 0) {
+  const areaIndexValue = Math.max(0, Math.min(areas.length - 1, index));
+  const area = areas[areaIndexValue];
+  state.currentPrestigeDistance = area.start;
+  state.coins = Math.max(12345, Number(state.coins || 0));
+  state.gems = Math.max(67, Number(state.gems || 0));
+  state.research = Math.max(89, Number(state.research || 0));
+  state.prestigePoints = Math.max(12, Number(state.prestigePoints || 0));
+  Object.assign(run, {
+    active: true,
+    gameOver: false,
+    distance: area.start + Math.min(240, area.runDistance * 0.25),
+    hp: Math.max(1, getStats().maxHp),
+    combo: 3,
+    dashTimer: 0,
+    dashCooldown: 0,
+    skillShield: 0,
+    giantTimer: 0,
+    timeStop: 0,
+    gravityGuardTimer: 0,
+    phasePinTimer: 0,
+    chillTimer: 0,
+    bossBattle: false,
+    bossAreaIndex: -1,
+    bossPhase: "attack",
+    bossPatternIndex: 0,
+    bossVolley: 0,
+    bossSoulMode: "red",
+    bossModeTimer: 0,
+    bossModePulse: 0,
+    event: null,
+    eventTimer: 0,
+    gravityFlip: false,
+    gravityLandingGuard: false,
+    stockedItem: null,
+    tasAreaIndex: isTasEnabled() ? areaIndexValue : null
+  });
+  objects = [];
+  particles = [];
+  Object.assign(player, {
+    x: 112,
+    y: groundY - 48,
+    w: 36,
+    h: 48,
+    vy: 0,
+    jumpsUsed: 0,
+    slideTimer: 0,
+    invulnerable: 0,
+    regenTimer: 0,
+    damageTimer: 0
+  });
+  Object.assign(inputState, {
+    jumpHolding: false,
+    jumpActive: false,
+    slideHolding: false,
+    pointerSlideActive: false,
+    pointerJumpActive: false,
+    blockDirection: "mid"
+  });
+  restartPlayerAnimation("running");
+  runOverlay.classList.add("hidden");
+  setAssetSceneTab("upgrades");
+  assetSceneState.focusSelector = ".canvas-frame";
+}
+
+function prepareAssetSceneEntry(entry) {
+  if (entry.section === "プレイヤー") prepareAssetPlayerScene(entry.item);
+  else if (entry.section === "コイン・報酬") prepareAssetRewardScene(entry.item);
+  else if (entry.section === "アイテム・スキル") prepareAssetItemScene(entry.item);
+  else if (entry.section === "障害物") prepareAssetObstacleScene(entry.item);
+  else if (entry.section === "敵") prepareAssetEnemyScene(entry.item);
+  else if (entry.section === "ボス") prepareAssetBossScene(assetSceneBossIndex(entry.item));
+  else if (entry.section === "宝箱") prepareAssetChestScene(entry.item);
+  else if (entry.section === "装備") prepareAssetEquipmentScene(entry.item);
+  else if (entry.section === "エリア背景") prepareAssetBackgroundScene(assetSceneAreaIndex(entry));
+  else if (entry.section === "UI") prepareAssetUiScene(entry.item);
+  else if (entry.section === "エフェクト") prepareAssetEffectScene(entry.item);
+  else prepareAssetAudioScene(entry);
+}
+
+function prepareAssetPlayerScene(item) {
+  if (item.includes("ジャンプ")) {
+    player.y = groundY - player.h - 128;
+    player.vy = -90;
+    player.jumpsUsed = 1;
+    restartPlayerAnimation("jump");
+    player.animationStartedAt = gameNow() - 1000;
+    assetSceneState.description = "障害物を跳び越えている最中の、ジャンプ最終フレームです。";
+  } else if (item.includes("スライディング")) {
+    player.slideTimer = 0.2;
+    player.y = groundY - getPlayerHeight();
+    restartPlayerAnimation("sliding");
+    assetPushObstacle("laser", 390, { y: groundY - 118, w: 26, h: 78 });
+    assetSceneState.description = "レーザー柱の下を14フレームのスライドで通過する場面です。";
+  } else if (item.includes("ダッシュ")) {
+    run.dashTimer = 2.5;
+    player.invulnerable = 2.5;
+    restartPlayerAnimation("dash");
+    player.animationStartedAt = gameNow() - 1000;
+    assetPushEnemy("slime", 0, 430);
+    assetSceneState.description = "ダッシュを発動し、無敵エフェクトをまとって敵へ接近する場面です。";
+  } else if (item.includes("ダメージ")) {
+    player.damageTimer = 0.5;
+    player.invulnerable = 0.8;
+    restartPlayerAnimation("damage");
+    burst(player.x + player.w / 2, player.y + player.h / 2, "#ef6b65", 18);
+    assetSceneState.description = "障害物へ接触した直後の、ダメージスプライトとヒット粒子です。";
+  } else {
+    restartPlayerAnimation("running");
+    player.animationStartedAt = gameNow() - 240;
+    assetPushCoin(5, 370, groundY - 108);
+    assetSceneState.description = "草原の通常ランでコイン列へ向かって走る場面です。";
+  }
+}
+
+function prepareAssetRewardScene(item) {
+  const coinMatch = item.match(/通常コイン\s+(\d+)/);
+  if (coinMatch) {
+    const value = Number(coinMatch[1]);
+    assetPushCoin(value, 430, groundY - 112);
+    assetPushObstacle("crate", 610);
+    assetSceneState.description = `${value}コインが通常ランの回避ルート上へ出現した場面です。`;
+    return;
+  }
+  if (item === "虹コイン") assetPushRare("rainbow", 430);
+  if (item === "ダイヤ") assetPushRare("diamond", 430);
+  if (item === "宝石") assetPushRare("gem", 430);
+  if (["虹コイン", "ダイヤ", "宝石"].includes(item)) {
+    assetSceneState.description = `通常コイン列の先へ${item}がレア報酬として出現した場面です。`;
+    return;
+  }
+  if (item.includes("研究ポイント")) {
+    state.research = 89;
+    setAssetSceneTab("research");
+    assetSceneState.focusSelector = "#researchStat";
+    assetSceneState.description = "ボス報酬や施設生産で得た研究ポイントがHUDへ反映された場面です。";
+  } else {
+    state.prestigePoints = 12;
+    setAssetSceneTab("prestige");
+    assetSceneState.focusSelector = "#prestigeStat";
+    assetSceneState.description = "転生後、永続強化に使える転生ポイントがHUDへ加算された場面です。";
+  }
+}
+
+function prepareAssetItemScene(item) {
+  const kind = item.includes("ダッシュ") ? "dash"
+    : item.includes("無敵") ? "shield"
+      : item.includes("巨大化") ? "giant"
+        : item.includes("磁石") ? "magnet"
+          : item.includes("時間停止") ? "time"
+            : item.includes("2段ジャンプ") ? "doubleJump"
+              : item.includes("壁走り") ? "wallRun"
+                : "clone";
+  assetPushItem(kind, 430);
+  if (kind === "wallRun") assetPushObstacle("crate", 610, { h: 112 });
+  if (kind === "clone") run.echoActive = true;
+  assetSceneState.description = `${item}が走行ルート中央へ出現し、取得可能になった場面です。`;
+}
+
+function prepareAssetObstacleScene(item) {
+  const areaIndexValue = item.includes("エリア別") ? 4 : item.includes("隕石") ? 1 : 0;
+  prepareAssetSceneBase(areaIndexValue);
+  const kind = item.includes("トゲ") ? "spike"
+    : item.includes("レーザー") ? "laser"
+      : item.includes("爆弾") ? "bomb"
+        : item.includes("隕石") ? "meteor"
+          : "crate";
+  assetPushObstacle(kind, 455, item.includes("エリア別") ? { color: currentArea().accent, destructible: true } : {});
+  assetPushCoin(10, 560, groundY - 150);
+  assetSceneState.description = `${item}が通常ランの進行方向に現れ、回避か破壊を判断する場面です。`;
+}
+
+function prepareAssetEnemyScene(item) {
+  const config = item.includes("鳥") ? { kind: "bird", area: 0 }
+    : item.includes("爆弾") ? { kind: "bomb", area: 1 }
+      : item.includes("レーザー") ? { kind: "laserEnemy", area: 4 }
+        : item.includes("巨大ロボ") ? { kind: "giantRobot", area: 4 }
+          : item.includes("ドラゴン") ? { kind: "dragon", area: 5 }
+            : { kind: "slime", area: 0 };
+  prepareAssetSceneBase(config.area);
+  assetPushEnemy(config.kind, config.area, 470);
+  if (config.kind === "laserEnemy") assetPushObstacle("laser", 610, { y: groundY - 122 });
+  assetSceneState.description = `${item}がエリア固有能力をまとい、プレイヤーの進路を塞ぐ場面です。`;
+}
+
+function prepareAssetBossScene(index) {
+  prepareAssetSceneBase(index);
+  run.distance = nextAreaBossDistance(index);
+  run.bossBattle = true;
+  run.bossAreaIndex = index;
+  run.bossPhase = "attack";
+  run.bossSoulMode = bossSoulModeForArea(index);
+  const boss = spawnBoss(index, { x: 555, finalBoss: true, hp: FINAL_BOSS_HIT_POINT_TARGETS[index] || 20 });
+  boss.vulnerable = false;
+  assetPushBossAttackPreview(index);
+  assetSceneState.description = `${bossName(index)}が固有ギミックの攻撃フェーズを開始した場面です。`;
+}
+
+function prepareAssetChestScene(item) {
+  const type = item.startsWith("銀") ? "silver"
+    : item.startsWith("金") ? "gold"
+      : item.startsWith("虹") ? "rainbow"
+        : item.startsWith("神") ? "god"
+          : "wood";
+  assetPushChest(type, 445);
+  if (item.includes("開封エフェクト")) {
+    burst(465, groundY - 42, chestDefs.gold.color, 28);
+    assetPushRare("gem", 515);
+    assetSceneState.description = "宝箱を開封し、装備・コイン報酬が飛び出す瞬間です。";
+  } else {
+    assetSceneState.description = `${item}が500mごとの走行報酬として出現した場面です。`;
+  }
+}
+
+function prepareAssetEquipmentScene(item) {
+  const slot = item.startsWith("頭") ? "頭"
+    : item.startsWith("靴") ? "靴"
+      : item.startsWith("胴") ? "胴"
+        : "アクセサリー";
+  state.equipment = rarityDefs.map((rarity, index) => ({
+    id: `asset_${slot}_${rarity.id}`,
+    name: equipmentName(slot, rarity.id),
+    slot,
+    rarity: rarity.id,
+    rarityClass: rarity.colorClass,
+    stat: slot === "胴" ? "hp" : slot === "靴" ? "jump" : slot === "頭" ? "idle" : "coin",
+    value: slot === "胴" ? rarity.rank : Number((0.02 * rarity.rank).toFixed(3)),
+    assetOrder: index
+  }));
+  state.equipped = { [slot]: state.equipment[state.equipment.length - 1].id };
+  equipmentView = slot;
+  setAssetSceneTab("equipment");
+  assetSceneState.focusSelector = "#panelContent";
+  assetSceneState.description = `${slot}装備をNからLRまでレア度順に比較し、装備を選ぶ場面です。`;
+}
+
+function prepareAssetBackgroundScene(index) {
+  prepareAssetSceneBase(index);
+  assetPushCoin(5, 470, groundY - 112);
+  assetPushObstacle(index % 2 ? "spike" : "crate", 610, { color: currentArea().obstacle });
+  assetSceneState.description = `${localizedAreaName(areas[index])}を通常走行し、背景・地面・遠景が同時に見える場面です。`;
+}
+
+function prepareAssetUiScene(item) {
+  if (item.includes("コイン、宝石")) {
+    assetSceneState.focusSelector = ".resource-strip";
+    assetSceneState.description = "走行報酬と施設生産がHUDの4資源表示へ反映された場面です。";
+  } else if (item.includes("強化カテゴリ")) {
+    setAssetSceneTab("upgrades");
+    assetSceneState.focusSelector = ".tab-bar";
+    assetSceneState.description = "コインで通常強化を選択する強化タブです。";
+  } else if (item.includes("工場カテゴリ")) {
+    factoryView = "coins";
+    setAssetSceneTab("factory");
+    assetSceneState.focusSelector = ".tab-bar";
+    assetSceneState.description = "放置施設の種類を切り替えて建設する工場タブです。";
+  } else if (item.includes("任務/実績/研究")) {
+    ensureMissions();
+    state.missions.daily.dailyDistance.progress = dailyMissionDefs[0].target;
+    setAssetSceneTab("missions");
+    assetSceneState.focusSelector = ".tab-bar";
+    assetSceneState.description = "達成済み任務と実績報酬を確認する場面です。";
+  } else if (item.includes("リワード広告")) {
+    state.chests = [{ id: "asset_ad_chest", type: "silver", remaining: 120 }];
+    setAssetSceneTab("prestige");
+    assetSceneState.focusSelector = "#panelContent";
+    assetSceneState.description = "転生欄上部で任意のリワード広告報酬を選ぶ場面です。";
+  } else {
+    assetSceneState.focusSelector = ".command-row";
+    assetSceneState.description = "走行中に保存・再走・スキルなどの操作ボタンを使う場面です。";
+  }
+}
+
+function prepareAssetEffectScene(item) {
+  if (item === "コイン取得") {
+    burst(player.x + 70, player.y + 18, "#f2b84b", 20);
+    assetPushCoin(10, player.x + 68, player.y + 12);
+  } else if (item === "レア取得") {
+    burst(player.x + 70, player.y + 18, "#b98cff", 24);
+    assetPushRare("diamond", player.x + 68, player.y);
+  } else if (item === "敵撃破") {
+    burst(450, groundY - 48, "#75d05e", 30);
+  } else if (item === "ボス撃破") {
+    prepareAssetBossScene(0);
+    const boss = objects.find((obj) => obj.type === "boss");
+    if (boss) boss.hp = 0;
+    burst(595, groundY - 80, "#f2cf5a", 48);
+  } else if (item === "レベルアップ") {
+    state.level = Math.max(25, state.level);
+    burst(player.x + 18, player.y + 12, "#48bde7", 28);
+  } else if (item === "転生") {
+    prepareAssetSceneBase(0);
+    state.prestigePoints = Math.max(12, state.prestigePoints);
+    burst(player.x + 18, player.y + 16, "#fff1a5", 42);
+    setAssetSceneTab("prestige");
+  } else if (item === "コイン雨") {
+    prepareAssetEventScene("coinRain");
+  } else if (item === "フィーバータイム") {
+    prepareAssetEventScene("fever");
+  } else if (item === "宝箱ラッシュ") {
+    prepareAssetEventScene("chestRush");
+  } else if (item === "重力反転") {
+    prepareAssetEventScene("gravity");
+  } else {
+    prepareAssetEventScene("clearPath");
+    burst(470, groundY - 44, currentArea().obstacle, 22);
+  }
+  assetSceneState.description = `${item}が成立した瞬間を、粒子と対象物を含めて静止した場面です。`;
+}
+
+function prepareAssetAudioScene(entry) {
+  const item = entry.item;
+  if (entry.section === "共通画面BGM") prepareAssetCommonMusicScene(item);
+  else if (entry.section === "通常ランBGM") prepareAssetBackgroundScene(assetSceneAreaIndex(entry));
+  else if (entry.section === "ボスBGM") prepareAssetBossScene(assetSceneBossIndex(item));
+  else if (entry.section === "ランダムイベントBGM") prepareAssetEventScene(assetSceneEventFromItem(item));
+  else if (entry.section === "特殊状態BGM") prepareAssetSpecialMusicScene(item);
+  else prepareAssetJingleScene(item);
+
+  const file = assetSceneMusicFile(item);
+  assetSceneState.musicAvailable = Boolean(file);
+  assetSceneState.musicKeyOverride = file ? `asset-file:${file}` : "";
+  if (!file) stopBgm();
+  const status = file ? "音源実装済み。BGM ONならこの場面で再生します。" : "音源未追加。使用予定の実ゲーム場面を表示しています。";
+  assetSceneState.description = `${assetSceneState.description} ${status}`.trim();
+}
+
+function prepareAssetCommonMusicScene(item) {
+  if (item.includes("工場")) setAssetSceneTab("factory");
+  else if (item.includes("装備")) setAssetSceneTab("equipment");
+  else if (item.includes("ミッション")) setAssetSceneTab("missions");
+  else if (item.includes("研究")) setAssetSceneTab("research");
+  else if (item.includes("転生")) setAssetSceneTab("prestige");
+  else if (item.includes("強化")) setAssetSceneTab("upgrades");
+  else if (item.includes("リザルト")) prepareAssetGameOverScene();
+  else if (item.includes("トップページ")) assetSceneState.focusSelector = ".home-link";
+  else assetSceneState.focusSelector = ".topbar";
+  assetSceneState.description = `${item.replace("BGM", "")}を開いている場面です。`;
+}
+
+function prepareAssetSpecialMusicScene(item) {
+  if (item.includes("ダッシュ")) {
+    run.dashTimer = 2.5;
+    restartPlayerAnimation("dash");
+  } else if (item.includes("無敵")) {
+    player.invulnerable = 3;
+    run.skillShield = 3;
+  } else if (item.includes("時間停止")) {
+    run.timeStop = 3;
+    assetPushObstacle("meteor", 470);
+  } else if (item.includes("低HP")) {
+    run.hp = 1;
+    assetPushEnemy("bomb", 3, 470);
+  } else {
+    run.combo = 24;
+    for (let index = 0; index < 5; index += 1) assetPushCoin(10, 390 + index * 42, groundY - 110);
+  }
+  assetSceneState.description = `${item.replace("BGMまたは上乗せレイヤー", "").replace("BGM", "")}の特殊状態が継続中の場面です。`;
+}
+
+function prepareAssetJingleScene(item) {
+  if (item.includes("ゲームオーバー")) prepareAssetGameOverScene();
+  else if (item.includes("レベルアップ")) prepareAssetEffectScene("レベルアップ");
+  else if (item.includes("宝箱入手")) prepareAssetChestScene("金宝箱");
+  else if (item.includes("宝箱開封")) prepareAssetChestScene("宝箱開封エフェクト");
+  else if (item.includes("レア装備")) prepareAssetEquipmentScene("アクセサリーアイコン N/R/SR/SSR/UR/LR");
+  else if (item.includes("ボス出現")) prepareAssetBossScene(0);
+  else if (item.includes("ボス撃破")) prepareAssetEffectScene("ボス撃破");
+  else if (item.includes("ミッション")) prepareAssetCompletedMissionScene(false);
+  else if (item.includes("実績")) prepareAssetCompletedMissionScene(true);
+  else if (item.includes("転生")) prepareAssetEffectScene("転生");
+  else if (item.includes("研究")) prepareAssetResearchCompleteScene();
+  else {
+    assetPushCoin(1, 390, groundY - 100);
+    assetSceneState.description = "再走開始直後、最初のコイン列が見える場面です。";
+  }
+}
+
+function prepareAssetEventScene(event) {
+  run.event = event;
+  run.eventTimer = 10;
+  run.gravityFlip = event === "gravity";
+  if (event === "gravity") {
+    player.y = PLAYER_CEILING_Y;
+    player.vy = 0;
+  } else if (event === "coinRain" || event === "coin3" || event === "fever") {
+    for (let index = 0; index < 8; index += 1) {
+      assetPushCoin(index % 3 === 0 ? 10 : 5, 330 + index * 48, groundY - 90 - (index % 3) * 42);
+    }
+  } else if (event === "meteor") {
+    for (let index = 0; index < 3; index += 1) assetPushObstacle("meteor", 380 + index * 110, { y: 70 + index * 65 });
+  } else if (event === "chestRush") {
+    ["wood", "silver", "gold"].forEach((type, index) => assetPushChest(type, 360 + index * 105));
+  } else if (event === "clearPath") {
+    for (let index = 0; index < 7; index += 1) assetPushCoin(5, 350 + index * 50, groundY - 112);
+  }
+  assetSceneState.description = `${eventName(event)}イベントの専用生成パターンが画面内へ入った場面です。`;
+}
+
+function prepareAssetGameOverScene() {
+  run.gameOver = true;
+  run.active = false;
+  runOverlay.classList.remove("hidden");
+  overlayTitle.textContent = currentLanguage === "en" ? "RUN END" : "ラン終了";
+  overlayText.textContent = `${formatNumber(run.distance)}m`;
+  assetSceneState.focusSelector = "#runOverlay";
+  assetSceneState.description = "HPが0になり、距離結果と再走ボタンが表示された場面です。";
+}
+
+function prepareAssetCompletedMissionScene(achievement) {
+  ensureMissions();
+  if (achievement) {
+    state.achievements.firstJump = { unlocked: true, claimed: false };
+  } else {
+    state.missions.daily.dailyDistance.progress = dailyMissionDefs[0].target;
+  }
+  setAssetSceneTab("missions");
+  assetSceneState.focusSelector = "#panelContent";
+  assetSceneState.description = achievement ? "実績条件を満たし、報酬が受取可能になった場面です。" : "デイリー任務を達成し、報酬が受取可能になった場面です。";
+}
+
+function prepareAssetResearchCompleteScene() {
+  state.defeatedAreaBosses = Object.fromEntries(areas.slice(0, -1).map((_, index) => [index, true]));
+  state.researchTree.sandBreaker = Math.max(1, state.researchTree.sandBreaker || 0);
+  state.research = Math.max(200, state.research);
+  setAssetSceneTab("research");
+  assetSceneState.focusSelector = "#panelContent";
+  assetSceneState.description = "エリア最終ボス由来の研究を完了し、スキル効果が反映された場面です。";
+}
+
+function assetPushCoin(value, x, y = groundY - 112) {
+  objects.push({ type: "coin", x, y, w: 24, h: 24, value, spin: 0 });
+}
+
+function assetPushRare(kind, x, y = groundY - 132) {
+  objects.push({ type: "rare", kind, x, y, w: 28, h: 28 });
+}
+
+function assetPushItem(kind, x, y = groundY - 132) {
+  objects.push({ type: "item", kind, x, y, w: 30, h: 30 });
+}
+
+function assetPushChest(type, x, y = groundY - 36) {
+  objects.push({ type: "chest", chestType: type, x, y, w: 46, h: 36 });
+}
+
+function assetPushObstacle(kind, x, options = {}) {
+  const defaultHeight = kind === "spike" ? 42 : kind === "laser" ? 82 : kind === "meteor" ? 36 : 58;
+  const height = options.h || defaultHeight;
+  const y = options.y ?? (kind === "meteor" ? groundY - 170 : groundY - height);
+  objects.push({
+    type: "obstacle",
+    kind,
+    x,
+    y,
+    w: options.w || (kind === "spike" ? 52 : kind === "laser" ? 26 : kind === "meteor" ? 36 : 48),
+    h: height,
+    vx: 0,
+    vy: 0,
+    gravity: 0,
+    color: options.color || (kind === "laser" ? "#ef6b65" : kind === "meteor" ? "#ef6b65" : currentArea().obstacle),
+    destructible: Boolean(options.destructible)
+  });
+}
+
+function assetPushEnemy(kind, index, x) {
+  const airborne = kind === "bird" || kind === "dragon";
+  const large = kind === "giantRobot";
+  const enemy = applyEnemyTraits({
+    type: "enemy",
+    kind,
+    x,
+    y: airborne ? groundY - (kind === "dragon" ? 165 : 135) : groundY - (large ? 88 : 44),
+    w: large ? 74 : kind === "dragon" ? 82 : 46,
+    h: large ? 88 : kind === "dragon" ? 44 : airborne ? 30 : 44,
+    hp: large ? 3 : 1,
+    maxHp: large ? 3 : 1,
+    color: kind === "bird" ? currentArea().accent
+      : kind === "bomb" ? "#30333c"
+        : kind === "laserEnemy" ? "#ef6b65"
+          : kind === "giantRobot" ? "#48bde7"
+            : kind === "dragon" ? "#b98cff"
+              : "#75d05e"
+  }, index);
+  objects.push(enemy);
+}
+
+function assetPushBossAttackPreview(index) {
+  const kinds = ["slime", "meteor", "laser", "meteor", "laser", "meteor", "meteor", "laser", "meteor"];
+  const kind = kinds[index] || "meteor";
+  if (kind === "slime") assetPushEnemy("slime", index, 390);
+  else assetPushObstacle(kind, 405, { y: kind === "meteor" ? groundY - 150 : groundY - 120, color: currentArea().accent });
+}
+
+function assetSceneAreaIndex(entry) {
+  const item = entry?.item || "";
+  const match = areas.findIndex((area) => item.startsWith(area.name) || item.includes(`${area.name}エリア`));
+  return match >= 0 ? match : 0;
+}
+
+function assetSceneBossIndex(item) {
+  const names = ["Slime King", "Sand Wyrm", "Frost Core", "Lava Golem", "Giant Robot", "Star Dragon", "Void Engine", "Aether Lord", "Infinity Gate"];
+  const index = names.findIndex((name) => String(item || "").includes(name));
+  return index >= 0 ? index : 0;
+}
+
+function assetSceneEventFromItem(item) {
+  if (item.includes("隕石")) return "meteor";
+  if (item.includes("フィーバー")) return "fever";
+  if (item.includes("宝箱")) return "chestRush";
+  if (item.includes("重力")) return "gravity";
+  if (item.includes("障害物")) return "clearPath";
+  if (item.includes("3倍")) return "coin3";
+  return "coinRain";
+}
+
+function assetSceneMusicFile(item) {
+  const common = {
+    "タイトル画面BGM": "タイトル画面BGM.ogg",
+    "トップページ/ゲーム選択画面BGM": "トップページゲーム選択画面BGM.ogg",
+    "メインメニューBGM": "メインメニューBGM.ogg",
+    "強化画面BGM": "強化画面BGM.ogg",
+    "工場/放置施設画面BGM": "工場放置施設画面BGM.ogg",
+    "装備/宝箱画面BGM": "装備宝箱画面BGM.ogg",
+    "ミッション/実績画面BGM": "ミッション実績画面BGM.ogg",
+    "研究ツリー画面BGM": "研究ツリー画面BGM.ogg",
+    "転生画面BGM": "転生画面BGM.ogg",
+    "リザルト画面BGM": "リザルト画面BGM.ogg"
+  };
+  if (common[item]) return common[item];
+  const index = areas.findIndex((area) => item === `${area.name}エリアBGM`);
+  if (index >= 0 && index < areaMusicFiles.length && index !== areas.length - 1) return areaMusicFiles[index];
+  return "";
+}
+
+function setAssetSceneTab(tab) {
+  activeTab = tab;
+  musicScene = tab;
+  if (tab === "equipment" && !equipmentView) equipmentView = "chests";
+}
+
+function syncAssetSceneTabState() {
+  document.querySelectorAll(".tab-bar button[data-tab]").forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.tab === activeTab);
+  });
+}
+
+function clearAssetSceneFocus() {
+  assetSceneState.focusElement?.classList.remove("asset-scene-focus");
+  assetSceneState.focusElement = null;
+  assetSceneState.focusSelector = "";
+}
+
+function applyAssetSceneFocus() {
+  const selector = assetSceneState.focusSelector || ".canvas-frame";
+  clearAssetSceneFocus();
+  const element = document.querySelector(selector);
+  if (!element) return;
+  element.classList.add("asset-scene-focus");
+  assetSceneState.focusElement = element;
+  assetSceneState.focusSelector = selector;
+}
+
+function updateDebugAssetSceneInfo() {
+  if (!debugAssetSceneInfo || !assetSceneState.entry) return;
+  const audio = assetSceneState.entry.section.includes("BGM") || assetSceneState.entry.section.includes("ジングル")
+    ? ` / AUDIO ${assetSceneState.musicAvailable ? "READY" : "PENDING"}`
+    : "";
+  debugAssetSceneInfo.textContent = `${assetSceneState.selectedIndex + 1}/${assetSceneState.catalog.length} [${assetSceneState.entry.section}] ${assetSceneState.entry.item} / PAUSED${audio} / ${assetSceneState.description}`;
 }
 
 function tasScenarioOptionsSafe() {
@@ -2665,7 +3425,7 @@ function isGuideActive() {
 }
 
 function isGameplayPaused() {
-  return languageSelectionActive || isGuideActive();
+  return languageSelectionActive || isGuideActive() || isAssetSceneActive();
 }
 
 function maybeStartIntroGuide(options = {}) {
@@ -3179,6 +3939,10 @@ function mergeDefaults(saved, fallback) {
 }
 
 function saveState() {
+  if (isAssetSceneActive()) {
+    debugMessage("ASSET SCENE中は保存しません");
+    return;
+  }
   state.lastSavedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   flashButton("saveBtn");
@@ -3452,8 +4216,11 @@ function bindEvents() {
   });
 
   window.addEventListener("beforeunload", () => {
-    state.lastSavedAt = Date.now();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const source = isAssetSceneActive() && assetSceneState.snapshot
+      ? clonePlain(assetSceneState.snapshot.state)
+      : state;
+    source.lastSavedAt = Date.now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(source));
   });
 }
 
@@ -3495,18 +4262,26 @@ function toggleBgm() {
 
 function syncBgm() {
   if (!state.settings.bgmEnabled || !music.unlocked) return;
+  const audioEntry = isAssetSceneActive()
+    && (assetSceneState.entry?.section.includes("BGM") || assetSceneState.entry?.section.includes("ジングル"));
+  if (audioEntry && !assetSceneState.musicAvailable) {
+    if (music.current) stopBgm();
+    return;
+  }
   const key = currentMusicKey();
   if (key === music.currentKey) return;
   playBgm(key);
 }
 
 function currentMusicKey() {
+  if (isAssetSceneActive() && assetSceneState.musicKeyOverride) return assetSceneState.musicKeyOverride;
   if (run.gameOver || musicScene === "result") return "result";
   if (sceneMusicFiles[musicScene]) return musicScene;
   return `area:${areaIndex()}`;
 }
 
 function musicUrlForKey(key) {
+  if (key.startsWith("asset-file:")) return `${MUSIC_ROOT}${key.slice("asset-file:".length)}`;
   if (key.startsWith("area:")) {
     const index = Number(key.split(":")[1] || 0);
     return `${MUSIC_ROOT}${areaMusicFiles[index] || areaMusicFiles[0]}`;
@@ -3557,6 +4332,12 @@ function runLoopFrame(now) {
   const elapsed = Math.max(0, (now - lastFrame) / 1000);
   const rawDt = isTasEnabled() ? Math.min(1, elapsed) : Math.min(0.05, elapsed);
   lastFrame = now;
+  if (isAssetSceneActive()) {
+    tasStepAccumulator = 0;
+    syncBgm();
+    draw();
+    return;
+  }
   if (isTasEnabled()) {
     updateTasFixedSteps(rawDt);
   } else {
@@ -7868,7 +8649,41 @@ function draw() {
   drawParticles();
   drawTasHitboxes();
   drawForeground(area);
+  drawAssetSceneOverlay();
   drawTasOverlay();
+}
+
+function drawAssetSceneOverlay() {
+  if (!isAssetSceneActive() || !assetSceneState.entry) return;
+  const title = `${assetSceneState.selectedIndex + 1}/${assetSceneState.catalog.length}  ${assetSceneState.entry.item}`;
+  const description = assetSceneState.description || "ASSET SCENE";
+  ctx.save();
+  ctx.fillStyle = "rgba(10, 13, 18, 0.88)";
+  roundRect(12, canvasHeight - 64, canvasWidth - 24, 50, 5);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(242, 184, 75, 0.82)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = "#f2b84b";
+  ctx.font = "700 13px Segoe UI, sans-serif";
+  ctx.textBaseline = "top";
+  ctx.fillText(assetSceneCanvasText(title, canvasWidth - 130), 24, canvasHeight - 56);
+  ctx.fillStyle = "#dfe6ee";
+  ctx.font = "12px Segoe UI, sans-serif";
+  ctx.fillText(assetSceneCanvasText(description, canvasWidth - 52), 24, canvasHeight - 35);
+  ctx.fillStyle = "#bff0d2";
+  ctx.font = "700 11px Consolas, monospace";
+  ctx.textAlign = "right";
+  ctx.fillText("PAUSED", canvasWidth - 24, canvasHeight - 56);
+  ctx.restore();
+}
+
+function assetSceneCanvasText(text, maxWidth) {
+  const source = String(text || "");
+  if (ctx.measureText(source).width <= maxWidth) return source;
+  let output = source;
+  while (output.length > 1 && ctx.measureText(`${output}...`).width > maxWidth) output = output.slice(0, -1);
+  return `${output}...`;
 }
 
 function drawBossModeGuides() {
@@ -8256,7 +9071,9 @@ function drawItem(obj) {
     giant: "#ef6b65",
     magnet: "#4cc38a",
     time: "#b98cff",
-    doubleJump: "#eef3f7"
+    doubleJump: "#eef3f7",
+    wallRun: "#ff9f3d",
+    clone: "#65d6ff"
   }[obj.kind] || "#ffffff";
   ctx.fillStyle = color;
   ctx.beginPath();
