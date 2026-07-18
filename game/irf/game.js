@@ -1,7 +1,7 @@
 "use strict";
 
 const STORAGE_KEY = "infinite_runner_factory_save_v1";
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;
 const ASSET_ROOT = "asset/";
 const MUSIC_ROOT = `${ASSET_ROOT}music/loop/`;
 const REWARD_AD_URL = "https://omg10.com/4/11245499";
@@ -31,6 +31,10 @@ const PLAYER_CEILING_Y = 34;
 const GRAVITY_LANDING_SAFE_RADIUS = 160;
 const FINAL_BOSS_OFFSET = 100;
 const FINAL_BOSS_ATTACK_PATTERNS = 3;
+const AREA_TARGET_RUN_SECONDS = 300;
+const FINAL_BOSS_TARGET_SECONDS = 300;
+const FINAL_BOSS_HIT_POINT_TARGETS = [37, 33, 30, 43, 34, 39, 57, 41, 35];
+const LEGACY_AREA_STARTS = [0, 1000, 3000, 7000, 15000, 30000, 60000, 100000, 160000];
 const RUN_PATTERN_LENGTH_METERS = 30;
 const RUN_PATTERN_WIDTH = RUN_PATTERN_LENGTH_METERS * 48;
 const TAS_DEFAULT_SCENARIO_ID = "a0_run_arc_gate";
@@ -94,27 +98,27 @@ const researchDefs = [
 ];
 
 const areas = [
-  { name: "草原", line: "Grassland Line", start: 0, sky: ["#81c7e8", "#d6f3ff"], ground: "#61a64f", accent: "#f2cf5a", obstacle: "#8a6a45" },
-  { name: "砂漠", line: "Dune Engine", start: 1000, sky: ["#f1c274", "#ffe7a8"], ground: "#c78942", accent: "#5cb8b2", obstacle: "#9c6a32" },
-  { name: "雪山", line: "Frost Conveyor", start: 3000, sky: ["#9bbbe0", "#f4fbff"], ground: "#d9ecf7", accent: "#48bde7", obstacle: "#60798d" },
-  { name: "火山", line: "Lava Belt", start: 7000, sky: ["#4a2530", "#d45d43"], ground: "#53312d", accent: "#ffb238", obstacle: "#2d2527" },
-  { name: "未来都市", line: "Neon Loop", start: 15000, sky: ["#17213b", "#246c9d"], ground: "#2c3948", accent: "#7af0d2", obstacle: "#5461b9" },
-  { name: "宇宙", line: "Orbital Track", start: 30000, sky: ["#080b1a", "#1c2750"], ground: "#29314a", accent: "#f1efff", obstacle: "#7a7fa4" },
-  { name: "ブラックホール", line: "Singularity Rail", start: 60000, sky: ["#050508", "#30214f"], ground: "#171320", accent: "#b98cff", obstacle: "#4c3b72" },
-  { name: "神界", line: "Aether Road", start: 100000, sky: ["#e5d9ff", "#9fd9ff"], ground: "#e8e1b8", accent: "#f4cc5f", obstacle: "#b99067" },
-  { name: "無限空間", line: "Infinite Span", start: 160000, sky: ["#11151d", "#2e465b"], ground: "#24313a", accent: "#4cc38a", obstacle: "#394859" }
+  { name: "草原", line: "Grassland Line", start: 0, runDistance: 1590, sky: ["#81c7e8", "#d6f3ff"], ground: "#61a64f", accent: "#f2cf5a", obstacle: "#8a6a45" },
+  { name: "砂漠", line: "Dune Engine", start: 1690, runDistance: 1610, sky: ["#f1c274", "#ffe7a8"], ground: "#c78942", accent: "#5cb8b2", obstacle: "#9c6a32" },
+  { name: "雪山", line: "Frost Conveyor", start: 3400, runDistance: 1630, sky: ["#9bbbe0", "#f4fbff"], ground: "#d9ecf7", accent: "#48bde7", obstacle: "#60798d" },
+  { name: "火山", line: "Lava Belt", start: 5130, runDistance: 1640, sky: ["#4a2530", "#d45d43"], ground: "#53312d", accent: "#ffb238", obstacle: "#2d2527" },
+  { name: "未来都市", line: "Neon Loop", start: 6870, runDistance: 1660, sky: ["#17213b", "#246c9d"], ground: "#2c3948", accent: "#7af0d2", obstacle: "#5461b9" },
+  { name: "宇宙", line: "Orbital Track", start: 8630, runDistance: 1680, sky: ["#080b1a", "#1c2750"], ground: "#29314a", accent: "#f1efff", obstacle: "#7a7fa4" },
+  { name: "ブラックホール", line: "Singularity Rail", start: 10410, runDistance: 1700, sky: ["#050508", "#30214f"], ground: "#171320", accent: "#b98cff", obstacle: "#4c3b72" },
+  { name: "神界", line: "Aether Road", start: 12210, runDistance: 1720, sky: ["#e5d9ff", "#9fd9ff"], ground: "#e8e1b8", accent: "#f4cc5f", obstacle: "#b99067" },
+  { name: "無限空間", line: "Infinite Span", start: 14030, runDistance: 1730, sky: ["#11151d", "#2e465b"], ground: "#24313a", accent: "#4cc38a", obstacle: "#394859" }
 ];
 
 const areaEnemyTraits = [
-  { id: "plain", name: "標準" },
-  { id: "sandArmor", name: "砂装甲" },
-  { id: "frostAura", name: "凍結オーラ" },
-  { id: "burning", name: "灼熱" },
-  { id: "energyShield", name: "エネルギー盾" },
-  { id: "gravityPulse", name: "重力波" },
-  { id: "voidPull", name: "吸引" },
-  { id: "regen", name: "再生" },
-  { id: "phase", name: "位相化" }
+  { id: "plain", name: "標準", complexity: 0 },
+  { id: "sandArmor", name: "砂装甲", complexity: 1 },
+  { id: "frostAura", name: "凍結オーラ", complexity: 2 },
+  { id: "burning", name: "灼熱", complexity: 3 },
+  { id: "energyShield", name: "エネルギー盾", complexity: 4 },
+  { id: "gravityPulse", name: "重力波", complexity: 5 },
+  { id: "voidPull", name: "吸引", complexity: 6 },
+  { id: "regen", name: "再生", complexity: 7 },
+  { id: "phase", name: "位相化", complexity: 8 }
 ];
 
 const bossGimmicks = [
@@ -319,35 +323,35 @@ const itemGuideDefs = {
 const traitGuideDefs = {
   sandArmor: {
     title: { ja: "このエリアの敵: 砂装甲", en: "Area Trait: Sand Armor" },
-    text: { ja: "この先の敵は、最初の一撃を装甲で受け止めることがあります。踏む・スキルで削ってから本体を狙いましょう。", en: "Enemies here may absorb the first hit with armor. Chip it away with stomps or skills before going for the body." }
+    text: { ja: "この先の敵は最初の一撃を砂装甲で受け止め、破壊後に時間を空けると一度だけ装甲を再形成します。踏む・スキルで削った後は間を空けずに本体を狙いましょう。", en: "Enemies absorb the first hit with sand armor and can rebuild it once if left alone. After breaking it, keep pressure on the exposed body." }
   },
   frostAura: {
     title: { ja: "このエリアの敵: 凍結オーラ", en: "Area Trait: Frost Aura" },
-    text: { ja: "近づくと動きが少し鈍る敵が出ます。距離を取り、遅くなる前提でジャンプを早めに入力しましょう。", en: "Some enemies slow you when you get close. Keep distance and jump a bit earlier." }
+    text: { ja: "近づくと動きが鈍り、さらに予兆の輪の後で広い凍結パルスが発生します。距離を取り、パルス前にジャンプを早めに入力しましょう。", en: "Nearby enemies slow you and release a wider frost pulse after a warning ring. Keep distance and jump before the pulse." }
   },
   burning: {
     title: { ja: "このエリアの敵: 灼熱", en: "Area Trait: Burning" },
-    text: { ja: "被弾時の痛みが増す敵がいます。HPに余裕がない時ほど接触を避けましょう。", en: "Some enemies make hits more painful. Avoid contact carefully when HP is low." }
+    text: { ja: "接触ダメージが増えるうえ、予兆の後に地面を流れる灼熱弾を放ちます。敵本体と灼熱弾を別々の障害物として読みましょう。", en: "Contact hurts more, and enemies launch ground-skimming embers after a warning. Read the enemy and its ember as separate hazards." }
   },
   energyShield: {
     title: { ja: "このエリアの敵: エネルギー盾", en: "Area Trait: Energy Shield" },
-    text: { ja: "盾で攻撃を受け流す敵がいます。連続で踏める位置取りや、研究スキルが重要になります。", en: "Some enemies deflect attacks with shields. Positioning for repeated hits and research skills matter more here." }
+    text: { ja: "盾で攻撃を受け流し、破壊後に時間を空けると再充電して放電します。連続攻撃するか、再充電の予兆を見て放電も避けましょう。", en: "Enemies deflect hits, then recharge and discharge if pressure stops. Continue attacking or read the recharge warning and avoid the discharge." }
   },
   gravityPulse: {
     title: { ja: "このエリアの敵: 重力波", en: "Area Trait: Gravity Pulse" },
-    text: { ja: "近距離で重力が乱れることがあります。画面の上下感覚を崩されても、着地点を見て動きましょう。", en: "Gravity can distort at close range. Watch your landing spot even when up and down feel wrong." }
+    text: { ja: "近距離では予兆の輪が縮んだ後に重力が反転します。敵ごとに周期が少し違うため、現在の向きと次の着地点を同時に見て動きましょう。", en: "At close range, a shrinking warning ring precedes a gravity reversal. Each enemy has a slightly different cycle, so track both orientation and landing." }
   },
   voidPull: {
     title: { ja: "このエリアの敵: 吸引", en: "Area Trait: Pull" },
-    text: { ja: "近くの敵に引き寄せられます。早めに距離を作り、吸われる前にラインを外しましょう。", en: "Nearby enemies can pull you in. Create distance early before the pull sets up danger." }
+    text: { ja: "近くの敵は吸引と反発の極性を周期的に切り替えます。輪の色が変わるタイミングを見て、次に上下どちらへ速度が加わるか判断しましょう。", en: "Nearby enemies alternate between pull and repulsion. Read the ring change to judge which vertical direction will gain momentum next." }
   },
   regen: {
     title: { ja: "このエリアの敵: 再生", en: "Area Trait: Regeneration" },
-    text: { ja: "時間をかけると回復する敵がいます。攻める時は短い間隔で削る意識が必要です。", en: "Some enemies heal over time. When you attack, try to keep pressure on them." }
+    text: { ja: "時間をかけると回復し、回復が成立するたびに反撃弾を放ちます。短い間隔で削るか、回復直後の弾まで含めて回避しましょう。", en: "Enemies regenerate and fire a counter-shot whenever healing succeeds. Keep pressure on them or prepare to avoid the shot after each heal." }
   },
   phase: {
     title: { ja: "このエリアの敵: 位相化", en: "Area Trait: Phasing" },
-    text: { ja: "一瞬だけ攻撃が通りにくくなる敵がいます。光り方や動きを見て、当たるタイミングを待ちましょう。", en: "Some enemies briefly become hard to hit. Watch their motion and wait for the opening." }
+    text: { ja: "周期的に攻撃が通らない位相へ入り、実体へ戻る瞬間に同じ高さへ残像弾を残します。透け方を見て攻撃機会と残像の回避を続けて判断しましょう。", en: "Enemies periodically phase out, then leave an echo shot at their height when returning. Read transparency for both the attack opening and the echo dodge." }
   }
 };
 
@@ -759,6 +763,7 @@ let lastFrame = performance.now();
 let lastAnimationFrameAt = lastFrame;
 let gameClockMs = lastFrame;
 let tasStepAccumulator = 0;
+let tasBatchAdvancing = false;
 let autosaveTimer = 0;
 let uiTimer = 0;
 let messageTimer = 0;
@@ -1018,6 +1023,94 @@ function exposeTasDeterminismTools() {
       resetTasScheduler();
       return true;
     },
+    advanceFrames(maxFrames, stopAtBossPhaseChange = false) {
+      if (!isTasEnabled()) return captureTasDeterminismState();
+      const limit = Math.max(0, Math.floor(Number(maxFrames) || 0));
+      const initialPhase = run.bossPhase;
+      tasState.paused = false;
+      let advanced = 0;
+      tasBatchAdvancing = true;
+      try {
+        while (advanced < limit && !run.gameOver && !window.__irfLastDamage) {
+          advanceTasSimulationFrame();
+          advanced += 1;
+          if (stopAtBossPhaseChange && run.bossPhase !== initialPhase) break;
+          if (tasState.paused) break;
+        }
+      } finally {
+        tasBatchAdvancing = false;
+      }
+      tasState.paused = true;
+      tasStepAccumulator = 0;
+      return captureTasDeterminismState();
+    },
+    advanceUntil(maxFrames, stopMode) {
+      if (!isTasEnabled()) return captureTasDeterminismState();
+      const limit = Math.max(0, Math.floor(Number(maxFrames) || 0));
+      const initialBossBattle = run.bossBattle;
+      tasState.paused = false;
+      tasState.pauseAtFrame = null;
+      tasBatchAdvancing = true;
+      let advanced = 0;
+      try {
+        while (advanced < limit && !run.gameOver && !window.__irfLastDamage) {
+          advanceTasSimulationFrame();
+          advanced += 1;
+          if (stopMode === "boss-start" && run.bossBattle) break;
+          if (stopMode === "boss-clear" && initialBossBattle && !run.bossBattle) break;
+        }
+      } finally {
+        tasBatchAdvancing = false;
+      }
+      tasState.paused = true;
+      tasStepAccumulator = 0;
+      return captureTasDeterminismState();
+    },
+    traceBossBattle(maxFrames) {
+      if (!isTasEnabled()) return { snapshot: captureTasDeterminismState(), trace: [] };
+      const limit = Math.max(0, Math.floor(Number(maxFrames) || 0));
+      const trace = [];
+      let lastKey = "";
+      tasState.paused = false;
+      tasState.pauseAtFrame = null;
+      tasBatchAdvancing = true;
+      let advanced = 0;
+      try {
+        while (advanced < limit && run.bossBattle && !run.gameOver && !window.__irfLastDamage) {
+          advanceTasSimulationFrame();
+          advanced += 1;
+          const boss = objects.find((obj) => obj.type === "boss" && obj.finalBoss);
+          const key = boss
+            ? `${run.bossPhase}:${run.bossPatternIndex}:${boss.hp}:${boss.armor || 0}:${boss.shield || 0}`
+            : "cleared";
+          if (key !== lastKey) {
+            lastKey = key;
+            trace.push({
+              frame: tasState.frame,
+              phase: run.bossPhase,
+              pattern: run.bossPatternIndex,
+              hp: boss?.hp ?? 0,
+              armor: Number(boss?.armor || 0),
+              shield: Number(boss?.shield || 0),
+              scenarioId: tasState.autoCurrentScenarioId || ""
+            });
+          }
+        }
+      } finally {
+        tasBatchAdvancing = false;
+      }
+      tasState.paused = true;
+      tasStepAccumulator = 0;
+      return { snapshot: captureTasDeterminismState(), trace };
+    },
+    setAutoInput(scenarioId, inputFrames) {
+      const bank = loadTasAutoInputBank();
+      if (!bank[scenarioId]) return false;
+      const inputs = normalizeTasInputFrames(inputFrames);
+      bank[scenarioId] = { ...bank[scenarioId], frameCount: inputs.length, inputs };
+      tasAutoInputBankCache = bank;
+      return true;
+    },
     state: captureTasDeterminismState
   });
 }
@@ -1129,11 +1222,25 @@ function renderTasSiteSaveOptions(entries, selectedName) {
   )).join("");
 }
 
+let tasAutoInputBankCacheRaw = null;
+let tasAutoInputBankCache = {};
+
 function loadTasAutoInputBank() {
   if (!DEBUG_MODE) return {};
   try {
-    const parsed = JSON.parse(localStorage.getItem(TAS_AUTO_INPUT_BANK_KEY) || "{}");
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    const raw = localStorage.getItem(TAS_AUTO_INPUT_BANK_KEY) || "{}";
+    if (raw === tasAutoInputBankCacheRaw) return tasAutoInputBankCache;
+    const parsed = JSON.parse(raw);
+    const source = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    tasAutoInputBankCacheRaw = raw;
+    tasAutoInputBankCache = Object.fromEntries(Object.entries(source).map(([scenarioId, entry]) => [
+      scenarioId,
+      {
+        ...entry,
+        inputs: Array.isArray(entry?.inputs) ? entry.inputs : expandTasInputRuns(entry?.inputRuns)
+      }
+    ]));
+    return tasAutoInputBankCache;
   } catch (error) {
     console.warn(error);
     return {};
@@ -1142,7 +1249,20 @@ function loadTasAutoInputBank() {
 
 function persistTasAutoInputBank(bank) {
   if (!DEBUG_MODE) return;
-  localStorage.setItem(TAS_AUTO_INPUT_BANK_KEY, JSON.stringify(bank || {}));
+  const compressed = Object.fromEntries(Object.entries(bank || {}).map(([scenarioId, entry]) => {
+    const inputs = normalizeTasInputFrames(entry?.inputs);
+    const stored = {
+      ...entry,
+      scenarioId,
+      frameCount: inputs.length,
+      inputRuns: compressTasInputFrames(inputs)
+    };
+    delete stored.inputs;
+    return [scenarioId, stored];
+  }));
+  localStorage.setItem(TAS_AUTO_INPUT_BANK_KEY, JSON.stringify(compressed));
+  tasAutoInputBankCacheRaw = null;
+  tasAutoInputBankCache = {};
 }
 
 function tasAutoInputBankCount() {
@@ -1164,6 +1284,44 @@ function normalizeTasInputFrames(frames) {
     };
   }
   return normalized;
+}
+
+function compressTasInputFrames(frames) {
+  const runs = [];
+  let current = null;
+  for (let index = 0; index < frames.length; index += 1) {
+    const frame = frames[index] || { frame: index, jump: false, slide: false, block: "mid", skill: false, cycle: false };
+    const mask = (frame.jump ? 1 : 0) | (frame.slide ? 2 : 0) | (frame.skill ? 4 : 0) | (frame.cycle ? 8 : 0);
+    const block = frame.block === "high" ? 1 : frame.block === "low" ? 2 : 0;
+    if (current && current[1] === mask && current[2] === block) {
+      current[0] += 1;
+    } else {
+      current = [1, mask, block];
+      runs.push(current);
+    }
+  }
+  return runs;
+}
+
+function expandTasInputRuns(runs) {
+  const frames = [];
+  for (const runEntry of Array.isArray(runs) ? runs : []) {
+    const count = Math.max(0, Math.floor(Number(runEntry?.[0]) || 0));
+    const mask = Math.max(0, Math.floor(Number(runEntry?.[1]) || 0));
+    const blockCode = Math.max(0, Math.floor(Number(runEntry?.[2]) || 0));
+    for (let offset = 0; offset < count; offset += 1) {
+      const frame = frames.length;
+      frames.push({
+        frame,
+        jump: Boolean(mask & 1),
+        slide: Boolean(mask & 2),
+        block: blockCode === 1 ? "high" : blockCode === 2 ? "low" : "mid",
+        skill: Boolean(mask & 4),
+        cycle: Boolean(mask & 8)
+      });
+    }
+  }
+  return frames;
 }
 
 function inferTasScenarioIdFromFileName(name) {
@@ -1416,12 +1574,13 @@ function setupTasBossScenario(option) {
   run.bossResearchCounters = {};
   run.nextSpawn = 999;
   objects = [];
-  const hp = (option.areaIndex === 0 ? 3 : 6 + option.areaIndex * 2) + Math.floor(effectivePrestigeCount() / 4);
+  const hp = finalBossHitPoints(option.areaIndex);
   const boss = spawnBoss(option.areaIndex, {
     finalBoss: true,
-    x: option.phase === "vulnerable" ? canvasWidth + 120 : canvasWidth - 170,
+    x: canvasWidth - 170,
     hp
   });
+  boss.tasInitialDurability = boss.hp + Number(boss.armor || 0) + Number(boss.shield || 0);
   boss.attackPattern = option.patternIndex;
   boss.attackVolley = 0;
   boss.vulnerable = option.phase === "vulnerable";
@@ -1494,7 +1653,7 @@ function prepareTasScenarioRun(areaIndexValue, distance) {
   player.vy = 0;
   player.jumpsUsed = 0;
   player.slideTimer = 0;
-  player.invulnerable = 1;
+  player.invulnerable = 0;
   player.regenTimer = 0;
   player.damageTimer = 0;
   inputState.jumpHolding = false;
@@ -2013,6 +2172,19 @@ function applyTasInputFrame(frame) {
   const wantsJump = Boolean(frame.jump);
   const wantsSlide = Boolean(frame.slide) && !wantsJump;
   inputState.tasWantsJump = wantsJump;
+  const purpleLaneMode = run.bossBattle && run.bossPhase === "attack" && activeBossSoulMode() === "purple";
+  if (purpleLaneMode) {
+    if (wantsJump && !inputState.tasPurpleJumpHeld) shiftWebLane(-1);
+    if (wantsSlide && !inputState.tasPurpleSlideHeld) shiftWebLane(1);
+    inputState.tasPurpleJumpHeld = wantsJump;
+    inputState.tasPurpleSlideHeld = wantsSlide;
+    inputState.blockDirection = frame.block || "mid";
+    if (frame.cycle) cycleActiveSkill();
+    if (frame.skill) activateActiveSkill();
+    return;
+  }
+  inputState.tasPurpleJumpHeld = false;
+  inputState.tasPurpleSlideHeld = false;
   if (wantsSlide && !inputState.slideHolding) startSlideHold();
   if (!wantsSlide && inputState.slideHolding) cancelSlideHold();
   if (wantsJump && !inputState.jumpHolding) {
@@ -2779,6 +2951,7 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
+    migrateSaveData(parsed);
     const merged = mergeDefaults(parsed, defaultState());
     if (parsed.currentPrestigeDistance === undefined) {
       merged.currentPrestigeDistance = merged.bestDistance || 0;
@@ -2795,6 +2968,40 @@ function loadState() {
     console.warn(error);
     return defaultState();
   }
+}
+
+function migrateSaveData(saved) {
+  const version = Math.max(1, Number(saved?.version || 1));
+  if (version < 2) {
+    if (Number.isFinite(Number(saved.bestDistance))) {
+      saved.bestDistance = migrateLegacyProgressDistance(Number(saved.bestDistance));
+    }
+    if (Number.isFinite(Number(saved.currentPrestigeDistance))) {
+      saved.currentPrestigeDistance = migrateLegacyProgressDistance(Number(saved.currentPrestigeDistance));
+    }
+  }
+  saved.version = SAVE_VERSION;
+}
+
+function migrateLegacyProgressDistance(distance) {
+  const safeDistance = Math.max(0, Number(distance || 0));
+  let index = 0;
+  for (let i = 0; i < LEGACY_AREA_STARTS.length; i += 1) {
+    if (safeDistance >= LEGACY_AREA_STARTS[i]) index = i;
+  }
+  const area = areas[index] || areas[areas.length - 1];
+  const legacyStart = LEGACY_AREA_STARTS[index] || 0;
+  const legacyNext = LEGACY_AREA_STARTS[index + 1];
+  if (!Number.isFinite(legacyNext)) {
+    return area.start + Math.min(area.runDistance, Math.max(0, safeDistance - legacyStart));
+  }
+  const legacyBossDistance = legacyNext - FINAL_BOSS_OFFSET;
+  if (safeDistance <= legacyBossDistance) {
+    const progress = Math.max(0, Math.min(1, (safeDistance - legacyStart) / Math.max(1, legacyBossDistance - legacyStart)));
+    return area.start + area.runDistance * progress;
+  }
+  const postBossProgress = Math.max(0, Math.min(1, (safeDistance - legacyBossDistance) / FINAL_BOSS_OFFSET));
+  return area.start + area.runDistance + FINAL_BOSS_OFFSET * postBossProgress;
 }
 
 function normalizeResearchTree(targetState = state) {
@@ -3369,11 +3576,13 @@ function update(dt) {
   }
   if (uiTimer >= 0.2) {
     uiTimer = 0;
-    updateHud();
-    if (activeTab === "equipment" || activeTab === "missions" || activeTab === "prestige") {
-      renderPanel();
+    if (!tasBatchAdvancing) {
+      updateHud();
+      if (activeTab === "equipment" || activeTab === "missions" || activeTab === "prestige") {
+        renderPanel();
+      }
+      if (DEBUG_MODE) renderDebugTasControls();
     }
-    if (DEBUG_MODE) renderDebugTasControls();
   }
   if (tasAdvancing) {
     tasState.frame += 1;
@@ -3382,7 +3591,7 @@ function update(dt) {
       tasState.pauseAtFrame = null;
       tasStepAccumulator = 0;
     }
-    renderDebugTasControls();
+    if (!tasBatchAdvancing) renderDebugTasControls();
   }
 }
 
@@ -3598,6 +3807,14 @@ function updateObjects(dt, scrollSpeed, stats) {
         obj.y += (dy / Math.max(1, dist)) * 360 * dt;
       }
     }
+
+    const separatedPurpleLane = run.bossBattle
+      && run.bossPhase === "attack"
+      && activeBossSoulMode() === "purple"
+      && obj.bossAttack
+      && Number.isInteger(obj.webLane)
+      && obj.webLane !== run.webLane;
+    if (separatedPurpleLane) continue;
 
     if (rectsOverlap(playerRect, obj)) {
       if ((obj.type === "enemy" || obj.type === "boss") && obj.phased) continue;
@@ -3835,18 +4052,95 @@ function updateEnemyTrait(obj, dt, playerRect) {
   const dx = (playerRect.x + playerRect.w / 2) - (obj.x + obj.w / 2);
   const dy = (playerRect.y + playerRect.h / 2) - (obj.y + obj.h / 2);
   const distance = Math.hypot(dx, dy);
+  obj.traitWarning = false;
+  if (obj.finalBoss && run.bossBattle && run.bossPhase === "vulnerable") {
+    updateBossGimmick(obj, dt, distance);
+    return;
+  }
+  if (obj.finalBoss && run.bossBattle && run.bossPhase === "attack" && run.bossChargeTimer <= 0) {
+    updateBossGimmick(obj, dt, distance);
+    return;
+  }
+
+  if (obj.trait === "sandArmor") {
+    const armor = Math.max(0, Number(obj.armor || 0));
+    if ((obj.lastTraitArmor || 0) > 0 && armor <= 0 && (obj.armorReformCharges || 0) > 0) {
+      obj.armorReformTimer = 2.4;
+    }
+    if (armor <= 0 && obj.armorReformTimer > 0) {
+      obj.armorReformTimer -= dt;
+      obj.traitWarning = obj.armorReformTimer <= 0.65;
+      if (obj.armorReformTimer <= 0) {
+        obj.armor = 1;
+        obj.armorReformCharges -= 1;
+        burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#d7b878", 7);
+      }
+    }
+    obj.lastTraitArmor = Math.max(0, Number(obj.armor || 0));
+  }
 
   if (obj.trait === "frostAura" && distance < 135) {
     const duration = (obj.type === "boss" ? 1.6 : 0.85) * researchReduction("frostInsulation");
     run.chillTimer = Math.max(run.chillTimer, duration);
   }
+  if (obj.trait === "frostAura") {
+    obj.frostPulseTimer -= dt;
+    obj.traitWarning = distance < 240 && obj.frostPulseTimer <= 0.65;
+    if (distance < 220 && obj.frostPulseTimer <= 0) {
+      run.chillTimer = Math.max(run.chillTimer, (obj.type === "boss" ? 1.5 : 1.05) * researchReduction("frostInsulation"));
+      player.vy *= 0.86;
+      obj.frostPulseTimer = obj.type === "boss" ? 2.1 : 2.65;
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#9fd9ff", 8);
+    }
+  }
+  if (obj.trait === "burning") {
+    obj.burningPulseTimer -= dt;
+    obj.traitWarning = distance < 330 && obj.burningPulseTimer <= 0.7;
+    if (distance < 300 && obj.burningPulseTimer <= 0) {
+      spawnEnemyTraitHazard(obj, "meteor", {
+        lane: "ground",
+        color: "#ff8b38",
+        w: 26,
+        h: 24,
+        sourceGap: run.bossBattle ? 72 : 190
+      });
+      obj.burningPulseTimer = obj.type === "boss" ? 1.85 : 2.35;
+    }
+  }
+  if (obj.trait === "energyShield") {
+    const shield = Math.max(0, Number(obj.shield || 0));
+    if ((obj.lastTraitShield || 0) > 0 && shield <= 0 && (obj.shieldRechargeCharges || 0) > 0) {
+      obj.shieldRechargeTimer = 3.2;
+    }
+    if (shield <= 0 && obj.shieldRechargeTimer > 0) {
+      obj.shieldRechargeTimer -= dt;
+      obj.traitWarning = obj.shieldRechargeTimer <= 0.75;
+      if (obj.shieldRechargeTimer <= 0) {
+        obj.shield = 1;
+        obj.shieldRechargeCharges -= 1;
+        spawnEnemyTraitHazard(obj, "laser", { lane: "mid", color: "#48bde7", w: 20, h: 54 });
+        burst(obj.x + obj.w / 2, obj.y + obj.h / 2, "#48bde7", 9);
+      }
+    }
+    obj.lastTraitShield = Math.max(0, Number(obj.shield || 0));
+  }
   if (obj.trait === "voidPull" && distance < 190) {
     const pullScale = researchReduction("voidTether");
     obj.x -= 34 * pullScale * dt;
-    player.vy += Math.sign(dy || 1) * 70 * pullScale * dt;
+    player.vy += Math.sign(dy || 1) * 70 * pullScale * (obj.voidPolarity || 1) * dt;
+  }
+  if (obj.trait === "voidPull") {
+    obj.voidPolarityTimer -= dt;
+    obj.traitWarning = distance < 230 && obj.voidPolarityTimer <= 0.65;
+    if (obj.voidPolarityTimer <= 0) {
+      obj.voidPolarity = (obj.voidPolarity || 1) * -1;
+      obj.voidPolarityTimer = obj.type === "boss" ? 1.85 : 2.25;
+      burst(obj.x + obj.w / 2, obj.y + obj.h / 2, obj.voidPolarity > 0 ? "#b98cff" : "#65d6ff", 7);
+    }
   }
   if (obj.trait === "gravityPulse") {
     obj.pulseTimer = (obj.pulseTimer || 1.6) - dt;
+    obj.traitWarning = distance < 170 && obj.pulseTimer <= 0.7;
     if (distance < 120 && obj.pulseTimer <= 0) {
       if (run.gravityGuardTimer <= 0) {
         run.gravityFlip = !run.gravityFlip;
@@ -3856,20 +4150,64 @@ function updateEnemyTrait(obj, dt, playerRect) {
       logEvent("GRAVITY PULSE");
     }
   }
-  if (obj.trait === "regen" && obj.hp && obj.maxHp && obj.hp < obj.maxHp) {
+  if (obj.trait === "regen" && !obj.finalBoss && obj.hp && obj.maxHp && obj.hp < obj.maxHp) {
     obj.regenTimer = (obj.regenTimer || (1.5 + researchLevel("aetherSeal") * 0.12)) - dt;
+    obj.traitWarning = obj.regenTimer <= 0.7;
     if (obj.regenTimer <= 0) {
       obj.hp = Math.min(obj.maxHp, obj.hp + 1);
       obj.regenTimer = (obj.type === "boss" ? 2.4 : 3.5) + researchLevel("aetherSeal") * 0.12;
+      spawnEnemyTraitHazard(obj, "meteor", { lane: "air", color: "#fff1a5", w: 24, h: 24 });
     }
   }
   if (obj.trait === "phase") {
+    const wasPhased = Boolean(obj.phased);
     obj.phaseTimer = (obj.phaseTimer || 0) + dt;
     obj.phased = run.phasePinTimer <= 0 && Math.sin(obj.phaseTimer * 2.4) > 0.62;
+    obj.traitWarning = !obj.phased && Math.sin(obj.phaseTimer * 2.4) > 0.35;
+    obj.phaseEchoCooldown = Math.max(0, (obj.phaseEchoCooldown || 0) - dt);
+    if (wasPhased && !obj.phased && obj.phaseEchoCooldown <= 0) {
+      spawnEnemyTraitHazard(obj, "meteor", { lane: "echo", color: "#8fffc6", w: 24, h: 24 });
+      obj.phaseEchoCooldown = 1.1;
+    }
   }
   if (obj.type === "boss") {
     updateBossGimmick(obj, dt, distance);
   }
+}
+
+function spawnEnemyTraitHazard(source, kind, options = {}) {
+  const w = options.w || 24;
+  const h = options.h || 24;
+  const lane = options.lane || "mid";
+  const y = lane === "ground"
+    ? groundY - h
+    : lane === "air"
+      ? groundY - 150
+      : lane === "echo"
+        ? Math.max(40, Math.min(groundY - h, source.y + source.h / 2 - h / 2))
+        : groundY - 96;
+  const safeGap = run.bossBattle ? 190 : 260;
+  const x = Math.max(source.x + source.w + (options.sourceGap || 28), player.x + safeGap);
+  const hazard = {
+    type: "obstacle",
+    kind,
+    traitHazard: true,
+    bossAttack: Boolean(run.bossBattle),
+    x,
+    y,
+    w,
+    h,
+    vx: run.bossBattle ? -190 : -48,
+    life: run.bossBattle ? 4.2 : 3.6,
+    color: options.color || source.color || "#ffffff",
+    attackVolley: Number.isFinite(source.attackVolley) ? Math.max(0, source.attackVolley - 1) : Math.max(0, run.bossVolley - 1)
+  };
+  const finalBoss = objects.find((obj) => obj.type === "boss" && obj.finalBoss);
+  if (run.bossBattle && finalBoss) {
+    applyBossSoulRule(hazard, finalBoss, {});
+    applyBossWebLaneRule(hazard, finalBoss);
+  }
+  objects.push(hazard);
 }
 
 function updateBossGimmick(obj, dt, distance) {
@@ -3944,7 +4282,7 @@ function updateFinalBossGimmick(boss, dt) {
   if (boss.gimmickPhaseKey !== phaseKey) {
     boss.gimmickPhaseKey = phaseKey;
     boss.gimmickUsed = false;
-    boss.gimmickTimer = 0.75;
+    boss.gimmickTimer = boss.bossGimmick === "aetherRegen" ? 4.5 : 0.75;
     if (run.bossPhase === "vulnerable") {
       boss.phased = false;
     }
@@ -3987,8 +4325,9 @@ function updateFinalBossGimmick(boss, dt) {
   }
 
   if (boss.bossGimmick === "laserGrid") {
-    if (!boss.gimmickUsed) {
+    if (!boss.gimmickUsed && (boss.laserShieldCharges || 0) < 3) {
       boss.shield = Math.max(boss.shield || 0, 1);
+      boss.laserShieldCharges = (boss.laserShieldCharges || 0) + 1;
       boss.gimmickUsed = true;
     }
     if (boss.gimmickTimer <= 0) {
@@ -4016,9 +4355,12 @@ function updateFinalBossGimmick(boss, dt) {
   }
 
   if (boss.bossGimmick === "aetherRegen" && boss.gimmickTimer <= 0) {
-    if (boss.hp < boss.maxHp) boss.hp = Math.min(boss.maxHp, boss.hp + 1);
+    if (boss.hp < boss.maxHp && (boss.aetherRegenCharges || 0) < 5) {
+      boss.hp = Math.min(boss.maxHp, boss.hp + 1);
+      boss.aetherRegenCharges = (boss.aetherRegenCharges || 0) + 1;
+    }
     burst(boss.x + boss.w / 2, boss.y + boss.h / 2, "#fff1a5", 8);
-    boss.gimmickTimer = Math.max(1.25, 1.9 - researchLevel("aetherSeal") * 0.12);
+    boss.gimmickTimer = Math.max(3.4, 4.5 - researchLevel("aetherSeal") * 0.12);
   }
 
   if (boss.bossGimmick === "infinitePhase") {
@@ -4662,16 +5004,35 @@ function isHazardObject(obj) {
 
 function applyEnemyTraits(obj, index) {
   const trait = areaEnemyTraits[index]?.id || "plain";
-  const deterministicBossTrait = Boolean(obj.bossAttack || obj.finalBoss);
+  const complexity = areaEnemyTraits[index]?.complexity || 0;
   obj.areaIndex = index;
   obj.trait = trait;
+  obj.traitComplexity = complexity;
   obj.hitCooldown = obj.hitCooldown || 0;
-  if (trait === "sandArmor") obj.armor = obj.type === "boss" ? 2 : 1;
-  if (trait === "energyShield") obj.shield = obj.type === "boss" ? 2 : 1;
+  if (trait === "sandArmor") {
+    obj.armor = obj.type === "boss" ? 2 : 1;
+    obj.lastTraitArmor = obj.armor;
+    obj.armorReformCharges = obj.type === "boss" ? 2 : 1;
+    obj.armorReformTimer = 0;
+  }
+  if (trait === "frostAura") {
+    obj.frostPulseTimer = deterministicTraitRange(obj, index, 1.25, 2.15);
+  }
+  if (trait === "burning") {
+    obj.burningPulseTimer = deterministicTraitRange(obj, index, 1.1, 2.05);
+  }
+  if (trait === "energyShield") {
+    obj.shield = obj.type === "boss" ? 2 : 1;
+    obj.lastTraitShield = obj.shield;
+    obj.shieldRechargeCharges = obj.type === "boss" ? 3 : 1;
+    obj.shieldRechargeTimer = 0;
+  }
   if (trait === "gravityPulse") {
-    obj.pulseTimer = deterministicBossTrait
-      ? deterministicTraitRange(obj, index, 1.2, 2.8)
-      : random(1.2, 2.8);
+    obj.pulseTimer = deterministicTraitRange(obj, index, 1.2, 2.8);
+  }
+  if (trait === "voidPull") {
+    obj.voidPolarity = deterministicTraitRange(obj, index, 0, 1) >= 0.5 ? 1 : -1;
+    obj.voidPolarityTimer = deterministicTraitRange(obj, index, 1.1, 2.2);
   }
   if (trait === "regen") {
     obj.hp = obj.hp || (obj.type === "boss" ? obj.maxHp : 2);
@@ -4679,10 +5040,9 @@ function applyEnemyTraits(obj, index) {
     obj.regenTimer = 1.5;
   }
   if (trait === "phase") {
-    obj.phaseTimer = deterministicBossTrait
-      ? deterministicTraitRange(obj, index, 0, Math.PI * 2)
-      : rng() * Math.PI * 2;
+    obj.phaseTimer = deterministicTraitRange(obj, index, 0, Math.PI * 2);
     obj.phased = false;
+    obj.phaseEchoCooldown = 0;
   }
   return obj;
 }
@@ -4792,13 +5152,17 @@ function startAreaBossBattle(index) {
   run.gravityLandingGuard = false;
   run.nextSpawn = 999;
   objects = [];
-  const hp = (index === 0 ? 3 : 6 + index * 2) + Math.floor(effectivePrestigeCount() / 4);
+  const hp = finalBossHitPoints(index);
   spawnBoss(index, { finalBoss: true, x: canvasWidth - 170, hp });
   if (tasState.autoEnabled) tasState.autoTracks = [];
   startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   restartPlayerAnimation("running");
   logEvent(`AREA BOSS ${bossName(index).toUpperCase()}`);
   maybeExplainBoss(index);
+}
+
+function finalBossHitPoints(index) {
+  return FINAL_BOSS_HIT_POINT_TARGETS[index] || FINAL_BOSS_HIT_POINT_TARGETS[FINAL_BOSS_HIT_POINT_TARGETS.length - 1];
 }
 
 function updateBossBattle(dt) {
@@ -4859,6 +5223,7 @@ function switchBossPhase(boss, phase) {
   inputState.slideHolding = false;
   player.slideTimer = 0;
   player.jumpsUsed = 0;
+  resetBossSoulModeMovement(mode);
   if (phase === "attack") {
     clearBossAttackObjects();
     boss.x = canvasWidth - 170;
@@ -4872,7 +5237,6 @@ function switchBossPhase(boss, phase) {
     startTasAutoReplayForScenario(tasBossScenarioId(index, "attack", run.bossPatternIndex));
   } else {
     clearBossAttackObjects();
-    resetBossSoulModeMovement(mode);
     run.bossModePulse = 0.4;
     run.bossChargeTimer = finalBossVulnerableDuration(index);
     run.bossAttackTimer = 99;
@@ -4955,18 +5319,16 @@ function clearBossAttackObjects() {
 
 function resetBossSoulModeMovement(mode) {
   run.echoActive = false;
-  if (mode === "blue" || mode === "purple" || mode === "dual" || mode === "rainbow") {
-    run.gravityFlip = false;
-    run.gravityLandingGuard = false;
-    run.webLane = 1;
-    player.y = groundY - getPlayerHeight();
-    player.vy = 0;
-    player.jumpsUsed = 0;
-    player.slideTimer = 0;
-    inputState.jumpHolding = false;
-    inputState.jumpActive = false;
-    inputState.slideHolding = false;
-  }
+  run.gravityFlip = false;
+  run.gravityLandingGuard = false;
+  run.webLane = 1;
+  player.y = groundY - getPlayerHeight();
+  player.vy = 0;
+  player.jumpsUsed = 0;
+  player.slideTimer = 0;
+  inputState.jumpHolding = false;
+  inputState.jumpActive = false;
+  inputState.slideHolding = false;
 }
 
 function finalBossVulnerableY(boss) {
@@ -5105,6 +5467,7 @@ function addBossObstacle(kind, boss, options = {}) {
     attackVolley: Math.max(0, (boss.attackVolley || 1) - 1)
   };
   applyBossSoulRule(obj, boss, options);
+  applyBossWebLaneRule(obj, boss);
   objects.push(obj);
   tagLatestHazardForGuide(kind);
   return obj;
@@ -5129,6 +5492,7 @@ function addBossEnemy(kind, boss, options = {}) {
     color: options.color || (kind === "slime" ? "#75d05e" : boss.color)
   }, boss.areaIndex || 0);
   applyBossSoulRule(obj, boss, options);
+  applyBossWebLaneRule(obj, boss);
   objects.push(obj);
   tagLatestHazardForGuide(kind);
   return obj;
@@ -5149,10 +5513,32 @@ function applyBossSoulRule(obj, boss, options = {}) {
     obj.shieldLane = options.shieldLane || inferShieldLane(obj);
   }
   if (mode === "yellow") obj.shootable = true;
-  if (mode === "dual") obj.dualHazard = true;
+  if (mode === "dual") {
+    obj.dualHazard = true;
+    if (obj.kind === "laser") {
+      obj.h = Math.min(obj.h || 28, 28);
+      obj.y = (PLAYER_CEILING_Y + groundY) / 2 - obj.h / 2;
+    }
+  }
   if ((boss?.soulMode || run.bossSoulMode) === "rainbow") {
     obj.rainbowRule = mode;
   }
+}
+
+function applyBossWebLaneRule(obj, boss) {
+  if (activeBossSoulMode() !== "purple") return;
+  const offsetBucket = Math.abs(Math.round(((obj.x || 0) - (boss.x || 0)) / 52));
+  const kindCode = String(obj.kind || "").split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const volley = Math.max(0, Number(obj.attackVolley || 0));
+  const safeLane = Math.abs((boss.attackPattern || 0) + volley) % 3;
+  const blockedLanes = [0, 1, 2].filter((laneIndex) => laneIndex !== safeLane);
+  const lane = blockedLanes[Math.abs(offsetBucket + kindCode) % blockedLanes.length];
+  obj.webLane = lane;
+  obj.h = Math.min(obj.h || 34, 34);
+  obj.y = webLaneY(lane) + getPlayerHeight() / 2 - obj.h / 2;
+  obj.vy = 0;
+  obj.gravity = 0;
+  obj.bounceOnGround = false;
 }
 
 function inferShieldLane(obj) {
@@ -5505,7 +5891,8 @@ function damagePlayer(options = {}) {
         vy: source.vy || 0,
         bossAttack: Boolean(source.bossAttack),
         soulRule: source.soulRule || null,
-        attackVolley: Number.isFinite(source.attackVolley) ? source.attackVolley : null
+        attackVolley: Number.isFinite(source.attackVolley) ? source.attackVolley : null,
+        webLane: Number.isFinite(source.webLane) ? source.webLane : null
       } : null
     };
   }
@@ -6718,9 +7105,9 @@ function areaIndexForDistance(distance) {
 }
 
 function nextAreaBossDistance(index) {
-  const nextArea = areas[index + 1];
-  if (!nextArea) return Infinity;
-  return Math.max(0, nextArea.start - FINAL_BOSS_OFFSET);
+  const area = areas[index];
+  if (!area) return Infinity;
+  return Math.max(0, area.start + area.runDistance);
 }
 
 function isAreaBossCleared(index) {
@@ -7689,6 +8076,7 @@ function drawEnemy(obj) {
     ctx.lineWidth = 2;
     ctx.strokeRect(obj.x - 2, obj.y - 2, obj.w + 4, obj.h + 4);
   }
+  drawEnemyTraitIndicator(obj, obj.h);
   ctx.restore();
 }
 
@@ -7718,6 +8106,38 @@ function drawBoss(obj) {
     ctx.lineWidth = 3;
     ctx.strokeRect(obj.x - 3, obj.y - 3, obj.w + 6, drawH + 6);
   }
+  drawEnemyTraitIndicator(obj, drawH);
+  ctx.restore();
+}
+
+function drawEnemyTraitIndicator(obj, drawH) {
+  if (!obj.trait || obj.trait === "plain") return;
+  const colors = {
+    sandArmor: "#d7b878",
+    frostAura: "#9fd9ff",
+    burning: "#ff8b38",
+    energyShield: "#48bde7",
+    gravityPulse: "#b98cff",
+    voidPull: obj.voidPolarity > 0 ? "#b98cff" : "#65d6ff",
+    regen: "#fff1a5",
+    phase: "#8fffc6"
+  };
+  ctx.save();
+  ctx.globalAlpha = obj.traitWarning ? 0.92 : 0.34;
+  ctx.strokeStyle = colors[obj.trait] || "#ffffff";
+  ctx.lineWidth = obj.traitWarning ? 4 : 2;
+  const pulse = obj.traitWarning ? 5 + Math.sin(gameNow() / 70) * 3 : 2;
+  ctx.beginPath();
+  ctx.ellipse(
+    obj.x + obj.w / 2,
+    obj.y + drawH / 2,
+    obj.w / 2 + 7 + pulse,
+    drawH / 2 + 7 + pulse,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.stroke();
   ctx.restore();
 }
 
