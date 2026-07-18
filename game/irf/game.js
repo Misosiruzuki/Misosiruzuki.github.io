@@ -2885,7 +2885,7 @@ function defaultState() {
       coinDouble: 0
     },
     settings: {
-      bgmEnabled: true,
+      bgmEnabled: !DEBUG_MODE,
       activeSkill: "none"
     },
     stats: {
